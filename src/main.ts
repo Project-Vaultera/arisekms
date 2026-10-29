@@ -13,7 +13,11 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
   app.use(RequestIdMiddleware);
-  app.enableCors();
+
+  app.enableCors({
+    origin: ['http://localhost:5176', 'http://127.0.0.1:5176'],
+    credentials: true,
+  });
 
   /** Swagger configuration*/
   const options = new DocumentBuilder()
@@ -27,7 +31,12 @@ async function bootstrap() {
   SwaggerModule.setup('swagger', app, document);
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('port');
-  await app.listen(port || 3000);
+  const port = configService.get<number>('port') ?? 3006;
+  await app.listen(port, '0.0.0.0');
+
+  // ponytail: outlast axios's pooled sockets — 5s Node default closed idle keep-alive conns mid-reuse.
+  const server = app.getHttpServer();
+  server.keepAliveTimeout = 65000;
+  server.headersTimeout = 66000;
 }
-bootstrap();
+void bootstrap();

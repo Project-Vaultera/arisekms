@@ -394,3 +394,5 @@ documentation
 test-report.xml
 tsconfig.build.tsbuildinfo
 .nvmrc
+arisekms-fe/.env
+arisekms-fe/dist/

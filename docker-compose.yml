@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -8,7 +6,7 @@ services:
         - APP_ENV
     command: npm run start:dev
     ports:
-      - 3000:3000
+      - "${APP_PORT:-3006}:${APP_PORT:-3006}"
     volumes:
       - ./:/usr/src/app:cached
       - node_modules:/usr/src/app/node_modules
@@ -26,26 +24,69 @@ services:
       JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64}
       DEFAULT_ADMIN_USER_PASSWORD: ${DEFAULT_ADMIN_USER_PASSWORD}
     depends_on:
-      - pgsqldb
+      pgsqldb:
+        condition: service_healthy
+    networks:
+      - arisekms_network
+
+  frontend:
+    build:
+      context: ./arisekms-fe
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    ports:
+      - "${FRONTEND_PORT:-5176}:5173"
+    volumes:
+      - ./arisekms-fe:/app
+      - arisekms_fe_node_modules:/app/node_modules
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:${APP_PORT:-3006}/api/v1}
+    depends_on:
+      - app
+    networks:
+      - arisekms_network
 
   pgsqldb:
     image: postgres:16.3
-    environment:
-      POSTGRES_USER: "${DB_USER}"
-      POSTGRES_PASSWORD: "${DB_PASS}"
-      POSTGRES_DB: "${DB_NAME}"
     ports:
-      - 5432:5432
+      - "${PGSQL_HOST_PORT:-5436}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
-      - pgsqldata:/var/lib/postgresql/data
+      - arisekms_pgsql_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "${DB_USER}" -d "${DB_NAME}"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - arisekms_network
 
   adminer:
-    image: adminer
+    image: adminer:latest
     ports:
-      - 8080:8080
+      - "${ADMINER_PORT:-8086}:8080"
     depends_on:
-      - pgsqldb
+      pgsqldb:
+        condition: service_healthy
+    networks:
+      - arisekms_network
+
+networks:
+  arisekms_network:
+    name: arisekms_network
+    driver: bridge
 
 volumes:
   node_modules:
-  pgsqldata:
+    name: arisekms_backend_node_modules
+
+  arisekms_fe_node_modules:
+    name: arisekms_fe_node_modules
+
+  arisekms_pgsql_data:
+    name: arisekms_pgsql_data

@@ -18,12 +18,12 @@ async function bootstrap() {
   const userService = app.get(UserService);
 
   const defaultAdmin: CreateUserInput = {
-    name: 'Default Admin User',
-    username: 'default-admin',
+    name: 'IT Admin User',
+    username: 'it-admin',
     password: defaultAdminUserPassword,
     roles: [ROLE.ADMIN],
     isAccountDisabled: false,
-    email: 'default-admin@example.com',
+    email: 'it-admin@example.com',
   };
 
   const ctx = new RequestContext();

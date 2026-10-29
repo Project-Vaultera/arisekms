@@ -1,182 +1,277 @@
-## NestJS Starter Kit
+# Arise KMS
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![build](https://github.com/monstar-lab-oss/nestjs-starter-rest-api/actions/workflows/build-workflow.yml/badge.svg?branch=master&event=push)](https://github.com/monstar-lab-oss/nestjs-starter-rest-api/actions/workflows/build-workflow.yml)
-[![tests](https://github.com/monstar-lab-oss/nestjs-starter-rest-api/actions/workflows/tests-workflow.yml/badge.svg?branch=master&event=push)](https://github.com/monstar-lab-oss/nestjs-starter-rest-api/actions/workflows/tests-workflow.yml)
+> Open-source knowledge management system (placeholder scope).
 
-This NestJS 11 starter kit has the following outline:
+NestJS REST API + React/Vite + PostgreSQL in Docker Compose, optimized for Ubuntu on WSL2. AI agents must read `AGENTS.md` before editing.
 
-- Monolithic Project
-- REST API
+## New contributor checklist
 
-This is a Github Template Repository, so it can be easily [used as a starter template](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for other repositories.
-
-## Sample implementations
-
-To view sample implementations based on this starter kit, please visit the [nestjs-sample-solutions](https://github.com/monstar-lab-oss/nestjs-sample-solutions) repository.
-
-## Starter kit Features
-
-One of our main principals has been to keep the starter kit as lightweight as possible. With that in mind, here are some of the features that we have added in this starter kit.
-
-| Feature                  | Info               | Progress |
-| ------------------------ | ------------------ | -------- |
-| Authentication           | JWT                | Done     |
-| Authorization            | RBAC (Role based)  | Done     |
-| ORM Integration          | TypeORM            | Done     |
-| DB Migrations            | TypeORM            | Done     |
-| Logging                  | winston            | Done     |
-| Request Validation       | class-validator    | Done     |
-| Pagination               | SQL offset & limit | Done     |
-| Docker Ready             | Dockerfile         | Done     |
-| Devcontainer             | -                  | Done     |
-| Auto-generated OpenAPI   | -                  | Done     |
-| Auto-generated ChangeLog | -                  | WIP      |
-
-Apart from these features above, our start-kit comes loaded with a bunch of minor awesomeness like prettier integration, commit-linting husky hooks, package import sorting, SonarCloud github actions, docker-compose for database dependencies, etc. :D
-
-## Consulting
-
-Most of the features added to this starter kit have already been tried out in production applications by us here at MonstarLab. Our production applications are more feature rich, and we constantly strive to bring those features to this OSS starter kit.
-
-If you would like to use a more feature rich starter kit, with more awesome features from Day 1, then please reach out to us and we can collaborate on it together as technology partners. :)
-
-## Installation
-
-Note: when using docker, all the `npm` commands can also be performed using `./scripts/npm` (for example `./scripts/npm install`).
-This script allows you to run the same commands inside the same environment and versions than the service, without relying on what is installed on the host.
+First run (copy-paste):
 
 ```bash
-$ npm install
-```
-
-Create a `.env` file from the template `.env.template` file.
-
-Generate public and private key pair for jwt authentication:
-
-### With docker
-
-Run this command:
-
-```bash
+git clone <arisekms-remote> ~/oss-vaultera/arisekms
+cd ~/oss-vaultera/arisekms
+cp .env.template .env
+chmod +x ./scripts/generate-jwt-keys
 ./scripts/generate-jwt-keys
+# paste JWT_PUBLIC_KEY_BASE64 / JWT_PRIVATE_KEY_BASE64 into .env, set DB_PASS + DEFAULT_ADMIN_USER_PASSWORD
+cp arisekms-fe/.env.example arisekms-fe/.env
+docker compose up --build -d
+docker compose exec app npm run migration:run
+docker compose exec app npm run cli:dev
+curl -i http://localhost:3006/api/v1
+curl -i http://localhost:5176
 ```
 
-It will output something like this. You only need to add it to your `.env` file.
-
-```
-To setup the JWT keys, please add the following values to your .env file:
-JWT_PUBLIC_KEY_BASE64="(long base64 content)"
-JWT_PRIVATE_KEY_BASE64="(long base64 content)"
-```
-
-### Without docker
+Returning contributor:
 
 ```bash
-$ ssh-keygen -t rsa -b 2048 -m PEM -f jwtRS256.key
-# Don't add passphrase
-$ openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
+git pull --ff-only
+docker compose up -d
+docker compose exec app npm run migration:run
+docker compose ps
 ```
 
-You may save these key files in `./local` directory as it is ignored in git.
+## Table of contents
 
-Encode keys to base64:
+- [Product scope](#product-scope)
+- [Technology stack](#technology-stack)
+- [Repository structure](#repository-structure)
+- [Local services](#local-services)
+- [Prerequisites](#prerequisites)
+- [First-run setup](#first-run-setup)
+- [Returning contributors](#returning-contributors)
+- [Branch switching and resets](#branch-switching-and-resets)
+- [Application configuration](#application-configuration)
+- [Authentication](#authentication)
+- [Daily commands](#daily-commands)
+- [Troubleshooting](#troubleshooting)
+- [Security baseline](#security-baseline)
+- [Working with AI coding agents](#working-with-ai-coding-agents)
+- [License](#license)
+
+## Product scope
+
+KMS placeholder — domain entities are TBD:
+
+| Area | Status |
+| --- | --- |
+| Workspaces / tenants | TBD |
+| Identity and access | Starter JWT (see Authentication) |
+| Documents / notes | TBD |
+| Tags and search | TBD |
+| Sharing | TBD |
+| Audit history | TBD |
+
+First slice: sign in → create workspace-scoped record → view in React → prove another workspace gets 404.
+
+## Technology stack
+
+| Layer | Technology |
+| --- | --- |
+| Backend API | NestJS REST API ([starter](https://github.com/monstar-lab-oss/nestjs-starter-rest-api)) |
+| Frontend | React 19 + Vite 8 + Tailwind v4 + shadcn `dashboard-01` block + Bklit charts + HugeIcons (`arisekms-fe/`) |
+| Database | PostgreSQL 16.3 via TypeORM migrations |
+| Auth | Local JWT (RS256 access + refresh rotation) |
+| Docs | Swagger/OpenAPI |
+| Local orchestration | Docker Compose + Adminer |
+
+## Repository structure
+
+```text
+arisekms/
+├── src/                 # NestJS app (modules, shared/, main.ts, cli.ts)
+├── test/                # Backend e2e
+├── migrations/          # TypeORM migrations (only way to change schema)
+├── scripts/             # generate-jwt-keys, npm
+├── arisekms-fe/         # React placeholder (api/client.js, App.jsx)
+├── docs/
+├── docker-compose.yml
+├── .env.template
+├── AGENTS.md
+└── README.md
+```
+
+## Local services
+
+Host ports offset to run beside a sibling stack on `3000/5173/5432/8080`:
+
+| Service | Compose name | Host address |
+| --- | --- | --- |
+| Frontend | `frontend` | <http://localhost:5176> |
+| API server | `app` | <http://localhost:3006> |
+| API base (global prefix) | `app` | <http://localhost:3006/api/v1> |
+| Swagger | `app` | <http://localhost:3006/swagger> |
+| Adminer | `adminer` | <http://localhost:8086> |
+| Postgres (host) | `pgsqldb` | `localhost:5436` |
+| Postgres (in Compose) | `pgsqldb` | `pgsqldb:5432` |
+
+All host ports overridable via `.env` (`APP_PORT`, `FRONTEND_PORT`, `PGSQL_HOST_PORT`, `ADMINER_PORT`).
+
+## Prerequisites
+
+Windows 10/11, WSL2 Ubuntu, Docker Desktop with WSL Integration → Ubuntu, Git inside Ubuntu. Keep the repo under `/home/...`, not `/mnt/c/...`.
 
 ```bash
-$ base64 -i local/jwtRS256.key
-
-$ base64 -i local/jwtRS256.key.pub
+docker --version && docker compose version && git --version && docker info
+wsl --list --verbose   # run in PowerShell, Ubuntu must show VERSION 2
 ```
 
-Must enter the base64 of the key files in `.env`:
+## First-run setup
+
+### 1. Backend env
 
 ```bash
-JWT_PUBLIC_KEY_BASE64=BASE64_OF_JWT_PUBLIC_KEY
-JWT_PRIVATE_KEY_BASE64=BASE64_OF_JWT_PRIVATE_KEY
+cp .env.template .env
+./scripts/generate-jwt-keys   # paste both BASE64 values into .env
+nano .env
 ```
 
-## Running the app
+Minimum to change: `DB_PASS`, `DEFAULT_ADMIN_USER_PASSWORD`, both `JWT_*_BASE64`. Defaults already point at `3006/5176/5436/8086` and `DB_HOST=pgsqldb`. Never commit `.env`.
 
-We can run the project with or without docker.
-
-### Local
-
-To run the server without Docker we need this pre-requisite:
-
-- Postgres server running
-
-Commands:
+### 2. Frontend env
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp arisekms-fe/.env.example arisekms-fe/.env
 ```
 
-### Docker
+Contents: `VITE_API_URL=http://localhost:3006/api/v1`. Browser-only URL — never `http://app:3006`. Restart the frontend container after any change (`docker compose restart frontend`).
+
+### 3. Start + migrate + seed admin
 
 ```bash
-# build image
-$ docker build -t my-app .
-
-# run container from image
-$ docker run -p 3000:3000 --volume 'pwd':/usr/src/app --network --env-file .env my-app
-
-# run using docker compose
-$ docker compose up
+docker compose up --build -d
+docker compose exec app npm run migration:run
+docker compose exec app npm run cli:dev   # creates it-admin if missing
 ```
 
-Learn more about Docker conventions [here](https://github.com/monstar-lab-group/nodejs-backend/blob/master/architecture/docker-ready.md). (WIP - Currently this is an internal org link.)
+`cli:dev` runs `src/cli.ts` and is idempotent. Default login: `it-admin` / value of `DEFAULT_ADMIN_USER_PASSWORD` (`Arise@2026` unless changed).
 
-## Test
+### 4. Verify (what actually exists)
+
+There is **no** `/api/v1/health` in this starter — a 404 there is expected. Verify with:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+curl -i http://localhost:3006/api/v1          # hello from AppController
+curl -i http://localhost:3006/swagger         # 301/HTML redirect, open in browser instead
+curl -i -X POST http://localhost:3006/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"it-admin","password":"<from .env>"}'
+curl -i http://localhost:5176
 ```
 
-## Migrations
+Open <http://localhost:3006/swagger> and <http://localhost:5176> in a browser. If a route 404s, inspect source instead of guessing:
 
 ```bash
-# using docker
-$ docker compose exec app npm run migration:run
-
-# generate migration (replace CreateUsers with name of the migration)
-$ npm run migration:generate --name=CreateUsers
-
-# run migration
-$ npm run migration:run
-
-# revert migration
-$ npm run migration:revert
+rg "setGlobalPrefix|SwaggerModule.setup|Controller\(" src
 ```
 
-## Architecture
+## Returning contributors
 
-- [Project Structure](./docs/project-structure.md)
+```bash
+git pull --ff-only
+docker compose up -d
+docker compose exec app npm run migration:run
+docker compose exec app npm run cli:dev   # safe to re-run after pulls
+```
 
-## Contributors
+After changing `arisekms-fe/.env`: `docker compose restart frontend`.
 
-- [Yash Murty](https://github.com/yashmurty)
-- [S M Asad Rahman](https://github.com/asad-mlbd)
-- [Tanveer Hassan](https://github.com/war1oc)
-- [Saad Bin Amjad](https://github.com/Saad-Amjad)
-- [Sivan Payyadakath](https://github.com/sivanpayyadakath)
-- [Sébastien Caparros](https://github.com/Seb-C)
+## Branch switching and resets
 
-## External Links
+```bash
+# new work
+git checkout master && git pull --ff-only
+git checkout -b {feat,fix,docs,style,refactor,perf,test,build,ci,chore}/<issue>-one-liner
+docker compose exec app npm run migration:run
 
-<a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo.svg" width="150" alt="Nest Logo" /></a>
+# schema changed on this branch?
+npm run migration:generate --name=AddFoo   # review file, then commit it
+docker compose exec app npm run migration:run
+docker compose exec app npm run migration:revert   # undo last, dev only
 
-[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/dashboard?id=monstar-lab-oss_nestjs-starter-rest-api)
+# nuke everything (deletes PG data + node_modules volumes)
+docker compose down -v
+```
+
+Never edit an applied/shared migration — add a new one. Never run `down -v` without a backup.
+
+## Application configuration
+
+### CORS
+
+`src/main.ts` allows only the KMS frontend (dev baseline):
+
+```typescript
+app.enableCors({
+  origin: ['http://localhost:5176', 'http://127.0.0.1:5176'],
+  credentials: true,
+});
+```
+
+### Frontend API layer
+
+All calls go through `arisekms-fe/src/api/client.js` (baseURL from `VITE_API_URL`, Bearer interceptor, single-flight 401 → `POST /auth/refresh-token`). Never scatter `fetch`/`axios` in pages. `shortcut: localStorage tokens are dev-only; HttpOnly refresh cookie + revocation list is the prod upgrade.`
+
+### Adminer
+
+<http://localhost:8086> — System `PostgreSQL`, Server `pgsqldb`, credentials from `.env`. Use `pgsqldb`, not `localhost`, inside Compose.
+
+## Authentication
+
+- `POST /api/v1/auth/register` — create user
+- `POST /api/v1/auth/login` — `{username, password}` → `{accessToken, refreshToken}`
+- `POST /api/v1/auth/refresh-token` — `{refreshToken}` → new pair
+
+Guards: `LocalAuthGuard` (login), `JwtAuthGuard` (routes), `JwtRefreshGuard` (refresh).
+
+## Daily commands
+
+| Task | Command |
+| --- | --- |
+| Config check | `docker compose config` |
+| Start / rebuild | `docker compose up -d` / `docker compose up --build -d` |
+| Status / logs | `docker compose ps` / `docker compose logs -f app frontend` |
+| Shell in API | `docker compose exec app sh` |
+| Migrate / revert | `docker compose exec app npm run migration:run` / `... migration:revert` |
+| Test / lint / build (BE) | `docker compose exec app npm test` / `npm run lint` / `npm run build` |
+| Build (FE) | `docker compose exec frontend npm run build` |
+| Audit (BE) | `docker compose exec app npm audit --omit=dev --audit-level=moderate` |
+| Stop (keep data) | `docker compose down` |
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| `GET /api/v1/health` 404 | Expected — no health controller yet; verify with `GET /api/v1` + `/swagger` |
+| `Cannot GET /` | Expected — global prefix is `/api/v1`; `/` is outside the app |
+| React can't reach API | Check `VITE_API_URL`, CORS `5176`, port `3006`, `docker compose restart frontend` |
+| PG connect fail | Inside Compose use `DB_HOST=pgsqldb`; compare `DB_*` in `.env` vs compose |
+| `relation does not exist` | You switched branches — run `migration:run` |
+| Compose YAML error | `docker compose config`; spaces only, no tabs |
+| Files owned by root | Recreate with `-u "$(id -u):$(id -g)"`; fix only the affected path |
+| Port in use | `ss -ltnp \| grep -E '3006\|5176\|5436\|8086'`; override that var in `.env` |
+| Hot reload dead | Repo must be under `/home/...`, not `/mnt/c/...` |
+
+```bash
+docker compose logs --tail=200 app
+docker compose exec pgsqldb pg_isready -U "$DB_USER" -d "$DB_NAME"
+```
+
+## Security baseline
+
+Server-enforced tenant scope + cross-tenant denial tests; validation pipes on all input; no secrets/tokens/PII in logs; rate-limit auth when abuse-prone endpoints land; validated uploads + private storage when files land; encrypted backups before prod data; `npm audit` clean or exception recorded. Never commit `.env`, keys, or tokens — pre-commit check is `git status` + `git diff --cached --stat`.
+
+## Working with AI coding agents
+
+```text
+Read AGENTS.md and README.md first.
+Implement: <feature>
+Acceptance criteria:
+- Given <context>, when <action>, then <result>.
+Inspect existing patterns. Add migrations + tests. Report checks run.
+```
+
+## License
+
+MIT — see `LICENSE.md`. Retain upstream starter notices.
