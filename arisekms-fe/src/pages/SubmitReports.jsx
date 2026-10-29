@@ -4,6 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon, CloudUploadIcon, Tick01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
+import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
@@ -85,21 +86,34 @@ function Tile({ category, file, onPick, onRemove }) {
 
 export function SubmitReports() {
   const [files, setFiles] = useState({});
+  const [busy, setBusy] = useState(false);
 
   function discard() {
     setFiles({});
     toast.info('Attachments discarded');
   }
 
-  function submit() {
-    const count = Object.keys(files).length;
-    if (count === 0) {
+  async function submit() {
+    const entries = Object.entries(files);
+    if (entries.length === 0) {
       toast.error('Nothing to submit', { description: 'Attach at least one file first.' });
       return;
     }
-    // TODO: POST /api/v1/reports (multipart, one file per category).
-    toast.success('Reports submitted', { description: `${count} file(s) queued for review.` });
-    setFiles({});
+    setBusy(true);
+    try {
+      for (const [category, file] of entries) {
+        const form = new FormData();
+        form.append('category', category);
+        form.append('file', file);
+        await api.post('/reports', form);
+      }
+      toast.success('Reports submitted', { description: `${entries.length} file(s) queued for review.` });
+      setFiles({});
+    } catch {
+      toast.error('Submission failed', { description: 'Check the file type and try again.' });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -142,10 +156,12 @@ export function SubmitReports() {
                   Your data is handled securely — <Link to="/privacy-policy" className="underline">Privacy Policy</Link>
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={discard}>
+                  <Button variant="outline" onClick={discard} disabled={busy}>
                     Discard
                   </Button>
-                  <Button onClick={submit}>Submit</Button>
+                  <Button onClick={submit} disabled={busy}>
+                    {busy ? 'Submitting…' : 'Submit'}
+                  </Button>
                 </div>
               </div>
             </CardContent>

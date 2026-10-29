@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { File02Icon, Home01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 
-import dashboardData from '@/app/dashboard/data.json';
+import { api } from '@/api/client.js';
 import { Input } from '@/components/ui/input.jsx';
 import { cn } from '@/lib/utils.js';
 
@@ -20,31 +20,40 @@ const PAGES = [
   { group: 'Pages', title: 'Support', sub: 'Submit a ticket', to: '/support', icon: File02Icon },
 ];
 
-export function BrandBar({ onSelectDoc }) {
+export function BrandBar() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [docs, setDocs] = useState([]);
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
+
+  // shortcut: knowledge list cached per session (cap 100); refreshes on reload.
+  useEffect(() => {
+    api
+      .get('/knowledge', { params: { limit: 100, offset: 0 } })
+      .then((res) => setDocs(res.data.data ?? []))
+      .catch(() => setDocs([]));
+  }, []);
 
   const hits = useMemo(() => {
     const query = q.trim().toLowerCase();
     const pages = PAGES.map((p) => ({ ...p, kind: 'page' }));
-    const docs = dashboardData.map((d) => ({
+    const items = docs.map((d) => ({
       kind: 'doc',
-      group: 'Documents',
-      title: d.header,
-      sub: `${d.type} · ${d.status}`,
-      to: '/',
+      group: 'Knowledge',
+      title: d.title,
+      sub: `${d.category} · ${d.mimeType ?? ''}`,
+      to: '/knowledge-products',
       icon: File02Icon,
     }));
-    if (!query) return [...pages, ...docs.slice(0, 5)];
-    return [...pages, ...docs].filter(
+    if (!query) return [...pages, ...items.slice(0, 5)];
+    return [...pages, ...items].filter(
       (h) => h.title.toLowerCase().includes(query) || h.sub.toLowerCase().includes(query),
     ).slice(0, 10);
-  }, [q]);
+  }, [q, docs]);
 
   useEffect(() => setHighlight(0), [hits.length]);
 
@@ -73,7 +82,6 @@ export function BrandBar({ onSelectDoc }) {
   function go(hit) {
     setQ('');
     setOpen(false);
-    if (hit.kind === 'doc') onSelectDoc?.(hit.title);
     navigate(hit.to);
   }
 
@@ -91,8 +99,8 @@ export function BrandBar({ onSelectDoc }) {
     }
   }
 
-  const recent = [...dashboardData]
-    .sort((a, b) => b.id - a.id)
+  const recent = [...docs]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 3);
 
   return (
@@ -162,15 +170,14 @@ export function BrandBar({ onSelectDoc }) {
                 key={d.id}
                 onClick={() => {
                   setActivityOpen(false);
-                  onSelectDoc?.(d.header);
-                  navigate('/');
+                  navigate('/knowledge-products');
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[#e9f7ef] hover:text-[#15803d]"
               >
                 <HugeiconsIcon icon={File02Icon} size={16} strokeWidth={1.8} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{d.header}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{d.status}</span>
+                  <span className="block truncate font-medium">{d.title}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{d.category}</span>
                 </span>
               </button>
             ))}

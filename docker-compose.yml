@@ -10,6 +10,7 @@ services:
     volumes:
       - ./:/usr/src/app:cached
       - node_modules:/usr/src/app/node_modules
+      - app_uploads:/usr/src/app/uploads
     environment:
       APP_ENV: ${APP_ENV}
       APP_PORT: ${APP_PORT}
@@ -87,6 +88,9 @@ volumes:
 
   arisekms_fe_node_modules:
     name: arisekms_fe_node_modules
+
+  app_uploads:
+    name: arisekms_app_uploads
 
   arisekms_pgsql_data:
     name: arisekms_pgsql_data

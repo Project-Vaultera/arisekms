@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 import dashboardData from '@/app/dashboard/data.json';
@@ -23,7 +23,7 @@ const DataTableLazy = lazy(() =>
   import('@/components/data-table.jsx').then((m) => ({ default: m.DataTable })),
 );
 
-function DashboardHome({ docFocus }) {
+function DashboardHome() {
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <SectionCards />
@@ -47,25 +47,24 @@ function DashboardHome({ docFocus }) {
           </div>
         }
       >
-        <DataTableLazy data={dashboardData} focusDoc={docFocus} />
+        <DataTableLazy data={dashboardData} />
       </Suspense>
     </div>
   );
 }
 
 export function Dashboard() {
-  const [docFocus, setDocFocus] = useState(null);
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full flex-col">
-        <BrandBar onSelectDoc={setDocFocus} />
+        <BrandBar />
         <div className="flex flex-1">
           <AriseSidebar />
           <SidebarInset>
             <div className="flex flex-1 flex-col">
               <div className="@container/main flex flex-1 flex-col gap-2">
                 <Routes>
-                  <Route index element={<DashboardHome docFocus={docFocus} />} />
+                  <Route index element={<DashboardHome />} />
                   <Route path="submit-reports" element={<SubmitReports />} />
                   <Route path="membership-form" element={<MembershipForm />} />
                   <Route path="knowledge-products" element={<KnowledgeProducts />} />
@@ -73,7 +72,7 @@ export function Dashboard() {
                   <Route path="privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="benefits" element={<Benefits />} />
                   <Route path="support" element={<Support />} />
-                  <Route path="*" element={<DashboardHome docFocus={docFocus} />} />
+                  <Route path="*" element={<DashboardHome />} />
                 </Routes>
               </div>
             </div>

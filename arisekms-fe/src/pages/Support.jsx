@@ -1,21 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PlusSignIcon, SentIcon } from '@hugeicons/core-free-icons';
+import { SentIcon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
+import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { cn } from '@/lib/utils.js';
-
-// TODO: replace with GET/POST /api/v1/support-tickets (member-scoped list).
-const SEED_TICKETS = [
-  { id: 'SUP-1042', subject: 'Cannot attach PDF on Submit Reports', category: 'Report submission', priority: 'High', status: 'Open', updated: '2026-10-27' },
-  { id: 'SUP-1039', subject: 'Knowledge product download fails', category: 'Knowledge Products', status: 'In progress', priority: 'Medium', updated: '2026-10-21' },
-  { id: 'SUP-1031', subject: 'Update organization profile', category: 'Membership', status: 'Resolved', priority: 'Low', updated: '2026-10-12' },
-];
 
 const CATEGORIES = ['Report submission', 'Knowledge Products', 'Membership', 'SkillsBuild', 'Account access', 'Other'];
 const PRIORITIES = ['Low', 'Medium', 'High'];
@@ -27,7 +21,7 @@ const STATUS_STYLE = {
 };
 
 export function Support() {
-  const [tickets, setTickets] = useState(SEED_TICKETS);
+  const [tickets, setTickets] = useState([]);
   const [filter, setFilter] = useState('All');
   const [form, setForm] = useState({ subject: '', category: CATEGORIES[0], priority: 'Medium', description: '' });
 
@@ -35,17 +29,36 @@ export function Support() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function submit(e) {
+  function refresh() {
+    return api
+      .get('/support-tickets', { params: { limit: 100, offset: 0 } })
+      .then((res) => setTickets(res.data.data ?? []))
+      .catch(() => toast.error('Could not load tickets'));
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function submit(e) {
     e.preventDefault();
     if (!form.subject.trim() || !form.description.trim()) {
       toast.error('Missing fields', { description: 'Subject and description are required.' });
       return;
     }
-    // TODO: POST /api/v1/support-tickets.
-    const id = `SUP-${1043 + tickets.length - SEED_TICKETS.length}`;
-    setTickets((prev) => [{ ...form, id, status: 'Open', updated: '2026-10-29' }, ...prev]);
-    setForm({ subject: '', category: CATEGORIES[0], priority: 'Medium', description: '' });
-    toast.success('Ticket submitted', { description: 'Our team will get back to you soon.' });
+    try {
+      await api.post('/support-tickets', {
+        subject: form.subject.trim(),
+        category: form.category,
+        priority: form.priority,
+        description: form.description.trim(),
+      });
+      setForm({ subject: '', category: CATEGORIES[0], priority: 'Medium', description: '' });
+      toast.success('Ticket submitted', { description: 'Our team will get back to you soon.' });
+      await refresh();
+    } catch {
+      toast.error('Could not submit ticket');
+    }
   }
 
   const visible = tickets.filter((t) => filter === 'All' || t.status === filter);
@@ -125,22 +138,18 @@ export function Support() {
             {visible.map((t) => (
               <div key={t.id} className="rounded-sm border border-border p-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs tabular-nums text-muted-foreground">{t.id}</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">SUP-{1000 + t.id}</span>
                   <Badge variant="outline" className={cn('ml-auto', STATUS_STYLE[t.status])}>{t.status}</Badge>
                 </div>
                 <p className="mt-1 text-sm font-medium">{t.subject}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {t.category} · {t.priority} priority · {t.updated}
+                  {t.category} · {t.priority} priority · {new Date(t.updatedAt).toLocaleDateString()}
                 </p>
               </div>
             ))}
             {visible.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">No tickets here yet.</p>
             )}
-            <Button variant="outline" size="sm" onClick={() => toast.info('Ticket intake', { description: 'TODO: POST /api/v1/support-tickets.' })}>
-              <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
-              New ticket
-            </Button>
           </CardContent>
         </Card>
       </div>

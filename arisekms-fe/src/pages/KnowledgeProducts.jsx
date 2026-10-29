@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Download01Icon, PlusSignIcon, Search01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
+import { api, downloadFile } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
@@ -11,20 +12,11 @@ import { Input } from '@/components/ui/input.jsx';
 import { cn } from '@/lib/utils.js';
 import { canUpload, effectiveRole, getTokenRoles } from '@/lib/rbac.js';
 
-// TODO: replace with GET /api/v1/knowledge (workspace-scoped, paginated).
-const DOCS = [
-  { id: 1, title: 'Employee Manual', category: 'Manual', kind: 'PDF', desc: 'A list of guides and policies for ARISE employees.' },
-  { id: 2, title: 'Emergency Response & Evacuation Manual', category: 'ECE', kind: 'PDF', desc: 'A step-by-step operational guide detailing emergency protocols, assembly points, and designated roles.' },
-  { id: 3, title: 'Data Privacy & Security Policy', category: 'ECE', kind: 'PDF', desc: 'A formal framework governing the collection, storage, and processing of sensitive information.' },
-  { id: 4, title: 'Employee Onboarding Manual', category: 'Manual', kind: 'PDF', desc: 'A step-by-step guide to welcome new hires, introducing culture, tools, and training workflows.' },
-  { id: 5, title: 'Terms of Reference', category: 'Policies', kind: 'PDF', desc: 'Defines the purpose, scope, responsibilities, and structure of a project, committee, or task.' },
-  { id: 6, title: 'Strategic Plan 2024-2026', category: 'Policies', kind: 'PDF', desc: 'A roadmap outlining goals, priorities, and initiatives for 2024 to 2026.' },
-  { id: 7, title: 'Business Continuity Guide', category: 'Manual', kind: 'PDF', desc: 'Keeping critical functions running before, during, and after disruptive events.' },
-  { id: 8, title: 'Rapid Needs Assessment Template', category: 'Policies', kind: 'PDF', desc: 'Standard template for post-disaster rapid needs assessment reporting.' },
-];
-
 const CATEGORIES = ['All', 'ECE', 'Manual', 'Policies', 'Terms'];
 const PAGE_SIZE = 6;
+
+// shortcut: single fetch capped at 100 docs, client-side filter; add server
+// search + pagination (?q, limit/offset) when the library outgrows it.
 
 export function KnowledgeProducts() {
   const [category, setCategory] = useState('All');
@@ -32,27 +24,67 @@ export function KnowledgeProducts() {
   const [qDesc, setQDesc] = useState('');
   const [qId, setQId] = useState('');
   const [page, setPage] = useState(0);
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
   const role = effectiveRole(getTokenRoles());
 
+  function refresh() {
+    setLoading(true);
+    return api
+      .get('/knowledge', { params: { limit: 100, offset: 0 } })
+      .then((res) => setDocs(res.data.data ?? []))
+      .catch(() => toast.error('Could not load documents'))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function upload() {
+    if (!pending?.file || !pending.title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('title', pending.title.trim());
+      form.append('category', pending.category);
+      form.append('file', pending.file);
+      await api.post('/knowledge', form);
+      toast.success('Document uploaded');
+      setPending(null);
+      await refresh();
+    } catch {
+      toast.error('Upload failed', { description: 'Check the file type and try again.' });
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const counts = useMemo(() => {
-    const c = { All: DOCS.length };
-    for (const d of DOCS) c[d.category] = (c[d.category] ?? 0) + 1;
+    const c = { All: docs.length };
+    for (const d of docs) c[d.category] = (c[d.category] ?? 0) + 1;
     for (const cat of CATEGORIES) c[cat] ??= 0;
     return c;
-  }, []);
+  }, [docs]);
 
   const filtered = useMemo(() => {
     const t = qTitle.trim().toLowerCase();
-    const d = qDesc.trim().toLowerCase();
+    const d = (qDesc.trim() || '').toLowerCase();
     const id = qId.trim();
-    return DOCS.filter(
+    return docs.filter(
       (doc) =>
         (category === 'All' || doc.category === category) &&
         (!t || doc.title.toLowerCase().includes(t)) &&
-        (!d || doc.desc.toLowerCase().includes(d)) &&
+        (!d || (doc.description ?? '').toLowerCase().includes(d)) &&
         (!id || String(doc.id) === id),
     );
-  }, [category, qTitle, qDesc, qId]);
+  }, [docs, category, qTitle, qDesc, qId]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pages - 1);
@@ -64,8 +96,9 @@ export function KnowledgeProducts() {
   }
 
   function download(doc) {
-    // TODO: GET /api/v1/knowledge/:id/file (signed URL, audit the download).
-    toast.success('Download started', { description: `${doc.title}.${doc.kind.toLowerCase()}` });
+    downloadFile(`/knowledge/${doc.id}/file`, `${doc.title}.pdf`).catch(() =>
+      toast.error('Download failed'),
+    );
   }
 
   return (
@@ -82,12 +115,36 @@ export function KnowledgeProducts() {
           <Input value={qDesc} onChange={(e) => setQDesc(e.target.value)} placeholder="Search by Description" className="flex-1" />
           <Input value={qId} onChange={(e) => setQId(e.target.value)} placeholder="Search by ID" className="sm:w-36" />
           {canUpload(role) && (
-            <Button onClick={() => toast.info('Upload coming soon', { description: 'TODO: POST /api/v1/knowledge (admin only).' })}>
+            <Button onClick={() => fileRef.current?.click()}>
               <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={2} />
               Upload Document
             </Button>
           )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                const f = e.target.files[0];
+                setPending({ file: f, title: f.name.replace(/\.[^.]+$/, ''), category: 'Manual' });
+              }
+              e.target.value = '';
+            }}
+          />
         </div>
+        {pending && (
+          <div className="mx-auto mt-3 flex max-w-3xl flex-col gap-2 rounded-lg bg-white p-3 shadow-lg sm:flex-row">
+            <Input value={pending.title} onChange={(e) => setPending({ ...pending, title: e.target.value })} placeholder="Title" className="flex-1" />
+            <select value={pending.category} onChange={(e) => setPending({ ...pending, category: e.target.value })} className="h-9 rounded-md border border-input bg-card px-2 text-sm">
+              {CATEGORIES.filter((c) => c !== 'All').map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <Button onClick={upload} disabled={uploading}>{uploading ? 'Uploading…' : 'Confirm upload'}</Button>
+          </div>
+        )}
       </PageHero>
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 lg:flex-row lg:px-6">
         <aside className="w-full shrink-0 lg:w-56">
@@ -126,7 +183,7 @@ export function KnowledgeProducts() {
                     <Badge className="bg-[var(--sendai-teal)] text-white">{doc.category}</Badge>
                   </div>
                   <p className="font-heading text-base font-bold text-[#1e3a5f]">{doc.title}</p>
-                  <p className="min-h-16 text-xs leading-relaxed text-muted-foreground">{doc.desc}</p>
+                  <p className="min-h-16 text-xs leading-relaxed text-muted-foreground">{doc.description}</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -141,7 +198,7 @@ export function KnowledgeProducts() {
             ))}
             {visible.length === 0 && (
               <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
-                No documents match your filters.
+                {loading ? 'Loading documents…' : 'No documents match your filters.'}
               </p>
             )}
           </div>

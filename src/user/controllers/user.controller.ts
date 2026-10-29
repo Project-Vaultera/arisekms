@@ -99,8 +99,7 @@ export class UserController {
     return { data: users, meta: { count } };
   }
 
-  // TODO: ADD RoleGuard
-  // NOTE : This can be made a admin only endpoint. For normal users they can use GET /me
+  // Admin-only: members use GET /me. (No PATCH /me exists yet — see TODO below.)
   @UseInterceptors(ClassSerializerInterceptor)
   @Get(':id')
   @ApiOperation({
@@ -114,6 +113,9 @@ export class UserController {
     status: HttpStatus.NOT_FOUND,
     type: BaseApiErrorResponse,
   })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLE.ADMIN)
+  @ApiBearerAuth()
   async getUser(
     @ReqContext() ctx: RequestContext,
     @Param('id') id: number,
@@ -124,8 +126,8 @@ export class UserController {
     return { data: user, meta: {} };
   }
 
-  // TODO: ADD RoleGuard
-  // NOTE : This can be made a admin only endpoint. For normal users they can use PATCH /me
+  // Admin-only for now. Members need PATCH /me for self-service updates.
+  // TODO: add PATCH /me, then keep this endpoint ADMIN-only.
   @Patch(':id')
   @ApiOperation({
     summary: 'Update user API',
@@ -138,6 +140,9 @@ export class UserController {
     status: HttpStatus.NOT_FOUND,
     type: BaseApiErrorResponse,
   })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLE.ADMIN)
+  @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async updateUser(
     @ReqContext() ctx: RequestContext,

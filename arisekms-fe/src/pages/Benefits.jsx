@@ -2,6 +2,9 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { BookOpen01Icon, ChartUpIcon, Comment01Icon, UserGroupIcon } from '@hugeicons/core-free-icons';
 
 import { PageHero } from '@/components/PageHero.jsx';
+// Benefits copy follows the arise.ph/membership structure.
+// TODO: verify wording against the official page (arise.ph blocks automated
+// fetching with 403 — confirm manually in a browser).
 import { Card, CardContent } from '@/components/ui/card.jsx';
 
 const BENEFITS = [

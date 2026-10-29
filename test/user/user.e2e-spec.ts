@@ -67,11 +67,12 @@ describe('UserController (e2e)', () => {
   });
 
   describe('get a user by Id', () => {
-    it('should get a user by Id', async () => {
+    it('admin gets a user by Id', async () => {
       const expectedOutput = adminUser;
 
       return request(app.getHttpServer())
         .get('/users/1')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .expect(HttpStatus.OK)
         .expect({ data: expectedOutput, meta: {} });
     });
@@ -79,7 +80,14 @@ describe('UserController (e2e)', () => {
     it('throws NOT_FOUND when user doesnt exist', () => {
       return request(app.getHttpServer())
         .get('/users/99')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .expect(HttpStatus.NOT_FOUND);
+    });
+
+    it('Unauthorized error when BearerToken is not provided', () => {
+      return request(app.getHttpServer())
+        .get('/users/1')
+        .expect(HttpStatus.UNAUTHORIZED);
     });
   });
 
@@ -89,7 +97,7 @@ describe('UserController (e2e)', () => {
   };
 
   describe('update a user', () => {
-    it('successfully updates a user', async () => {
+    it('admin successfully updates a user', async () => {
       const expectedOutput: UserOutput = {
         ...adminUser,
         ...{ name: 'New e2etestername' },
@@ -97,6 +105,7 @@ describe('UserController (e2e)', () => {
 
       return request(app.getHttpServer())
         .patch('/users/1')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .send(updateUserInput)
         .expect(HttpStatus.OK)
         .expect((res) => {
@@ -109,13 +118,23 @@ describe('UserController (e2e)', () => {
     it('throws NOT_FOUND when user doesnt exist', () => {
       return request(app.getHttpServer())
         .patch('/users/99')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
+        .send(updateUserInput)
         .expect(HttpStatus.NOT_FOUND);
+    });
+
+    it('Unauthorized error when BearerToken is not provided', () => {
+      return request(app.getHttpServer())
+        .patch('/users/1')
+        .send(updateUserInput)
+        .expect(HttpStatus.UNAUTHORIZED);
     });
 
     it('update fails when incorrect password type', () => {
       updateUserInput.password = 12345 as any;
       return request(app.getHttpServer())
         .patch('/users/1')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .expect(HttpStatus.BAD_REQUEST)
         .send(updateUserInput)
         .expect((res) => {

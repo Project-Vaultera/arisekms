@@ -352,20 +352,12 @@ function DraggableRow({
 
 export function DataTable({
   data: initialData,
-  focusDoc = null,
 }) {
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState({})
   const [columnFilters, setColumnFilters] = React.useState([])
-  // Spotlight search from the brand bar filters the header column.
-  React.useEffect(() => {
-    setColumnFilters((prev) => [
-      ...prev.filter((f) => f.id !== "header"),
-      ...(focusDoc ? [{ id: "header", value: focusDoc }] : []),
-    ])
-  }, [focusDoc])
   const [sorting, setSorting] = React.useState([])
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
