@@ -1,15 +1,18 @@
 import { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
-import dashboardData from '@/app/dashboard/data.json';
 import { AriseSidebar } from '@/components/AriseSidebar.jsx';
 import { BrandBar } from '@/components/BrandBar.jsx';
+import { PageHeader } from '@/components/PageHeader.jsx';
 import { SectionCards } from '@/components/section-cards';
 import { Card, CardContent } from '@/components/ui/card';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
+import { useDashboardData } from '@/hooks/use-dashboard-data.js';
+import { ADD_ACTIONS } from '@/lib/add-actions.js';
 import { Benefits } from '@/pages/Benefits.jsx';
 import { KnowledgeProducts } from '@/pages/KnowledgeProducts.jsx';
+import { MemberDirectory } from '@/pages/MemberDirectory.jsx';
 import { MembershipForm } from '@/pages/MembershipForm.jsx';
 import { PrivacyPolicy } from '@/pages/PrivacyPolicy.jsx';
 import { SkillsBuild } from '@/pages/SkillsBuild.jsx';
@@ -19,36 +22,68 @@ import { Support } from '@/pages/Support.jsx';
 const ActivityChart = lazy(() =>
   import('@/components/dashboard/ActivityChart.jsx').then((m) => ({ default: m.ActivityChart })),
 );
-const DataTableLazy = lazy(() =>
-  import('@/components/data-table.jsx').then((m) => ({ default: m.DataTable })),
+const MemberGrowthChart = lazy(() =>
+  import('@/components/dashboard/MemberGrowthChart.jsx').then((m) => ({ default: m.MemberGrowthChart })),
+);
+const RecentActivity = lazy(() =>
+  import('@/components/dashboard/RecentActivity.jsx').then((m) => ({ default: m.RecentActivity })),
+);
+const EventTimeline = lazy(() =>
+  import('@/components/dashboard/EventTimeline.jsx').then((m) => ({ default: m.EventTimeline })),
 );
 
-function DashboardHome() {
+function ChartFallback() {
   return (
-    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      <SectionCards />
+    <Card>
+      <CardContent className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+        Loading chart…
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardHome() {
+  const dashboard = useDashboardData();
+
+  return (
+    <div className="flex flex-col gap-4 py-2 md:gap-6 md:py-3">
+      <PageHeader
+        title="Building Resilient Communities Together"
+        subtitle="Empowering disaster risk reduction through training, collaboration, and knowledge sharing"
+        actions={[ADD_ACTIONS.report, ADD_ACTIONS.product, ADD_ACTIONS.certificate]}
+      />
+      <SectionCards summary={dashboard} />
+      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 xl:grid-cols-10">
+        <div className="xl:col-span-7">
+          <Suspense fallback={<ChartFallback />}>
+            <MemberGrowthChart
+              months={dashboard.membersByMonth}
+              loading={dashboard.loading}
+            />
+          </Suspense>
+        </div>
+        <div className="xl:col-span-3">
+          <Suspense fallback={<ChartFallback />}>
+            <EventTimeline items={dashboard.recent} loading={dashboard.loading} />
+          </Suspense>
+        </div>
+      </div>
+      <div className="px-4 lg:px-6">
+        <Suspense fallback={<ChartFallback />}>
+          <ActivityChart weeks={dashboard.weeklySubmissions} loading={dashboard.loading} />
+        </Suspense>
+      </div>
       <div className="px-4 lg:px-6">
         <Suspense
           fallback={
-            <Card>
-              <CardContent className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-                Loading chart…
-              </CardContent>
-            </Card>
+            <div className="text-sm text-muted-foreground">
+              Loading table…
+            </div>
           }
         >
-          <ActivityChart />
+          <RecentActivity items={dashboard.recent} loading={dashboard.loading} />
         </Suspense>
       </div>
-      <Suspense
-        fallback={
-          <div className="px-4 text-sm text-muted-foreground lg:px-6">
-            Loading table…
-          </div>
-        }
-      >
-        <DataTableLazy data={dashboardData} />
-      </Suspense>
     </div>
   );
 }
@@ -56,28 +91,27 @@ function DashboardHome() {
 export function Dashboard() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-svh w-full flex-col">
-        <BrandBar />
-        <div className="flex flex-1">
-          <AriseSidebar />
-          <SidebarInset>
-            <div className="flex flex-1 flex-col">
-              <div className="@container/main flex flex-1 flex-col gap-2">
-                <Routes>
-                  <Route index element={<DashboardHome />} />
-                  <Route path="submit-reports" element={<SubmitReports />} />
-                  <Route path="membership-form" element={<MembershipForm />} />
-                  <Route path="knowledge-products" element={<KnowledgeProducts />} />
-                  <Route path="skillsbuild" element={<SkillsBuild />} />
-                  <Route path="privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="benefits" element={<Benefits />} />
-                  <Route path="support" element={<Support />} />
-                  <Route path="*" element={<DashboardHome />} />
-                </Routes>
-              </div>
+      <div className="flex min-h-svh w-full">
+        <AriseSidebar />
+        <SidebarInset>
+          <BrandBar />
+          <div className="flex flex-1 flex-col">
+            <div className="@container/main flex flex-1 flex-col gap-2">
+              <Routes>
+                <Route index element={<DashboardHome />} />
+                <Route path="member-directory" element={<MemberDirectory />} />
+                <Route path="submit-reports" element={<SubmitReports />} />
+                <Route path="membership-form" element={<MembershipForm />} />
+                <Route path="knowledge-products" element={<KnowledgeProducts />} />
+                <Route path="skillsbuild" element={<SkillsBuild />} />
+                <Route path="privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="benefits" element={<Benefits />} />
+                <Route path="support" element={<Support />} />
+                <Route path="*" element={<DashboardHome />} />
+              </Routes>
             </div>
-          </SidebarInset>
-        </div>
+          </div>
+        </SidebarInset>
       </div>
       <Toaster />
     </SidebarProvider>

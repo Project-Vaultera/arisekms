@@ -5,6 +5,9 @@ import { toast } from 'sonner';
 
 import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
+import { PageHeader } from '@/components/PageHeader.jsx';
+import { ADD_ACTIONS } from '@/lib/add-actions.js';
+import skillsBg from '../ibmskillsbuild.png';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx';
@@ -76,9 +79,13 @@ export function SkillsBuild() {
 
   return (
     <div>
+      <PageHeader
+        actions={[ADD_ACTIONS.report, ADD_ACTIONS.product]}
+      />
       <PageHero
         title="Building Resilient Communities Together"
         subtitle="Empowering disaster risk reduction through training, collaboration, and knowledge sharing"
+        bg={skillsBg}
       >
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <Button asChild size="lg" className="rounded-full">
@@ -135,14 +142,14 @@ export function SkillsBuild() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-heading text-xl font-black">
-                <HugeiconsIcon icon={Certificate01Icon} size={20} strokeWidth={1.8} className="text-[#15803d]" />
+                <HugeiconsIcon icon={Certificate01Icon} size={20} strokeWidth={1.8} className="text-[#0B4484]" />
                 Add Certificate
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={submitCertificate} className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="editorial-label" htmlFor="cert-name">Member name</label>
+                  <label className="editorial-label" htmlFor="cert-name">Member Name</label>
                   <Input id="cert-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Juan Dela Cruz" />
                 </div>
                 <div className="space-y-1.5">
@@ -150,7 +157,7 @@ export function SkillsBuild() {
                   <Input id="cert-course" value={form.course} onChange={(e) => set('course', e.target.value)} placeholder="Cybersecurity Fundamentals" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="editorial-label" htmlFor="cert-date">Date issued</label>
+                  <label className="editorial-label" htmlFor="cert-date">Date Issued</label>
                   <Input id="cert-date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
@@ -166,7 +173,7 @@ export function SkillsBuild() {
               </form>
               {mine.length > 0 && (
                 <div className="mt-6 space-y-2">
-                  <p className="editorial-label text-muted-foreground">My certificates</p>
+                  <p className="editorial-label text-muted-foreground">My Certificates</p>
                   {mine.map((c) => (
                     <div key={c.id} className="flex items-center gap-2 rounded-sm border border-border px-3 py-2 text-sm">
                       <HugeiconsIcon icon={Award01Icon} size={16} strokeWidth={1.8} className="text-[var(--sendai-orange)]" />

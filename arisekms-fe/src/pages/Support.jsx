@@ -17,7 +17,7 @@ const PRIORITIES = ['Low', 'Medium', 'High'];
 const STATUS_STYLE = {
   Open: 'text-[var(--sendai-crimson)]',
   'In progress': 'text-[var(--sendai-orange)]',
-  Resolved: 'text-[#15803d]',
+  Resolved: 'text-[#0B4484]',
 };
 
 export function Support() {
@@ -72,7 +72,7 @@ export function Support() {
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-2 lg:px-6">
         <Card>
           <CardHeader>
-            <CardTitle className="font-heading text-xl font-black">Open a ticket</CardTitle>
+            <CardTitle className="font-heading text-xl font-black">Open a Ticket</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
@@ -118,7 +118,7 @@ export function Support() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-heading text-xl font-black">My tickets</CardTitle>
+            <CardTitle className="font-heading text-xl font-black">My Tickets</CardTitle>
             <div className="flex gap-1 text-xs">
               {['All', 'Open', 'In progress', 'Resolved'].map((s) => (
                 <button
@@ -126,7 +126,7 @@ export function Support() {
                   onClick={() => setFilter(s)}
                   className={cn(
                     'rounded-sm px-2 py-1 font-medium transition-colors',
-                    filter === s ? 'bg-[#e9f7ef] text-[#15803d]' : 'text-muted-foreground hover:text-foreground',
+                    filter === s ? 'bg-[#e9eff5] text-[#0B4484]' : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {s}

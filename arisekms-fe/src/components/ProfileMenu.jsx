@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ArrowUp01Icon,
-  BookOpen01Icon,
   Logout01Icon,
   Moon01Icon,
   Sun01Icon,
@@ -27,7 +26,7 @@ function Avatar({ size, className }) {
     <span
       style={px}
       className={cn(
-        'grid shrink-0 place-items-center rounded-sm bg-[#15803d] font-heading text-xs font-black text-white',
+        'grid shrink-0 place-items-center rounded-sm bg-[#0B4484] font-heading text-xs font-black text-white',
         className,
       )}
     >
@@ -53,11 +52,11 @@ export function ProfileMenu() {
         <button
           type="button"
           title="it-admin"
-          className="group flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-[#e9f7ef] data-[state=open]:bg-[#e9f7ef] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+          className="group flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left transition-colors data-[state=open]:bg-[#e9eff5] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
         >
           <Avatar
             size={28}
-            className="transition-transform duration-200 group-hover:scale-110 group-data-[state=open]:ring-2 group-data-[state=open]:ring-[#15803d]/50"
+            className="transition-transform duration-200 group-hover:scale-110 group-data-[state=open]:ring-2 group-data-[state=open]:ring-[#0B4484]/50"
           />
           <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <span className="block truncate text-[13px] font-semibold text-[#1e3a5f]">it-admin</span>
@@ -71,7 +70,7 @@ export function ProfileMenu() {
           />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" sideOffset={8} align="start" className="w-60">
+      <DropdownMenuContent side="top" sideOffset={8} align="start" className="w-60 max-h-none overflow-visible">
         <DropdownMenuLabel className="flex items-center gap-2.5 font-normal">
           <Avatar size={34} />
           <span className="min-w-0">
@@ -89,11 +88,6 @@ export function ProfileMenu() {
         <DropdownMenuItem onSelect={() => setTheme(nextTheme)}>
           <HugeiconsIcon icon={NextIcon} size={15} strokeWidth={1.8} className="mr-2 text-muted-foreground" />
           {nextTheme === 'dark' ? 'Dark' : 'Light'}
-        </DropdownMenuItem>
-        {/* TODO: point at the real user manual when it lands. */}
-        <DropdownMenuItem onSelect={() => navigate('/')}>
-          <HugeiconsIcon icon={BookOpen01Icon} size={15} strokeWidth={1.8} className="mr-2 text-muted-foreground" />
-          User Manual
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={logout} className="text-red-600 focus:text-red-700">

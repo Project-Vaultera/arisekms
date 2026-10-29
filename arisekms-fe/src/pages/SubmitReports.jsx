@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 
 import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
+import { PageHeader } from '@/components/PageHeader.jsx';
+import { ADD_ACTIONS } from '@/lib/add-actions.js';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { cn } from '@/lib/utils.js';
@@ -47,19 +49,19 @@ function Tile({ category, file, onPick, onRemove }) {
       }}
       className={cn(
         'flex flex-col items-center gap-3 rounded-lg border border-dashed border-[var(--sendai-teal)]/60 p-6 text-center transition-colors',
-        dragging && 'border-solid bg-[#e9f7ef]',
+        dragging && 'border-solid bg-[#e9eff5]',
       )}
     >
       <p className="text-sm font-semibold text-[#1e3a5f]">{category.label}</p>
       {file ? (
-        <span className="flex max-w-full items-center gap-2 rounded-sm bg-[#e9f7ef] px-3 py-1.5 text-xs font-medium text-[#15803d]">
+        <span className="flex max-w-full items-center gap-2 rounded-sm bg-[#e9eff5] px-3 py-1.5 text-xs font-medium text-[#0B4484]">
           <HugeiconsIcon icon={Tick01Icon} size={15} strokeWidth={2} />
           <span className="truncate">{file.name}</span>
           <button
             type="button"
             aria-label={`Remove ${file.name}`}
             onClick={() => onRemove(category.id)}
-            className="rounded-sm p-0.5 hover:bg-white"
+            className="rounded-sm p-0.5"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} />
           </button>
@@ -118,6 +120,9 @@ export function SubmitReports() {
 
   return (
     <div className="bg-[#0a1931]">
+      <PageHeader
+        actions={[ADD_ACTIONS.certificate, ADD_ACTIONS.product]}
+      />
       <PageHero
         title="Submit Reports"
         subtitle="You can drag your file to start uploading"

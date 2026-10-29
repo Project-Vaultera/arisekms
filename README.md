@@ -147,7 +147,20 @@ docker compose exec app npm run cli:dev   # creates it-admin if missing
 
 `cli:dev` runs `src/cli.ts` and is idempotent. Default login: `it-admin` / value of `DEFAULT_ADMIN_USER_PASSWORD` (`Arise@2026` unless changed).
 
-### 4. Verify (what actually exists)
+### 4. Seed demo dashboard data (optional, dev only)
+
+```bash
+docker compose exec app npm run seed:demo
+```
+
+Creates 8 demo members (`demo.member.1`–`8`, password `DemoPass123!`, two inactive), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Admins see everything; members only see their own submissions (server-enforced). Refuses to run with `APP_ENV=production`, and re-running is a no-op once seeded. To wipe (orphan files under `./uploads` are harmless in dev):
+
+```sql
+DELETE FROM users WHERE username LIKE 'demo.member.%';  -- cascades their reports + certificates
+DELETE FROM knowledge_documents WHERE title LIKE 'Demo:%';
+```
+
+### 5. Verify (what actually exists)
 
 There is **no** `/api/v1/health` in this starter — a 404 there is expected. Verify with:
 

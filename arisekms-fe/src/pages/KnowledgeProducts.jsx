@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 
 import { api, downloadFile } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
+import { PageHeader } from '@/components/PageHeader.jsx';
+import { ADD_ACTIONS } from '@/lib/add-actions.js';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
@@ -103,6 +105,9 @@ export function KnowledgeProducts() {
 
   return (
     <div>
+      <PageHeader
+        actions={[ADD_ACTIONS.report, ADD_ACTIONS.certificate]}
+      />
       <PageHero
         title="Knowledge Products"
         subtitle="Secure repository of manuals, guides, and organizational knowledge."
@@ -160,7 +165,7 @@ export function KnowledgeProducts() {
                       'flex w-full items-center justify-between rounded-sm px-3 py-2 text-sm transition-colors',
                       category === cat
                         ? 'bg-[#0a1931] font-semibold text-white'
-                        : 'text-[#1e3a5f] hover:bg-[#e9f7ef] hover:text-[#15803d]',
+                        : 'text-[#1e3a5f] hover:text-[#0B4484]',
                     )}
                   >
                     {cat}
@@ -188,7 +193,7 @@ export function KnowledgeProducts() {
                     variant="outline"
                     size="sm"
                     onClick={() => download(doc)}
-                    className="mt-1 border-[var(--sendai-crimson)]/30 bg-[var(--sendai-crimson)]/10 text-[var(--sendai-crimson)] hover:bg-[var(--sendai-crimson)] hover:text-white"
+                    className="mt-1 border-[var(--sendai-crimson)]/30 bg-[var(--sendai-crimson)]/10 text-[var(--sendai-crimson)]"
                   >
                     <HugeiconsIcon icon={Download01Icon} size={15} strokeWidth={2} />
                     Download

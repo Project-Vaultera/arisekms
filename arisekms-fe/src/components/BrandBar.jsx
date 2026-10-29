@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { File02Icon, Home01Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { File02Icon, Home01Icon, Search01Icon, SidebarLeftIcon, SidebarRightIcon } from '@hugeicons/core-free-icons';
 
 import { api } from '@/api/client.js';
 import { Input } from '@/components/ui/input.jsx';
+import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils.js';
-
-import logoUrl from '../arise-ph_logo.png';
 
 const PAGES = [
   { group: 'Pages', title: 'Admin Desk', sub: 'Dashboard', to: '/', icon: Home01Icon },
@@ -22,10 +21,11 @@ const PAGES = [
 
 export function BrandBar() {
   const navigate = useNavigate();
+  const { state, toggleSidebar } = useSidebar();
+  const collapsed = state === 'collapsed';
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
-  const [activityOpen, setActivityOpen] = useState(false);
   const [docs, setDocs] = useState([]);
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
@@ -72,7 +72,6 @@ export function BrandBar() {
     function onClick(e) {
       if (!wrapRef.current?.contains(e.target)) {
         setOpen(false);
-        setActivityOpen(false);
       }
     }
     document.addEventListener('mousedown', onClick);
@@ -99,13 +98,20 @@ export function BrandBar() {
     }
   }
 
-  const recent = [...docs]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 3);
-
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-white px-4">
-      <img src={logoUrl} alt="ARISE Philippines" className="h-8 w-auto" />
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 bg-white px-4">
+      <button
+        onClick={toggleSidebar}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        className="shrink-0 rounded-sm p-1.5 text-[#0c4585] transition-colors hover:text-[#00ada8]"
+      >
+        <HugeiconsIcon
+          icon={collapsed ? SidebarRightIcon : SidebarLeftIcon}
+          size={19}
+          strokeWidth={1.8}
+        />
+      </button>
       <div ref={wrapRef} className="relative mx-auto w-full max-w-xl">
         <HugeiconsIcon
           icon={Search01Icon}
@@ -135,7 +141,7 @@ export function BrandBar() {
                 onMouseEnter={() => setHighlight(i)}
                 className={cn(
                   'flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors',
-                  i === highlight ? 'bg-[#e9f7ef] text-[#15803d]' : 'text-foreground',
+                  i === highlight ? 'bg-[#e9eff5] text-[#0B4484]' : 'text-foreground',
                 )}
               >
                 <HugeiconsIcon icon={hit.icon} size={17} strokeWidth={1.8} />
@@ -150,43 +156,6 @@ export function BrandBar() {
           </div>
         )}
       </div>
-      <div className="relative ml-auto">
-        <button
-          aria-label="Recent activity"
-          title="Recent activity"
-          onClick={() => setActivityOpen((v) => !v)}
-          className="relative rounded-sm p-1.5 text-[#1e3a5f] transition-colors hover:bg-[#e9f7ef] hover:text-[#15803d]"
-        >
-          <span className="relative">
-            <HugeiconsIcon icon={File02Icon} size={19} strokeWidth={1.8} />
-            <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-[#15803d]" />
-          </span>
-        </button>
-        {activityOpen && (
-          <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded-sm border border-border bg-card shadow-lg">
-            <p className="editorial-eyebrow px-3 pb-1 pt-3 text-muted-foreground">Recent activity</p>
-            {recent.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => {
-                  setActivityOpen(false);
-                  navigate('/knowledge-products');
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[#e9f7ef] hover:text-[#15803d]"
-              >
-                <HugeiconsIcon icon={File02Icon} size={16} strokeWidth={1.8} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{d.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{d.category}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-[#15803d] text-xs font-semibold text-white">
-        IA
-      </span>
     </header>
   );
 }

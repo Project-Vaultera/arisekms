@@ -13,13 +13,13 @@ import {
   HelpCircleIcon,
   Home01Icon,
   Shield01Icon,
-  SidebarLeftIcon,
   Upload01Icon,
   UserAdd01Icon,
+  UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 
 import { ProfileMenu } from '@/components/ProfileMenu.jsx';
-import { CompanyLogo } from '@/components/CompanyLogo.jsx';
+import logoUrl from '../arise-ph_logo.png';
 import { effectiveRole, getTokenRoles } from '@/lib/rbac.js';
 import {
   Sidebar,
@@ -31,18 +31,20 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils.js';
 
 const ADMIN_CENTER = [
   { id: 'admin-desk', label: 'Admin Desk', icon: GridViewIcon, to: '/' },
+  { id: 'member-directory', label: 'Member Directory', icon: UserGroupIcon, to: '/member-directory' },
   {
     id: 'reports',
     label: 'Reports',
     icon: BarChartIcon,
     // TODO: replace with real report destinations.
-    children: [{ id: 'reports-monthly', label: 'Monthly summary' }, { id: 'reports-activity', label: 'Member activity' }],
+    children: [{ id: 'reports-monthly', label: 'Monthly Summary' }, { id: 'reports-activity', label: 'Member Activity' }],
   },
 ];
 
@@ -57,14 +59,14 @@ const MAIN = [
 const HELP_CENTER = [
   { id: 'privacy', label: 'Privacy Policy', icon: Shield01Icon, to: '/privacy-policy' },
   { id: 'benefits', label: 'Benefits of Joining', icon: GiftIcon, to: '/benefits' },
-  { id: 'manual', label: 'System Guide Manual', icon: File02Icon, external: true },
+  { id: 'manual', label: 'User Manual', icon: File02Icon },
   { id: 'support', label: 'Support', icon: HelpCircleIcon, to: '/support' },
 ];
 
 const linkCls = ({ isActive }) =>
   cn(
-    'text-sidebar-foreground hover:bg-[#e9f7ef] hover:text-[#15803d] group-data-[collapsible=icon]:justify-center',
-    isActive && 'bg-[#e9f7ef] font-semibold text-[#15803d]',
+    'text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center',
+    isActive && 'bg-[#e9eff5] font-semibold text-[#00ada8]',
   );
 
 function Item({ item, depth }) {
@@ -90,7 +92,16 @@ function Item({ item, depth }) {
     );
   }
   if (!item.to) {
-    return null;
+    // No destination yet (e.g. User Manual): visible but disabled placeholder.
+    // TODO: point at the real guide URL once it lands.
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton tooltip={item.label} disabled className="group-data-[collapsible=icon]:justify-center">
+          <HugeiconsIcon icon={item.icon} size={18} strokeWidth={1.8} />
+          <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
   }
   return (
     <SidebarMenuItem>
@@ -106,34 +117,29 @@ function Item({ item, depth }) {
 export function AriseSidebar() {
   const [reportsOpen, setReportsOpen] = useState(false);
   const [placeholderActive, setPlaceholderActive] = useState(null);
-  const { state, toggleSidebar } = useSidebar();
+  const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const role = effectiveRole(getTokenRoles());
 
   return (
-    <Sidebar collapsible="icon" className="sticky top-14 h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-white transition-[width] duration-300 ease-out">
-      <SidebarContent className="bg-white">
-        <div className="flex items-center gap-3 px-4 pt-4 pb-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:px-0">
-          <CompanyLogo size={40} />
-          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-              My Workspace
-            </p>
-            <p className="truncate text-sm font-semibold text-[#1e3a5f]">Arise KMS</p>
-          </div>
-          <button
-            onClick={toggleSidebar}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="shrink-0 rounded-sm p-1.5 text-[#1e3a5f] transition-colors hover:bg-[#e9f7ef] hover:text-[#15803d]"
-          >
-            <HugeiconsIcon icon={SidebarLeftIcon} size={19} strokeWidth={1.8} />
-          </button>
+    <Sidebar collapsible="icon" className="sticky top-0 h-svh shrink-0 border-r border-sidebar-border bg-white transition-[width] duration-300 ease-out">
+      <SidebarContent className="bg-white" style={{ overflowX: 'hidden' }}>
+        <div className="flex items-center gap-2 px-3 pt-4 pb-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:px-0">
+          <img
+            src={logoUrl}
+            alt="ARISE Philippines"
+            className="h-9 min-w-0 flex-1 object-contain object-left group-data-[collapsible=icon]:hidden"
+          />
+          <img
+            src="/arise.svg"
+            alt="ARISE"
+            className="hidden size-9 group-data-[collapsible=icon]:block"
+          />
         </div>
 
         {role === 'ADMIN' && (
           <SidebarGroup>
-            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Admin Center</SidebarGroupLabel>
+            <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Admin Center</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <Item item={ADMIN_CENTER[0]} depth={0} />
@@ -141,7 +147,7 @@ export function AriseSidebar() {
                   <SidebarMenuButton
                     tooltip="Reports"
                     onClick={() => setReportsOpen((v) => !v)}
-                    className="text-sidebar-foreground hover:bg-[#e9f7ef] hover:text-[#15803d] group-data-[collapsible=icon]:justify-center"
+                    className="text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center"
                   >
                     <HugeiconsIcon icon={BarChartIcon} size={18} strokeWidth={1.8} />
                     <span className="group-data-[collapsible=icon]:hidden">Reports</span>
@@ -160,8 +166,8 @@ export function AriseSidebar() {
                         tooltip={child.label}
                         onClick={() => setPlaceholderActive(child.id)}
                         className={cn(
-                          'text-sidebar-foreground hover:bg-[#e9f7ef] hover:text-[#15803d] group-data-[collapsible=icon]:justify-center',
-                          placeholderActive === child.id && 'bg-[#e9f7ef] font-semibold text-[#15803d]',
+                          'text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center',
+                          placeholderActive === child.id && 'bg-[#e9eff5] font-semibold text-[#00ada8]',
                           'pl-11',
                         )}
                       >
@@ -174,9 +180,10 @@ export function AriseSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+        <SidebarSeparator className="mx-3" />
 
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Main</SidebarGroupLabel>
+          <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Main</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {MAIN.map((item) => (
@@ -185,9 +192,10 @@ export function AriseSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarSeparator className="mx-3" />
 
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Help Center</SidebarGroupLabel>
+          <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Help Center</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {HELP_CENTER.map((item) => (

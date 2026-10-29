@@ -25,6 +25,7 @@ export function getTokenRoles() {
 
 const ROUTE_MODULE = {
   '/': 'dashboard',
+  '/member-directory': 'admin-center',
   '/submit-reports': 'submit',
   '/membership-form': 'membership',
   '/knowledge-products': 'knowledge',

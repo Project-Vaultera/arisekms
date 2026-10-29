@@ -2,6 +2,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { BookOpen01Icon, ChartUpIcon, Comment01Icon, UserGroupIcon } from '@hugeicons/core-free-icons';
 
 import { PageHero } from '@/components/PageHero.jsx';
+import benefitsBg from '../benefits_of_joining_bg.png';
 // Benefits copy follows the arise.ph/membership structure.
 // TODO: verify wording against the official page (arise.ph blocks automated
 // fetching with 403 — confirm manually in a browser).
@@ -40,6 +41,8 @@ export function Benefits() {
       <PageHero
         title="Benefits of Joining"
         subtitle="How becoming a member of ARISE Philippines helps organizations strengthen resilience, improve continuity, and contribute to safer communities."
+        bg={benefitsBg}
+        overlayClassName="bg-[var(--sendai-orange)]/50"
       />
       <div className="mx-auto max-w-4xl px-4 py-10 lg:px-6">
         <Card>

@@ -121,7 +121,7 @@ export function PrivacyPolicy() {
                   <li key={s.id}>
                     <a
                       href={`#${s.id}`}
-                      className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-[#e9f7ef] hover:text-[#15803d]"
+                      className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-[#0B4484]"
                     >
                       <span className="w-5 shrink-0 tabular-nums">{i + 1}</span>
                       <span className="truncate">{s.title}</span>
