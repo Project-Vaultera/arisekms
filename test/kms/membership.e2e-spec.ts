@@ -50,7 +50,6 @@ const FULL_PROFILE = {
   country: 'Philippines',
   phone: '+63285550100',
   website: 'https://example.com',
-  fax: '+63285550101',
   staffCount: 120,
   annualRevenue: 'PHP 50M',
   unGlobalCompact: true,

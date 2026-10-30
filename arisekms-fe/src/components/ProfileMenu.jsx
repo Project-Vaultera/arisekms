@@ -82,12 +82,12 @@ export function ProfileMenu() {
         <button
           type="button"
           onClick={() => navigate('/profile')}
-          className="group flex min-w-0 flex-1 items-center gap-3 rounded-sm px-1 py-1 text-left transition-colors hover:bg-[#e9eff5] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+          className="group flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm px-1 py-1 text-left group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
         >
           <Avatar size={40} className="relative" label={initialsOf(me?.name)} />
           <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <span className="block truncate text-sm font-semibold text-[#1e3a5f]">{me?.name ?? '…'}</span>
-            <span className="block truncate text-xs text-muted-foreground">{companyName || 'ARISE Philippines'}</span>
+            <span className="block truncate text-base font-semibold text-[#1e3a5f]">{me?.name ?? '…'}</span>
+            <span className="block truncate text-sm text-muted-foreground">{companyName || 'ARISE Philippines'}</span>
           </span>
         </button>
         <button

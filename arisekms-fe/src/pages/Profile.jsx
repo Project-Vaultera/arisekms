@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Award01Icon, ChartUpIcon, Contact01Icon, GridViewIcon, Tick01Icon, UserIcon } from '@hugeicons/core-free-icons';
+import { Award01Icon, ChartUpIcon, Contact01Icon, Edit01Icon, GridViewIcon, UserGroupIcon, UserIcon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
+import { FileDropzone } from '@/components/FileDropzone.jsx';
 import { api } from '@/api/client.js';
 import { ApplicationEditor } from '@/components/membership/ApplicationEditor.jsx';
+import { ApplicationSummary } from '@/components/membership/application-summary.jsx';
+import { AdditionalContactsTable, PrimaryContactEditor } from '@/components/membership/contact-editors.jsx';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card.jsx';
-import { Checkbox } from '@/components/ui/checkbox.jsx';
 import { FilterSelect } from '@/components/ui/filter-select.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Label } from '@/components/ui/label.jsx';
@@ -65,27 +68,6 @@ function fmtDate(raw) {
 
 const filled = (v) => v !== null && v !== undefined && String(v).trim() !== '';
 
-// First-run guide: ordered steps with done state for draft applications.
-function stepStates(profile, primary) {
-  const company = ['legalRepName', 'legalRepTitle', 'applicantCountry', 'registeredCountry',
-    'sector', 'street', 'zip', 'website', 'fax', 'staffCount', 'annualRevenue',
-    'businessOverview', 'geographicFocus'].every((k) => filled(profile?.[k]));
-  const contact = !!(primary && filled(primary.firstName) && filled(primary.lastName) && filled(primary.email));
-  const docs = ((profile?.documents ?? []).length > 0) || filled(profile?.noAttachmentExplanation);
-  return [
-    { id: 'company', label: 'Company details', done: company, target: 'app-company' },
-    { id: 'contact', label: 'Primary contact', done: contact, tab: 'contact' },
-    { id: 'docs', label: 'Documents', done: docs, target: 'app-docs' },
-    { id: 'submit', label: 'Submit for review', done: false, target: 'app-submit' },
-  ];
-}
-
-const EMPTY_PRIMARY = {
-  title: '', firstName: '', middleName: '', lastName: '', position: '',
-  email: '', phone: '', sameAsRegistered: false,
-  country: '', province: '', city: '', street: '', zip: '',
-};
-
 export function Profile() {
   const navigate = useNavigate();
   const [me, setMe] = useState(null);
@@ -97,10 +79,8 @@ export function Profile() {
   const [saving, setSaving] = useState(false);
   const [editingAbout, setEditingAbout] = useState(false);
   const [about, setAbout] = useState({ name: '', email: '', gender: '' });
-  const [editingContact, setEditingContact] = useState(false);
-  const [contact, setContact] = useState({ ...EMPTY_PRIMARY });
 
-  const VALID_TABS = ['overview', 'about', 'contact', 'activity', 'skills'];
+  const VALID_TABS = ['overview', 'about', 'contact', 'company', 'activity', 'skills'];
   function tabFromHash() {
     const h = window.location.hash.replace('#', '');
     return VALID_TABS.includes(h) ? h : 'overview';
@@ -125,11 +105,13 @@ export function Profile() {
   const myId = getTokenUserId();
   const companyId = profile?.id ?? companies[0]?.id ?? null;
   const editable = !profile || profile.status !== 'submitted';
+  const [editingApp, setEditingApp] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [rosterName, setRosterName] = useState('');
 
   function applyProfileUpdate(p) {
     setProfile(p);
-    const prim = (p.contacts ?? []).find((c) => c.isPrimary);
-    setContact(prim ? { ...EMPTY_PRIMARY, ...prim } : { ...EMPTY_PRIMARY });
   }
 
   useEffect(() => {
@@ -152,10 +134,7 @@ export function Profile() {
     api
       .get(`/companies/${companyId}/profile`)
       .then((res) => {
-        const p = res.data.data;
-        setProfile(p);
-        const prim = (p.contacts ?? []).find((c) => c.isPrimary);
-        setContact(prim ? { ...EMPTY_PRIMARY, ...prim } : { ...EMPTY_PRIMARY });
+        setProfile(res.data.data);
       })
       .catch(() => {});
   }, [companyId]);
@@ -164,6 +143,79 @@ export function Profile() {
     () => (profile?.contacts ?? []).find((c) => c.isPrimary) ?? null,
     [profile],
   );
+
+  // Company logo served as a blob (auth headers can't ride an <img> URL).
+  useEffect(() => {
+    if (!profile?.logoOriginalName || !companyId) {
+      setLogoUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let url = null;
+    api
+      .get(`/companies/${companyId}/logo/file`, { responseType: 'blob' })
+      .then((res) => {
+        if (cancelled) return;
+        url = URL.createObjectURL(res.data);
+        setLogoUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [companyId, profile?.logoOriginalName]);
+
+  async function uploadLogoFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['jpg', 'jpeg', 'png'].includes(ext)) {
+      toast.error('Unsupported file type', { description: 'Logo must be a JPG or PNG image.' });
+      return;
+    }
+    const data = new FormData();
+    data.append('file', file);
+    setSaving(true);
+    try {
+      const res = await api.post(`/companies/${companyId}/logo`, data);
+      applyProfileUpdate(res.data.data);
+      toast.success('Company logo updated');
+    } catch {
+      toast.error('Upload failed', { description: 'Check the file and try again.' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function addRosterMember() {
+    if (!rosterName.trim()) {
+      toast.error('Username is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await api.post(`/companies/${companyId}/roster`, { username: rosterName.trim() });
+      applyProfileUpdate(res.data.data);
+      setRosterName('');
+      toast.success('Member added');
+    } catch (err) {
+      toast.error('Could not add member', { description: serverMessage(err) });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeRosterMember(userId, username) {
+    setSaving(true);
+    try {
+      const res = await api.delete(`/companies/${companyId}/roster/${userId}`);
+      applyProfileUpdate(res.data.data);
+      toast.success(`${username} removed`);
+    } catch (err) {
+      toast.error('Could not remove member', { description: serverMessage(err) });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const activity = useMemo(() => {
     const rows = [
@@ -193,20 +245,6 @@ export function Profile() {
     [certificates, myId],
   );
 
-  function goStep(step) {
-    if (step.tab) {
-      changeTab(step.tab);
-      return;
-    }
-    const scroll = () => document.getElementById(step.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (tab !== 'overview') {
-      changeTab('overview');
-      setTimeout(scroll, 80);
-    } else {
-      scroll();
-    }
-  }
-
   async function saveAbout() {
     if (!about.name.trim()) {
       toast.error('Name is required');
@@ -228,38 +266,6 @@ export function Profile() {
       toast.success('Profile updated');
     } catch (err) {
       toast.error('Could not update profile', { description: serverMessage(err) });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function saveContact() {
-    if (!contact.firstName?.trim() || !contact.lastName?.trim()) {
-      toast.error('First and last name are required');
-      return;
-    }
-    if (!contact.email || !EMAIL_RE.test(contact.email)) {
-      toast.error('A valid email is required');
-      return;
-    }
-    if (!companyId) {
-      toast.error('Start your membership application first');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = { ...contact, isPrimary: true, contactType: contact.contactType || 'Primary' };
-      const res = primary?.id
-        ? await api.patch(`/companies/${companyId}/contacts/${primary.id}`, payload)
-        : await api.post(`/companies/${companyId}/contacts`, payload);
-      const p = res.data.data;
-      setProfile(p);
-      const prim = (p.contacts ?? []).find((c) => c.isPrimary);
-      setContact(prim ? { ...EMPTY_PRIMARY, ...prim } : { ...EMPTY_PRIMARY });
-      setEditingContact(false);
-      toast.success('Primary contact saved');
-    } catch (err) {
-      toast.error('Could not save contact', { description: serverMessage(err) });
     } finally {
       setSaving(false);
     }
@@ -293,8 +299,15 @@ export function Profile() {
                         className="absolute inset-0 rounded-full"
                         style={{ background: 'conic-gradient(var(--sendai-crimson) 0deg 90deg, var(--sendai-plum) 90deg 180deg, var(--sendai-orange) 180deg 270deg, var(--sendai-teal) 270deg 360deg)' }}
                       />
-                      <span className="relative grid size-[58px] place-items-center rounded-full bg-[#0B4484] font-heading text-lg font-black text-white">
-                        {initials(me?.name)}
+                      <span
+                        className="grid size-[58px] place-items-center overflow-hidden rounded-full bg-[#0B4484] font-heading text-lg font-black text-white"
+                        style={{ position: 'relative' }}
+                      >
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="" className="size-full object-cover" />
+                        ) : (
+                          initials(me?.name)
+                        )}
                       </span>
                     </span>
                     <div className="min-w-0 flex-1">
@@ -305,6 +318,18 @@ export function Profile() {
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
+                      {editable && profile && !editingApp && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 text-[#0c4585] hover:text-[#00ada8]"
+                          aria-label="Edit profile"
+                          title="Edit profile"
+                          onClick={() => { changeTab('overview'); setEditingApp(true); }}
+                        >
+                          <HugeiconsIcon icon={Edit01Icon} size={17} strokeWidth={2} />
+                        </Button>
+                      )}
                       {profile && (
                         <Badge className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase', statusStyle(status))}>
                           {status}
@@ -333,6 +358,10 @@ export function Profile() {
                     <TabsTrigger value="contact" className="flex-1">
                       <HugeiconsIcon icon={Contact01Icon} size={15} strokeWidth={2} />
                       Primary Contact
+                    </TabsTrigger>
+                    <TabsTrigger value="company" className="flex-1">
+                      <HugeiconsIcon icon={UserGroupIcon} size={15} strokeWidth={2} />
+                      Company
                     </TabsTrigger>
                     <TabsTrigger value="activity" className="flex-1">
                       <HugeiconsIcon icon={ChartUpIcon} size={15} strokeWidth={2} />
@@ -391,115 +420,138 @@ export function Profile() {
                     </CardContent>
                   </Card>
                   </TabsContent>
-                  <TabsContent value="contact" className="pt-2">
+                  <TabsContent value="contact" className="space-y-3 pt-2">
                   <Card className="rounded-2xl">
                     <CardHeader className="pb-0.5 pt-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <SectionTitle>Primary Contact</SectionTitle>
-                          <CardDescription>Who the secretariat reaches out to.</CardDescription>
-                        </div>
-                        {!editingContact ? (
-                          <Button size="sm" variant="outline" onClick={() => setEditingContact(true)}>
-                            {primary ? 'Edit' : 'Add'}
-                          </Button>
-                        ) : (
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" disabled={saving} onClick={() => setEditingContact(false)}>Cancel</Button>
-                            <Button size="sm" disabled={saving} onClick={saveContact}>{saving ? 'Saving…' : 'Save'}</Button>
-                          </div>
-                        )}
-                      </div>
+                      <SectionTitle>Primary Contact</SectionTitle>
+                      <CardDescription>Who the secretariat reaches out to.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-4 pt-2 pb-3">
+                      <PrimaryContactEditor
+                        companyId={companyId}
+                        primary={primary}
+                        onSaved={applyProfileUpdate}
+                        editable={editable}
+                        showDraftWarning={profile?.status === 'approved'}
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card className="rounded-2xl">
+                    <CardHeader className="pb-0.5 pt-3">
+                      <SectionTitle>Additional Contacts</SectionTitle>
+                      <CardDescription>Everyone else on the account.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-4 pt-2 pb-3">
+                      <AdditionalContactsTable
+                        companyId={companyId}
+                        contacts={(profile?.contacts ?? []).filter((c) => !c.isPrimary)}
+                        onChanged={applyProfileUpdate}
+                        editable={editable}
+                      />
+                    </CardContent>
+                  </Card>
+                  </TabsContent>
+                  <TabsContent value="company" className="space-y-3 pt-2">
+                  <Card className="rounded-2xl">
+                    <CardHeader className="pb-0.5 pt-3">
+                      <SectionTitle>Company</SectionTitle>
+                      <CardDescription>{profile?.name ?? companies[0]?.name ?? 'No company yet'}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3 px-4 pt-2 pb-3">
-                      {!editingContact ? (
-                        primary ? (
-                          <dl className="space-y-2 text-sm">
-                            <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{[primary.title, primary.firstName, primary.middleName, primary.lastName].filter(Boolean).join(' ')}</dd></div>
-                            <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Position</dt><dd className="font-medium">{primary.position || '—'}</dd></div>
-                            <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Email</dt><dd className="truncate font-medium">{primary.email || '—'}</dd></div>
-                            <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Phone</dt><dd className="font-medium">{primary.phone || '—'}</dd></div>
-                          </dl>
-                        ) : (
-                          <p className="py-2 text-center text-sm text-muted-foreground">No primary contact yet.</p>
-                        )
-                      ) : (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-1.5"><Label className="text-sm">Title</Label><Input value={contact.title ?? ''} onChange={(e) => setContact((c) => ({ ...c, title: e.target.value }))} /></div>
-                          <div className="space-y-1.5"><Label className="text-sm">Position</Label><Input value={contact.position ?? ''} onChange={(e) => setContact((c) => ({ ...c, position: e.target.value }))} /></div>
-                          <div className="space-y-1.5"><Label className="text-sm">First Name *</Label><Input value={contact.firstName ?? ''} onChange={(e) => setContact((c) => ({ ...c, firstName: e.target.value }))} /></div>
-                          <div className="space-y-1.5"><Label className="text-sm">Middle Name</Label><Input value={contact.middleName ?? ''} onChange={(e) => setContact((c) => ({ ...c, middleName: e.target.value }))} /></div>
-                          <div className="space-y-1.5"><Label className="text-sm">Last Name *</Label><Input value={contact.lastName ?? ''} onChange={(e) => setContact((c) => ({ ...c, lastName: e.target.value }))} /></div>
-                          <div className="space-y-1.5"><Label className="text-sm">Email *</Label><Input value={contact.email ?? ''} onChange={(e) => setContact((c) => ({ ...c, email: e.target.value }))} type="email" /></div>
-                          <div className="space-y-1.5"><Label className="text-sm">Phone *</Label><Input value={contact.phone ?? ''} onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))} /></div>
-                          <div className="flex items-center gap-2 sm:col-span-2">
-                            <Checkbox
-                              checked={!!contact.sameAsRegistered}
-                              onCheckedChange={(v) => setContact((c) => ({ ...c, sameAsRegistered: v === true }))}
-                              aria-label="Address same as registered"
-                            />
-                            <span className="text-sm">Address same as the registered company address</span>
-                          </div>
-                          {!contact.sameAsRegistered && (
-                            <>
-                              <div className="space-y-1.5"><Label className="text-sm">Country *</Label><Input value={contact.country ?? ''} onChange={(e) => setContact((c) => ({ ...c, country: e.target.value }))} /></div>
-                              <div className="space-y-1.5"><Label className="text-sm">Province / State</Label><Input value={contact.province ?? ''} onChange={(e) => setContact((c) => ({ ...c, province: e.target.value }))} /></div>
-                              <div className="space-y-1.5"><Label className="text-sm">City *</Label><Input value={contact.city ?? ''} onChange={(e) => setContact((c) => ({ ...c, city: e.target.value }))} /></div>
-                              <div className="space-y-1.5"><Label className="text-sm">Post / ZIP Code *</Label><Input value={contact.zip ?? ''} onChange={(e) => setContact((c) => ({ ...c, zip: e.target.value }))} /></div>
-                              <div className="space-y-1.5 sm:col-span-2"><Label className="text-sm">Street *</Label><Input value={contact.street ?? ''} onChange={(e) => setContact((c) => ({ ...c, street: e.target.value }))} /></div>
-                            </>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-muted">
+                          {logoUrl ? (
+                            <img src={logoUrl} alt="" className="size-full object-cover" />
+                          ) : (
+                            <span className="font-heading text-lg font-black text-muted-foreground">
+                              {(profile?.name ?? '?').charAt(0).toUpperCase()}
+                            </span>
                           )}
+                        </span>
+                        <div className="min-w-0 flex-1 text-sm">
+                          <p className="truncate font-medium">{profile?.name ?? '—'}</p>
+                          <p className="truncate text-muted-foreground">{[profile?.sector, profile?.city, profile?.country].filter(Boolean).join(' · ') || '—'}</p>
+                        </div>
+                      </div>
+                      {editable && companyId ? (
+                        <FileDropzone compact onPick={uploadLogoFile} title="Upload company logo" subtitle="JPG or PNG" hint="Square images look best" buttonLabel="Select logo" accept=".jpg,.jpeg,.png" />
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Logo changes are locked while under review.</p>
+                      )}
+                      {profile && (
+                        <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                          <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Sector</dt><dd className="text-right font-medium">{profile.sector || '—'}</dd></div>
+                          <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Staff</dt><dd className="font-medium">{profile.staffCount ?? '—'}</dd></div>
+                          <div className="flex justify-between gap-3 sm:col-span-2"><dt className="text-muted-foreground">Address</dt><dd className="text-right font-medium">{[profile.street, profile.city, profile.province, profile.zip, profile.country].filter(Boolean).join(', ') || '—'}</dd></div>
+                        </dl>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card className="rounded-2xl">
+                    <CardHeader className="pb-0.5 pt-3">
+                      <SectionTitle>Members</SectionTitle>
+                      <CardDescription>{(profile?.members ?? []).length} member(s) in this company.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3 px-4 pt-2 pb-3">
+                      {editable && companyId && (
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Input
+                            value={rosterName}
+                            onChange={(e) => setRosterName(e.target.value)}
+                            placeholder="Username to add…"
+                            className="flex-1"
+                          />
+                          <Button size="sm" variant="outline" disabled={saving} onClick={addRosterMember}>
+                            Add member
+                          </Button>
                         </div>
                       )}
-                      {profile?.status === 'approved' && editingContact && (
-                        <p className="rounded-sm bg-[var(--sendai-teal)]/10 px-3 py-2 text-xs text-[var(--sendai-teal)]">
-                          Saving will return your approved application to draft for re-review.
-                        </p>
+                      {(profile?.members ?? []).length === 0 ? (
+                        <p className="py-2 text-center text-sm text-muted-foreground">No members yet.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {(profile?.members ?? []).map((m) => (
+                            <div key={m.id} className="flex items-center gap-2 rounded-sm border border-border px-3 py-2 text-sm">
+                              <span className="font-medium">{m.name}</span>
+                              <span className="truncate text-muted-foreground">@{m.username}</span>
+                              {editable && Number(m.id) !== Number(myId) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-auto text-[var(--sendai-crimson)]"
+                                  disabled={saving}
+                                  onClick={() => removeRosterMember(m.id, m.username)}
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </CardContent>
                   </Card>
                   </TabsContent>
                   <TabsContent value="overview" className="pt-2">
                   {profile ? (
-                    <>
-                      {(profile.status === 'draft' || profile.status === 'rejected') && (
-                        <Card className="mb-3 rounded-2xl">
-                          <CardHeader className="pb-0.5 pt-3">
-                            <SectionTitle>Getting started</SectionTitle>
-                            <CardDescription>Complete each step, then submit for review.</CardDescription>
-                          </CardHeader>
-                          <CardContent className="px-4 pt-2 pb-3">
-                            <ol className="space-y-1.5">
-                              {stepStates(profile, primary).map((s, i) => (
-                                <li key={s.id}>
-                                  <button
-                                    type="button"
-                                    onClick={() => goStep(s)}
-                                    className="flex w-full items-center gap-3 rounded-sm border border-border px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
-                                  >
-                                    <span className={cn(
-                                      'grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold',
-                                      s.done ? 'bg-[var(--sendai-teal)]/15 text-[var(--sendai-teal)]' : 'bg-muted text-muted-foreground',
-                                    )}>
-                                      {s.done ? <HugeiconsIcon icon={Tick01Icon} size={13} strokeWidth={2.5} /> : i + 1}
-                                    </span>
-                                    <span className={cn('flex-1 font-medium', s.done && 'text-muted-foreground line-through')}>
-                                      {s.label}
-                                    </span>
-                                  </button>
-                                </li>
-                              ))}
-                            </ol>
-                          </CardContent>
-                        </Card>
-                      )}
-                      <ApplicationEditor
-                        companyId={companyId}
-                        profile={profile}
-                        onProfile={applyProfileUpdate}
-                        editable={editable}
-                      />
-                    </>
+                    editingApp ? (
+                      <>
+                        <div className="mb-3 flex justify-end">
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmDiscard(true)}>
+                            Cancel
+                          </Button>
+                        </div>
+                        <ApplicationEditor
+                          companyId={companyId}
+                          profile={profile}
+                          onProfile={applyProfileUpdate}
+                          editable={editable}
+                          onSubmitted={() => setEditingApp(false)}
+                        />
+                      </>
+                    ) : (
+                      <ApplicationSummary profile={profile} companyId={companyId} />
+                    )
                   ) : (
                     <Card className="rounded-2xl">
                       <CardContent className="space-y-3 p-4 text-center">
@@ -592,6 +644,25 @@ export function Profile() {
             )}
           </div>
           </div>
+      <Dialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard unsaved changes?</DialogTitle>
+            <DialogDescription>
+              Anything you changed in the editor will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
+            <Button
+              className="bg-[var(--sendai-crimson)] text-white hover:bg-[var(--sendai-crimson)]/90 hover:text-white"
+              onClick={() => { setConfirmDiscard(false); setEditingApp(false); }}
+            >
+              Discard changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );

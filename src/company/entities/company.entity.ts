@@ -129,6 +129,12 @@ export class Company {
   @Column({ type: 'text', nullable: true })
   geographicFocus: string | null;
 
+  @Column({ type: 'varchar', length: 260, nullable: true })
+  logoOriginalName: string | null;
+
+  @Column({ type: 'varchar', length: 260, nullable: true })
+  logoStoredName: string | null;
+
   @Column({
     type: 'enum',
     enum: MembershipStatus,

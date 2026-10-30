@@ -60,10 +60,10 @@ function Shell() {
   if (!allowedRoute(role, pathname)) return <Navigate to="/" replace />;
 
   const locked = !approval.loading && approvalLocked(pathname, { isAdmin, hasApproved: approval.hasApproved });
-  // Locked members with a company edit on the profile; without one they start
-  // the application on the form (which forwards once a company exists).
+  // Locked members work through the form wizard; without a company they land
+  // on the form start card (which forwards once applied).
   if (locked) {
-    return <Navigate to={approval.hasCompany ? '/profile#overview' : '/membership-form'} replace />;
+    return <Navigate to="/membership-form" replace />;
   }
   return (
     <TooltipProvider>

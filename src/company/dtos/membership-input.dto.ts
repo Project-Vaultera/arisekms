@@ -9,6 +9,7 @@ import {
   IsString,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 import { MembershipStatus } from '../entities/company.entity';
@@ -86,4 +87,12 @@ export class UploadMembershipDocInput {
   @ApiProperty({ enum: MembershipDocKind })
   @IsEnum(MembershipDocKind)
   kind: MembershipDocKind;
+}
+
+export class AddRosterMemberInput {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  username: string;
 }

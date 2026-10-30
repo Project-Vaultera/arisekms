@@ -142,6 +142,98 @@ describe('Membership gating (e2e)', () => {
       .expect(HttpStatus.CREATED);
   });
 
+  describe('member-scoped roster and logo', () => {
+    // 1x1 transparent PNG.
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    let mateToken: AuthTokenOutput;
+    let strangerToken: AuthTokenOutput;
+
+    it('registers a second member', async () => {
+      ({ token: mateToken } = await registerAndLogin(app.getHttpServer(), 'roster-mate'));
+      ({ token: strangerToken } = await registerAndLogin(app.getHttpServer(), 'true-stranger'));
+    });
+
+    it('member adds roster member by username (idempotent)', async () => {
+      for (let i = 0; i < 2; i++) {
+        const res = await request(app.getHttpServer())
+          .post(`/companies/${companyId}/roster`)
+          .set('Authorization', auth(applicantToken))
+          .send({ username: 'roster-mate' })
+          .expect(HttpStatus.CREATED);
+        expect(res.body.data.members.map((m: { username: string }) => m.username)).toContain('roster-mate');
+      }
+    });
+
+    it('unknown username is rejected', async () => {
+      await request(app.getHttpServer())
+        .post(`/companies/${companyId}/roster`)
+        .set('Authorization', auth(applicantToken))
+        .send({ username: 'nobody-here' })
+        .expect(HttpStatus.NOT_FOUND);
+    });
+
+    it('outsider cannot touch the roster', async () => {
+      await request(app.getHttpServer())
+        .post(`/companies/${companyId}/roster`)
+        .set('Authorization', auth(strangerToken))
+        .send({ username: 'roster-mate' })
+        .expect(HttpStatus.UNAUTHORIZED);
+    });
+
+    it('member cannot remove themselves', async () => {
+      const me = await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', auth(applicantToken))
+        .expect(HttpStatus.OK);
+      await request(app.getHttpServer())
+        .delete(`/companies/${companyId}/roster/${me.body.data.id}`)
+        .set('Authorization', auth(applicantToken))
+        .expect(HttpStatus.FORBIDDEN);
+    });
+
+    it('member removes the roster mate (idempotent)', async () => {
+      const mate = await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', auth(mateToken))
+        .expect(HttpStatus.OK);
+      for (let i = 0; i < 2; i++) {
+        const res = await request(app.getHttpServer())
+          .delete(`/companies/${companyId}/roster/${mate.body.data.id}`)
+          .set('Authorization', auth(applicantToken))
+          .expect(HttpStatus.OK);
+        expect(res.body.data.members.map((m: { username: string }) => m.username)).not.toContain('roster-mate');
+      }
+    });
+
+    it('member uploads and downloads the logo; non-images rejected', async () => {
+      await request(app.getHttpServer())
+        .post(`/companies/${companyId}/logo`)
+        .set('Authorization', auth(applicantToken))
+        .attach('file', PDF_BUFFER, 'logo.pdf')
+        .expect(HttpStatus.BAD_REQUEST);
+
+      const up = await request(app.getHttpServer())
+        .post(`/companies/${companyId}/logo`)
+        .set('Authorization', auth(applicantToken))
+        .attach('file', png, 'logo.png')
+        .expect(HttpStatus.CREATED);
+      expect(up.body.data.logoOriginalName).toEqual('logo.png');
+
+      await request(app.getHttpServer())
+        .get(`/companies/${companyId}/logo/file`)
+        .set('Authorization', auth(applicantToken))
+        .expect(HttpStatus.OK);
+
+      await request(app.getHttpServer())
+        .get(`/companies/${companyId}/logo/file`)
+        .set('Authorization', auth(mateToken))
+        .expect(HttpStatus.UNAUTHORIZED);
+    });
+  });
+
   afterAll(async () => {
     await app.close();
     await closeDBAfterTest();

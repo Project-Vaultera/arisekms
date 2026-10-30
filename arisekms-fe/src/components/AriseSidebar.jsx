@@ -81,7 +81,7 @@ const HELP_CENTER = [
 ];
 
 const LINK_BASE =
-  'text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center';
+  'text-base text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center';
 const LINK_ACTIVE = 'bg-[var(--sendai-teal)] font-semibold text-white hover:text-white';
 
 function Item({ item }) {
@@ -94,7 +94,7 @@ function Item({ item }) {
   const cls = cn(LINK_BASE, isActive && LINK_ACTIVE);
   const content = (
     <>
-      <HugeiconsIcon icon={item.icon} size={18} strokeWidth={1.8} />
+      <HugeiconsIcon icon={item.icon} size={20} strokeWidth={1.8} />
       <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
       {item.external && (
         <HugeiconsIcon icon={ExternalLinkIcon} size={13} strokeWidth={2} className="ml-auto opacity-50" />
@@ -119,7 +119,7 @@ function Item({ item }) {
     return (
       <SidebarMenuItem>
         <SidebarMenuButton tooltip={item.label} disabled className="group-data-[collapsible=icon]:justify-center">
-          <HugeiconsIcon icon={item.icon} size={18} strokeWidth={1.8} />
+          <HugeiconsIcon icon={item.icon} size={20} strokeWidth={1.8} />
           <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -146,7 +146,7 @@ function Item({ item }) {
             tooltip={item.label}
             className="text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center"
           >
-            <HugeiconsIcon icon={item.icon} size={18} strokeWidth={1.8} />
+            <HugeiconsIcon icon={item.icon} size={20} strokeWidth={1.8} />
             <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
           </SidebarMenuButton>
         </DropdownMenuTrigger>
@@ -156,12 +156,12 @@ function Item({ item }) {
               key={child.id}
               onSelect={() => onSelect(child)}
               className={cn(
-                'cursor-pointer gap-2 rounded-lg px-3 py-2.5 text-sm text-[#0c4585] focus:bg-sidebar-accent focus:text-[#0c4585]',
+                'cursor-pointer gap-2 rounded-lg px-3 py-2.5 text-base text-[#0c4585] focus:bg-sidebar-accent focus:text-[#0c4585]',
                 activeId === child.id &&
                   'bg-[var(--sendai-teal)] font-semibold text-white focus:bg-[var(--sendai-teal)] focus:text-white',
               )}
             >
-              <HugeiconsIcon icon={child.icon} size={16} strokeWidth={1.8} />
+              <HugeiconsIcon icon={child.icon} size={20} strokeWidth={1.8} />
               <span>{child.label}</span>
             </DropdownMenuItem>
           ))}
@@ -193,11 +193,11 @@ export function AriseSidebar({ locked = false }) {
         <div className="px-2 pt-3 pb-1">
           <ProfileMenu />
         </div>
-        <SidebarSeparator className="mx-2" />
+        {role === 'ADMIN' && <SidebarSeparator className="mx-2" />}
 
         {role === 'ADMIN' && (
           <SidebarGroup>
-            <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Admin Center</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sm uppercase tracking-wider group-data-[collapsible=icon]:hidden">Admin Center</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {ADMIN_CENTER.map((item) =>
@@ -217,7 +217,7 @@ export function AriseSidebar({ locked = false }) {
                             onClick={() => setReportsOpen((v) => !v)}
                             className="text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center"
                           >
-                            <HugeiconsIcon icon={item.icon} size={18} strokeWidth={1.8} />
+                            <HugeiconsIcon icon={item.icon} size={20} strokeWidth={1.8} />
                             <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                             <HugeiconsIcon
                               icon={ArrowDown01Icon}
@@ -241,7 +241,7 @@ export function AriseSidebar({ locked = false }) {
                                 )}
                               >
                                 <NavLink to={child.to} onClick={() => setPlaceholderActive(child.id)}>
-                                  <HugeiconsIcon icon={child.icon} size={18} strokeWidth={1.8} />
+                                  <HugeiconsIcon icon={child.icon} size={20} strokeWidth={1.8} />
                                   <span className="group-data-[collapsible=icon]:hidden truncate">{child.label}</span>
                                 </NavLink>
                               </SidebarMenuButton>
@@ -261,7 +261,7 @@ export function AriseSidebar({ locked = false }) {
         <SidebarSeparator className="mx-3" />
 
         <SidebarGroup>
-          <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Main</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm uppercase tracking-wider group-data-[collapsible=icon]:hidden">Main</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {main.map((item) => (
@@ -273,7 +273,7 @@ export function AriseSidebar({ locked = false }) {
         <SidebarSeparator className="mx-3" />
 
         <SidebarGroup>
-          <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Help Center</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm uppercase tracking-wider group-data-[collapsible=icon]:hidden">Help Center</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {HELP_CENTER.map((item) => (
@@ -292,7 +292,7 @@ export function AriseSidebar({ locked = false }) {
               tooltip="Log out"
               className="text-red-600 hover:text-red-700 hover:bg-red-50"
             >
-              <HugeiconsIcon icon={Logout01Icon} size={18} strokeWidth={1.8} />
+              <HugeiconsIcon icon={Logout01Icon} size={20} strokeWidth={1.8} />
               <span className="group-data-[collapsible=icon]:hidden">Log out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

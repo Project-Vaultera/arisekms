@@ -45,6 +45,7 @@ import {
 } from '../dtos/company-input.dto';
 import { CompanyOutput } from '../dtos/company-output.dto';
 import {
+  AddRosterMemberInput,
   MembershipContactInput,
   ReviewMembershipInput,
   UpdateMembershipProfileInput,
@@ -59,6 +60,14 @@ const membershipFilePipe = new ParseFilePipe({
   validators: [
     new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
     new FileTypeValidator({ fileType: ALLOWED_UPLOAD_MIMETYPES, fallbackToMimetype: true }),
+  ],
+});
+
+const logoFilePipe = new ParseFilePipe({
+  fileIsRequired: true,
+  validators: [
+    new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
+    new FileTypeValidator({ fileType: 'image/jpeg|image/png', fallbackToMimetype: true }),
   ],
 });
 
@@ -400,6 +409,77 @@ export class CompanyController {
       'Content-Disposition': `attachment; filename="${file.filename}"`,
     });
     return new StreamableFile(file.stream);
+  }
+
+  @Post(':id/logo')
+  @ApiOperation({ summary: 'Upload company logo API (jpg/png)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: HttpStatus.CREATED, type: SwaggerBaseApiResponse(MembershipProfileOutput) })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(ClassSerializerInterceptor)
+  @UseInterceptors(FileInterceptor('file', multerMemoryOptions))
+  async uploadLogo(
+    @ReqContext() ctx: RequestContext,
+    @Param('id') id: number,
+    @UploadedFile(logoFilePipe) file: Express.Multer.File,
+  ): Promise<BaseApiResponse<MembershipProfileOutput>> {
+    this.logger.log(ctx, `${this.uploadLogo.name} was called`);
+
+    return this.toProfile(await this.membershipService.uploadLogo(ctx, id, file));
+  }
+
+  @Get(':id/logo/file')
+  @ApiOperation({ summary: 'Download company logo API' })
+  @ApiResponse({ status: HttpStatus.OK })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async downloadLogo(
+    @ReqContext() ctx: RequestContext,
+    @Param('id') id: number,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    this.logger.log(ctx, `${this.downloadLogo.name} was called`);
+
+    const file = await this.membershipService.getLogoFile(ctx, id);
+    res.set({
+      'Content-Type': file.mimeType,
+      'Content-Disposition': `inline; filename="${file.filename}"`,
+    });
+    return new StreamableFile(file.stream);
+  }
+
+  @Post(':id/roster')
+  @ApiOperation({ summary: 'Add company member by username API (member-scoped, idempotent)' })
+  @ApiResponse({ status: HttpStatus.CREATED, type: SwaggerBaseApiResponse(MembershipProfileOutput) })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(ClassSerializerInterceptor)
+  async addRosterMember(
+    @ReqContext() ctx: RequestContext,
+    @Param('id') id: number,
+    @Body() input: AddRosterMemberInput,
+  ): Promise<BaseApiResponse<MembershipProfileOutput>> {
+    this.logger.log(ctx, `${this.addRosterMember.name} was called`);
+
+    return this.toProfile(await this.membershipService.addRosterMember(ctx, id, input.username));
+  }
+
+  @Delete(':id/roster/:userId')
+  @ApiOperation({ summary: 'Remove company member API (member-scoped, cannot remove self)' })
+  @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse(MembershipProfileOutput) })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(ClassSerializerInterceptor)
+  async removeRosterMember(
+    @ReqContext() ctx: RequestContext,
+    @Param('id') id: number,
+    @Param('userId') userId: number,
+  ): Promise<BaseApiResponse<MembershipProfileOutput>> {
+    this.logger.log(ctx, `${this.removeRosterMember.name} was called`);
+
+    return this.toProfile(await this.membershipService.removeRosterMember(ctx, id, userId));
   }
 
   private toProfile(

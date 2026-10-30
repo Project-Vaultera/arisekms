@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
@@ -16,6 +18,8 @@ import {
 import { AppLogger } from '../../shared/logger/logger.service';
 import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
+import { User } from '../../user/entities/user.entity';
+import { UserService } from '../../user/services/user.service';
 import {
   MembershipContactInput,
   ReviewMembershipInput,
@@ -45,6 +49,7 @@ export class MembershipService {
     private companyRepository: CompanyRepository,
     private contactRepository: MembershipContactRepository,
     private documentRepository: MembershipDocumentRepository,
+    private userService: UserService,
     private aclService: CompanyAclService,
     private readonly logger: AppLogger,
   ) {
@@ -164,7 +169,8 @@ export class MembershipService {
     need(company.street, 'Registered street');
     need(company.zip, 'Post / ZIP code');
     need(company.website, 'Website');
-    need(company.fax, 'Fax');
+    // Fax is optional (dropped the old Frappe-required rule); if provided it
+    // must still look like a phone number — checked client-side.
     need(company.staffCount, 'Total number of staff');
     need(company.annualRevenue, 'Annual revenue');
     if (company.unGlobalCompact === null || company.unGlobalCompact === undefined) {
@@ -469,5 +475,97 @@ export class MembershipService {
       filename: doc.originalName,
       mimeType: doc.mimeType,
     };
+  }
+
+  private assertWritable(actor: Actor, company: Company): void {
+    if (!this.isAdmin(actor) && company.status === MembershipStatus.SUBMITTED) {
+      throw new UnauthorizedException();
+    }
+  }
+
+  async uploadLogo(
+    @ReqContext() ctx: RequestContext,
+    companyId: number,
+    file: Express.Multer.File,
+  ): Promise<MembershipProfileOutput> {
+    this.logger.log(ctx, `${this.uploadLogo.name} was called`);
+    const actor: Actor = ctx.user!;
+    const company = await this.loadCompany(companyId);
+    this.assertMemberOrAdmin(actor, company);
+    this.assertWritable(actor, company);
+
+    company.logoStoredName = persistUpload(file);
+    company.logoOriginalName = file.originalname;
+    const saved = await this.companyRepository.save(company);
+    return this.toOutput(await this.loadCompany(saved.id));
+  }
+
+  async getLogoFile(
+    @ReqContext() ctx: RequestContext,
+    companyId: number,
+  ): Promise<{ stream: ReturnType<typeof createReadStream>; filename: string; mimeType: string }> {
+    const actor: Actor = ctx.user!;
+    const company = await this.loadCompany(companyId);
+    this.assertMemberOrAdmin(actor, company);
+    if (!company.logoStoredName) {
+      throw new NotFoundException();
+    }
+    return {
+      stream: createReadStream(join(process.cwd(), UPLOADS_DIR, basename(company.logoStoredName))),
+      filename: company.logoOriginalName ?? 'logo',
+      mimeType: 'image/png',
+    };
+  }
+
+  /**
+   * Member-scoped roster management. Members of the company may add (by exact
+   * username) and remove members, except themselves — leaving a company stays
+   * an admin action. Admins bypass every check.
+   */
+  async addRosterMember(
+    @ReqContext() ctx: RequestContext,
+    companyId: number,
+    username: string,
+  ): Promise<MembershipProfileOutput> {
+    this.logger.log(ctx, `${this.addRosterMember.name} was called`);
+    const actor: Actor = ctx.user!;
+    const company = await this.loadCompany(companyId);
+    this.assertMemberOrAdmin(actor, company);
+    this.assertWritable(actor, company);
+
+    const candidate = await this.userService.findByUsername(ctx, username.trim());
+    if (!candidate || !candidate.id) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!company.members.some((m) => m.id === candidate.id)) {
+      company.members.push({ id: candidate.id } as User);
+      await this.companyRepository.save(company);
+    }
+    return this.toOutput(await this.loadCompany(companyId));
+  }
+
+  async removeRosterMember(
+    @ReqContext() ctx: RequestContext,
+    companyId: number,
+    userId: number,
+  ): Promise<MembershipProfileOutput> {
+    this.logger.log(ctx, `${this.removeRosterMember.name} was called`);
+    const actor: Actor = ctx.user!;
+    const company = await this.loadCompany(companyId);
+    this.assertMemberOrAdmin(actor, company);
+    this.assertWritable(actor, company);
+
+    const targetId = Number(userId);
+    if (!this.isAdmin(actor) && targetId === actor.id) {
+      throw new ForbiddenException('You cannot remove yourself; ask an admin.');
+    }
+
+    await this.companyRepository
+      .createQueryBuilder()
+      .relation(Company, 'members')
+      .of(companyId)
+      .remove(targetId);
+    return this.toOutput(await this.loadCompany(companyId));
   }
 }

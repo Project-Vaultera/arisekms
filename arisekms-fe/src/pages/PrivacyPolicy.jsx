@@ -172,7 +172,7 @@ export function PrivacyPolicy() {
         bg={benefitsBg}
         overlayClassName="bg-[var(--sendai-crimson)]/50"
       />
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 lg:flex-row lg:px-6">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 lg:flex-row lg:px-6">
         <aside className="w-full shrink-0 lg:w-60">
           <Card className="lg:sticky lg:top-20">
             <CardContent className="p-4">

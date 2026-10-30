@@ -65,6 +65,7 @@ export class MembershipProfileOutput {
   @Expose() @ApiPropertyOptional() affiliationDetails: string | null;
   @Expose() @ApiPropertyOptional() businessOverview: string | null;
   @Expose() @ApiPropertyOptional() geographicFocus: string | null;
+  @Expose() @ApiPropertyOptional() logoOriginalName: string | null;
   @Expose() @ApiProperty({ enum: MembershipStatus }) status: MembershipStatus;
   @Expose() @ApiPropertyOptional() rejectReason: string | null;
   @Expose() @Type(() => MembershipContactOutput) @ApiProperty({ type: [MembershipContactOutput] }) contacts: MembershipContactOutput[];

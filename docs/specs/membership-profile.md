@@ -53,12 +53,19 @@ see `shortcut` in `file-storage.ts`).
   company per user; creator auto-assigned.
 - `PUT /companies/:id/profile` — draft save (partial). Member allowed in
   `draft|rejected|approved` (approved → back to `draft`); `submitted` locked for
-  members; admin anytime.
+  members; admin anytime. Fax is optional (dropped the old Frappe-required rule).
 - Report/certificate/ticket `POST` — `403` unless the actor is an admin or has
   an `approved` company.
 - `POST /companies/:id/submit` — validates the full required set, flips to `submitted`.
+  The wizard gates per step client-side (`validation.js` mirrors these rules; letters
+  blocked in phone/fax/staff at keystroke; Submit only on the last step). Pills are
+  strict display-only progress (icon per tab, teal check when the step passes) —
+  navigation goes exclusively through Back / Continue. The server
+  re-validates everything regardless.
 - `POST /companies/:id/review {status: approved|rejected, reason?}` — admin only,
   reason required when rejected.
+- `POST /companies/:id/logo` (member-scoped, images only) + `GET /companies/:id/logo/file` — company logo, same submitted-lock as other edits.
+- `POST /companies/:id/roster {username}` + `DELETE /companies/:id/roster/:userId` — member-scoped roster management (idempotent add, no self-remove; admin bypass). Admin member endpoints unchanged.
 - `POST /companies/:id/contacts` / `PATCH /companies/:id/contacts/:contactId`
   / `DELETE /companies/:id/contacts/:contactId` — same scoping as profile.
 - `POST /companies/:id/documents` (multipart `file` + `kind`) /
@@ -71,7 +78,7 @@ see `shortcut` in `file-storage.ts`).
 - `companies`: + `legalRepName, legalRepTitle, applicantCountry, registeredCountry,
   noAttachmentExplanation, sector, isTradeAssociation, isBusinessAssociation,
   exchangeSymbol, parentCompanyDetails, street, city, province, zip, country, phone,
-  website, fax (required on submit, per Frappe parity), staffCount, annualRevenue,
+  website, fax (optional), staffCount, annualRevenue,
   unGlobalCompact, otherUnAgency, whichAgency, otherOrgs, affiliationDetails,
   businessOverview, geographicFocus, status, rejectReason`.
 - `membership_contacts(id, company_id FK, isPrimary, title, firstName, middleName,
@@ -83,7 +90,8 @@ see `shortcut` in `file-storage.ts`).
 
 - Member must share the company (`members.some(id)`) or be admin; otherwise `401`.
 - Conditional rule is server-enforced: zero `registration_proof` docs →
-  `noAttachmentExplanation` required. `Fax` required on submit.
+  `noAttachmentExplanation` required. Fax is optional; if provided it must look
+  like a phone number (checked client-side).
 - `UN Global Impact` keeps its original Frappe wording in the UI.
 - `sameAsRegistered=true` snapshots the company address into the contact row
   (copy, not live link), so later company edits don't silently rewrite contacts.
@@ -109,7 +117,7 @@ see `shortcut` in `file-storage.ts`).
 
 ## Test plan
 
-- New `test/kms/membership.e2e-spec.ts`: draft save, submit validation (fax,
+- New `test/kms/membership.e2e-spec.ts`: draft save, submit validation (fax optional,
   explanation conditional, primary contact), cross-company `401`, approve/reject,
   edit-after-approval → draft.
 - Existing `test/kms/company.e2e-spec.ts` passes unchanged.
@@ -125,13 +133,16 @@ see `shortcut` in `file-storage.ts`).
 `/profile` is the member-facing overview (Profile-V2 inspired, no SendaiFrame,
 left-aligned like other dashboard pages): header (avatar, name, company, status
 badge, completion %) plus Gamsys-style icon tabs — Overview (first-run
-checklist for drafts + the full inline application editor: all sections,
-documents, submit), About (`PATCH /users/me`), Primary Contact (inline edit via
+checklist for drafts + read-only answers view with an Edit button; editing swaps
+in the shared editor, Cancel guarded by a discard-confirm, submit returns to the
+summary), About (`PATCH /users/me`), Primary Contact (inline edit via
 the contacts API; the approved → draft rule applies with an on-screen notice),
 Activity (nested Mine/Company tabs over reports + certificates; Company hidden
 until approval), SkillsBuild (own recorded credentials + continue-learning CTA).
-Tabs are URL-hash deep-linked. `/membership-form` is now a thin forwarder
-(start-application card when company-less, else redirect to `/profile#overview`);
-locked users land on the form only when they have no company, otherwise straight
-on the profile. `/profile` is in the pending allowlist (read-only where it
-matters). The sidebar avatar menu shows the real member name + company.
+Tabs are URL-hash deep-linked. `/membership-form` is the five-tab onboarding wizard
+(Company / Primary / Additional / Affiliations / Other + Back / Continue / Submit);
+locked members land there. All field UI and draft/doc/submit logic lives in shared
+components (`components/membership/`), composed both by the wizard and the profile
+Overview tab — one copy of every field, no drift. `/profile` is in the pending
+allowlist (read-only where it matters). The sidebar avatar menu shows the real
+member name + company.
