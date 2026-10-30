@@ -9,6 +9,8 @@ import {
 
 import { User } from '../../user/entities/user.entity';
 
+// Known categories (seed + UI defaults). The column is free text so admins
+// can add new categories; see migration KnowledgeCategoryText.
 export enum KnowledgeCategory {
   ECE = 'ECE',
   MANUAL = 'Manual',
@@ -27,8 +29,8 @@ export class KnowledgeDocument {
   @Column({ length: 2000, nullable: true })
   description: string;
 
-  @Column({ type: 'enum', enum: KnowledgeCategory })
-  category: KnowledgeCategory;
+  @Column({ length: 50 })
+  category: string;
 
   @Column({ length: 10, default: 'PDF' })
   kind: string;

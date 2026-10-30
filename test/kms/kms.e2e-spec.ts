@@ -196,6 +196,31 @@ describe('KMS modules (e2e)', () => {
       expect(res.body.data.category).toEqual('Manual');
     });
 
+    it('admin uploads with a custom category', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/knowledge')
+        .set('Authorization', auth(adminToken))
+        .field('title', 'Custom Guide')
+        .field('category', 'Guidelines')
+        .attach('file', PDF_BUFFER, 'guide.pdf')
+        .expect(HttpStatus.CREATED);
+
+      expect(res.body.data.category).toEqual('Guidelines');
+      expect(res.body.data.kind).toEqual('PDF');
+    });
+
+    it('admin uploads a word document', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/knowledge')
+        .set('Authorization', auth(adminToken))
+        .field('title', 'Word Doc')
+        .field('category', 'Manual')
+        .attach('file', Buffer.from('PK mock docx for e2e'), 'doc.docx')
+        .expect(HttpStatus.CREATED);
+
+      expect(res.body.data.kind).toEqual('DOCX');
+    });
+
     it('member lists and downloads it', async () => {
       const list = await request(app.getHttpServer())
         .get('/knowledge')

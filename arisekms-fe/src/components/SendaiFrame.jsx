@@ -7,10 +7,12 @@ import { cn } from '@/lib/utils.js';
 export function SendaiFrame({ children, className }) {
   return (
     <div className={cn('relative', className)}>
-      <span aria-hidden className="pointer-events-none absolute -top-3 -left-3 z-0 h-[62%] w-[58%] rounded-3xl bg-[var(--sendai-crimson)] select-none sm:-top-6 sm:-left-6" />
-      <span aria-hidden className="pointer-events-none absolute -bottom-3 -left-3 z-[1] h-[42%] w-[62%] rounded-3xl bg-[var(--sendai-teal)] select-none sm:-bottom-6 sm:-left-6" />
-      <span aria-hidden className="absolute -right-3 -bottom-3 z-[2] h-[42%] w-[55%] rounded-3xl bg-[var(--sendai-orange)] pointer-events-none select-none sm:-right-6 sm:-bottom-6" />
-      <span aria-hidden className="absolute -top-4 -right-3 z-[3] h-[55%] w-[52%] rounded-3xl bg-[var(--sendai-plum)] pointer-events-none select-none sm:-top-9 sm:-right-6" />
+      <div aria-hidden className="pointer-events-none absolute -top-3 -right-3 -bottom-3 -left-3 select-none sm:-top-6 sm:-right-6 sm:-bottom-6 sm:-left-6">
+        <span className="absolute top-0 left-0 z-0 h-[51%] w-[51%] rounded-3xl bg-[var(--sendai-crimson)]" />
+        <span className="absolute top-0 left-[49%] z-[1] h-[51%] w-[51%] rounded-3xl bg-[var(--sendai-plum)]" />
+        <span className="absolute top-[49%] left-0 z-[2] h-[51%] w-[51%] rounded-3xl bg-[var(--sendai-teal)]" />
+        <span className="absolute top-[49%] left-[49%] z-[3] h-[51%] w-[51%] rounded-3xl bg-[var(--sendai-orange)]" />
+      </div>
       {children}
     </div>
   );

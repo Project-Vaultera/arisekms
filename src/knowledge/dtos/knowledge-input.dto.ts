@@ -1,7 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-
-import { KnowledgeCategory } from '../entities/knowledge-document.entity';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateKnowledgeInput {
   @ApiProperty()
@@ -16,9 +14,11 @@ export class CreateKnowledgeInput {
   @MaxLength(2000)
   description?: string;
 
-  @ApiProperty({ enum: KnowledgeCategory })
-  @IsEnum(KnowledgeCategory)
-  category: KnowledgeCategory;
+  @ApiProperty({ example: 'Manual' })
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(50)
+  category: string;
 }
 
 export class UpdateKnowledgeInput {
@@ -35,8 +35,9 @@ export class UpdateKnowledgeInput {
   @MaxLength(2000)
   description?: string;
 
-  @ApiPropertyOptional({ enum: KnowledgeCategory })
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsEnum(KnowledgeCategory)
-  category?: KnowledgeCategory;
+  @IsString()
+  @MaxLength(50)
+  category?: string;
 }

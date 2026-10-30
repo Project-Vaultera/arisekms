@@ -8,14 +8,8 @@ import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
+import { FilterSelect } from '@/components/ui/filter-select.jsx';
 import { Input } from '@/components/ui/input.jsx';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select.jsx';
 import {
   Table,
   TableBody,
@@ -400,32 +394,25 @@ export function MemberDirectory() {
                         className="h-9 w-full pl-8"
                       />
                     </div>
-                    <div className="w-full space-y-1.5 lg:w-44">
-                      <p className="editorial-label text-muted-foreground">Status</p>
-                      <Select value={status} onValueChange={(v) => updateMemberFilter(setStatus, v)}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-full space-y-1.5 lg:w-32">
-                      <p className="editorial-label text-muted-foreground">Show</p>
-                      <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="10" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[10, 25, 50, 100].map((n) => (
-                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <FilterSelect
+                      label="Status"
+                      value={status}
+                      onValueChange={(v) => updateMemberFilter(setStatus, v)}
+                      className="lg:w-44"
+                      options={[
+                        { value: 'all', label: 'All' },
+                        { value: 'active', label: 'Active' },
+                        { value: 'inactive', label: 'Inactive' },
+                      ]}
+                    />
+                    <FilterSelect
+                      label="Show"
+                      value={String(pageSize)}
+                      onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                      placeholder="10"
+                      className="lg:w-32"
+                      options={['10', '25', '50', '100']}
+                    />
                   </div>
                   {membersLoading ? (
                     <div className="space-y-2">

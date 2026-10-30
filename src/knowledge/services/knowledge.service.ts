@@ -5,7 +5,7 @@ import { basename, join } from 'path';
 
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
-import { persistUpload,UPLOADS_DIR } from '../../shared/files/file-storage';
+import { persistUpload, UPLOADS_DIR } from '../../shared/files/file-storage';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { User } from '../../user/entities/user.entity';
@@ -15,6 +15,20 @@ import { KnowledgeOutput } from '../dtos/knowledge-output.dto';
 import { KnowledgeDocument } from '../entities/knowledge-document.entity';
 import { KnowledgeRepository } from '../repositories/knowledge.repository';
 import { KnowledgeAclService } from './knowledge-acl.service';
+
+function kindFor(file: Express.Multer.File): string {
+  const ext = file.originalname.split('.').pop()?.toLowerCase();
+  if (file.mimetype === 'application/pdf' || ext === 'pdf') return 'PDF';
+  if (
+    file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    ext === 'docx'
+  )
+    return 'DOCX';
+  if (file.mimetype === 'application/msword' || ext === 'doc') return 'DOC';
+  if (file.mimetype === 'image/png' || ext === 'png') return 'PNG';
+  if (file.mimetype === 'image/jpeg' || ext === 'jpg' || ext === 'jpeg') return 'JPG';
+  return (ext ?? 'FILE').toUpperCase().slice(0, 10);
+}
 
 @Injectable()
 export class KnowledgeService {
@@ -40,7 +54,7 @@ export class KnowledgeService {
       title: input.title,
       description: input.description,
       category: input.category,
-      kind: 'PDF',
+      kind: kindFor(file),
       originalName: file.originalname,
       storedName,
       mimeType: file.mimetype,

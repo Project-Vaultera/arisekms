@@ -1,40 +1,28 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Cancel01Icon, CloudUploadIcon, Download01Icon, EyeIcon, File02Icon, GridViewIcon, LeftToRightListDashIcon, Search01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, Download01Icon, EyeIcon, File02Icon, GridViewIcon, LeftToRightListDashIcon, Search01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
 import { api, downloadFile } from '@/api/client.js';
-import { PageHeader } from '@/components/PageHeader.jsx';
+import { FileDropzone } from '@/components/FileDropzone.jsx';
 import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card.jsx';
+import { SectionTitle } from '@/components/ui/section-title.jsx';
+import { FilterSelect } from '@/components/ui/filter-select.jsx';
 import { Input } from '@/components/ui/input.jsx';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select.jsx';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.jsx';
+import { formatBytes, validateUploadFile } from '@/lib/file-upload.js';
 import { cn } from '@/lib/utils.js';
 
-const ACCEPTED = ['pdf', 'jpg', 'jpeg', 'png'];
-const MAX_FILE_BYTES = 100 * 1024 * 1024;
-
 function checkFile(f) {
-  const ext = f.name.split('.').pop().toLowerCase();
-  if (!ACCEPTED.includes(ext)) {
-    toast.error('Unsupported file type', { description: `Supports ${ACCEPTED.join(', ')}. One file per category.` });
-    return false;
-  }
-  if (f.size > MAX_FILE_BYTES) {
-    toast.error('File too large', { description: 'Each file must be 100MB or less.' });
-    return false;
-  }
-  return true;
+  const problem = validateUploadFile(f);
+  if (!problem) return true;
+  const suffix = problem.title === 'Unsupported file type' ? ' One file per category.' : '';
+  toast.error(problem.title, { description: `${problem.description}${suffix}` });
+  return false;
 }
 const CATEGORIES = [
   { id: 'quarterly', label: 'Quarterly Accomplishment Reports' },
@@ -44,8 +32,6 @@ const CATEGORIES = [
 ];
 
 function UploadCard({ files, latestByCat, selectedCat, onSelectCat, submittingCat, busy, onPick, onRemove, onDiscard, onSubmit, onSubmitOne }) {
-  const inputRef = useRef(null);
-  const [dragging, setDragging] = useState(false);
   const entries = Object.entries(files);
   const current = latestByCat[selectedCat] || null;
 
@@ -56,66 +42,27 @@ function UploadCard({ files, latestByCat, selectedCat, onSelectCat, submittingCa
   }
 
   return (
-    <SendaiFrame>
       <Card className="relative z-10 rounded-2xl bg-white">
-      <CardContent className="space-y-2 p-4">
+      <CardHeader className="pb-0.5 pt-3">
+        <SectionTitle>Submit Reports</SectionTitle>
+        <CardDescription>Upload and track your quarterly, annual, good practices, and success story reports</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2 px-4 pt-2 pb-3">
         <div className="mx-auto w-full max-w-xs">
-          <Select value={selectedCat} onValueChange={onSelectCat}>
-            <SelectTrigger className="h-8 w-full">
-              <SelectValue placeholder="Report type" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterSelect
+            value={selectedCat}
+            onValueChange={onSelectCat}
+            placeholder="Report type"
+            triggerClassName="h-8"
+            options={CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
+          />
           <p className="mt-1 truncate text-center text-[11px] text-muted-foreground" title={current ? `${current.originalName || current.filename || ''} (${current.status || ''})` : ''}>
             {current
               ? `Current: ${current.originalName || current.filename || 'Report'} (${current.status || 'submitted'})`
               : 'Not submitted yet'}
           </p>
         </div>
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            handleFiles(e.dataTransfer.files);
-          }}
-          onClick={() => inputRef.current?.click()}
-          className={cn(
-            'flex cursor-pointer flex-col items-center gap-1 rounded-lg border border-dashed border-[var(--sendai-teal)]/60 px-4 py-8 text-center transition-colors',
-            dragging && 'border-solid bg-[#e9eff5]',
-          )}
-        >
-          <span className="grid size-16 place-items-center rounded-full bg-muted">
-            <HugeiconsIcon icon={CloudUploadIcon} size={24} strokeWidth={1.8} className="text-muted-foreground" />
-          </span>
-          <p className="mt-2 text-base font-semibold text-[#1e3a5f]">Upload your files</p>
-          <p className="text-xs text-muted-foreground">Drag and drop files here or click to browse</p>
-          <p className="text-[11px] text-muted-foreground">Supports .pdf, .jpg, .png up to 100MB each</p>
-          <Button className="mt-2" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>
-            <HugeiconsIcon icon={CloudUploadIcon} size={15} strokeWidth={2} />
-            Select files
-          </Button>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            className="hidden"
-            onChange={(e) => {
-              handleFiles(e.target.files);
-              e.target.value = '';
-            }}
-          />
-        </div>
+        <FileDropzone onPick={(f) => handleFiles([f])} />
         {entries.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {entries.map(([catId, f]) => (
@@ -153,7 +100,6 @@ function UploadCard({ files, latestByCat, selectedCat, onSelectCat, submittingCa
         </div>
       </CardContent>
       </Card>
-    </SendaiFrame>
   );
 }
 
@@ -170,14 +116,6 @@ const CATEGORY_SHORT = {
   'good-practices': 'Good Practices',
   'success-stories': 'Success Stories',
 };
-
-function formatBytes(bytes) {
-  if (!bytes) return '—';
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  if (i <= 0) return `${bytes} B`;
-  return `${(bytes / 1024 ** i).toFixed(1)} ${sizes[i]}`;
-}
 
 function statusStyle(status) {
   if (status === 'approved') return 'bg-[var(--sendai-teal)]/10 text-[var(--sendai-teal)]';
@@ -369,9 +307,10 @@ export function SubmitReports() {
 
   return (
     <div className="flex flex-col gap-2.5 overflow-x-clip py-1.5 md:gap-3 md:py-2">
-      <PageHeader title="Submit Reports" subtitle="Upload and track your quarterly, annual, good practices, and success story reports" />
-      <div className="space-y-3 px-4 pt-6 lg:px-6 lg:pt-9">
-        <UploadCard
+      <div className="px-4 lg:px-6">
+        <SendaiFrame>
+          <div className="relative z-10 flex flex-col gap-3">
+            <UploadCard
           files={files}
           latestByCat={latestByCat}
           selectedCat={selectedCat}
@@ -389,15 +328,12 @@ export function SubmitReports() {
           onDiscard={discard}
           onSubmit={submit}
           onSubmitOne={submitOne}
-        />
-      </div>
-
-      <div className="px-4 lg:px-6">
-        <Card className="h-full">
+            />
+            <Card className="relative z-10 h-full">
           <CardHeader className="pb-0.5 pt-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="space-y-0.5">
-                <CardTitle>My Submissions</CardTitle>
+                <SectionTitle>My Submissions</SectionTitle>
                 <CardDescription>
                   {stats.total} total · {stats.submitted} awaiting · {stats.approved} approved · {stats.rejected} rejected
                 </CardDescription>
@@ -420,47 +356,36 @@ export function SubmitReports() {
                 <HugeiconsIcon icon={Search01Icon} size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Search file name..." className="h-9 w-full pl-8" />
               </div>
-              <div className="w-full space-y-1.5 lg:w-52">
-                <p className="editorial-label text-muted-foreground">Report type</p>
-                <Select value={filterCat} onValueChange={(v) => updateFilter(setFilterCat, v)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{CATEGORY_SHORT[c.id]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full space-y-1.5 lg:w-44">
-                <p className="editorial-label text-muted-foreground">Status</p>
-                <Select value={statusFilter} onValueChange={(v) => updateFilter(setStatusFilter, v)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="awaiting">Awaiting</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full space-y-1.5 lg:w-32">
-                <p className="editorial-label text-muted-foreground">Show</p>
-                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="10" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[10, 25, 50, 100].map((n) => (
-                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FilterSelect
+                label="Report type"
+                value={filterCat}
+                onValueChange={(v) => updateFilter(setFilterCat, v)}
+                className="lg:w-52"
+                options={[
+                  { value: 'all', label: 'All' },
+                  ...CATEGORIES.map((c) => ({ value: c.id, label: CATEGORY_SHORT[c.id] })),
+                ]}
+              />
+              <FilterSelect
+                label="Status"
+                value={statusFilter}
+                onValueChange={(v) => updateFilter(setStatusFilter, v)}
+                className="lg:w-44"
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'awaiting', label: 'Awaiting' },
+                  { value: 'approved', label: 'Approved' },
+                  { value: 'rejected', label: 'Rejected' },
+                ]}
+              />
+              <FilterSelect
+                label="Show"
+                value={String(pageSize)}
+                onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                placeholder="10"
+                className="lg:w-32"
+                options={['10', '25', '50', '100']}
+              />
             </div>
 
             {loading ? (
@@ -611,6 +536,8 @@ export function SubmitReports() {
             )}
           </CardContent>
         </Card>
+          </div>
+        </SendaiFrame>
       </div>
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={closePreview}>

@@ -8,14 +8,8 @@ import { downloadFile } from '@/api/client.js';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
 import { Checkbox } from '@/components/ui/checkbox.jsx';
+import { FilterSelect } from '@/components/ui/filter-select.jsx';
 import { Input } from '@/components/ui/input.jsx';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select.jsx';
 import {
   Table,
   TableBody,
@@ -110,36 +104,25 @@ export function RecentActivity({ items = [], loading = false }) {
               className="pl-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none focus-visible:border-border"
             />
           </div>
-          <div className="w-full space-y-1.5 sm:w-40">
-            <p className="editorial-label text-muted-foreground">Select Type</p>
-            <Select value={type} onValueChange={(v) => setType(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="Report">Report</SelectItem>
-                <SelectItem value="Knowledge">Knowledge</SelectItem>
-                <SelectItem value="Certificate">Certificate</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-full space-y-1.5 sm:w-40">
-            <p className="editorial-label text-muted-foreground">Select Status</p>
-            <Select value={status} onValueChange={(v) => setStatus(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {statuses.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <FilterSelect
+            label="Select Type"
+            value={type}
+            onValueChange={setType}
+            className="sm:w-40"
+            options={[
+              { value: 'all', label: 'All' },
+              { value: 'Report', label: 'Report' },
+              { value: 'Knowledge', label: 'Knowledge' },
+              { value: 'Certificate', label: 'Certificate' },
+            ]}
+          />
+          <FilterSelect
+            label="Select Status"
+            value={status}
+            onValueChange={setStatus}
+            className="sm:w-40"
+            options={[{ value: 'all', label: 'All' }, ...statuses.map((s) => ({ value: s, label: s }))]}
+          />
         </div>
         {loading ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Loading activity…</p>

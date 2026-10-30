@@ -2,7 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
 import { AuthorOutput } from '../../article/dtos/author-output.dto';
-import { KnowledgeCategory } from '../entities/knowledge-document.entity';
 
 export class KnowledgeOutput {
   @Expose()
@@ -18,8 +17,8 @@ export class KnowledgeOutput {
   description: string;
 
   @Expose()
-  @ApiProperty({ enum: KnowledgeCategory })
-  category: KnowledgeCategory;
+  @ApiProperty({ example: 'Manual' })
+  category: string;
 
   @Expose()
   @ApiProperty()
