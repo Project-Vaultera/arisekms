@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { ArticleModule } from './article/article.module';
 import { AuthModule } from './auth/auth.module';
 import { CertificateModule } from './certificate/certificate.module';
+import { CompanyModule } from './company/company.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { ReportModule } from './report/report.module';
 import { SharedModule } from './shared/shared.module';
@@ -21,6 +22,7 @@ import { UserModule } from './user/user.module';
     KnowledgeModule,
     TicketModule,
     CertificateModule,
+    CompanyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -153,7 +153,7 @@ docker compose exec app npm run cli:dev   # creates it-admin if missing
 docker compose exec app npm run seed:demo
 ```
 
-Creates 8 demo members (`demo.member.1`–`8`, password `DemoPass123!`, two inactive), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Admins see everything; members only see their own submissions (server-enforced). Refuses to run with `APP_ENV=production`, and re-running is a no-op once seeded. To wipe (orphan files under `./uploads` are harmless in dev):
+Creates 8 demo members (`demo.member.1`–`8`, password `DemoPass123!`, two inactive), 20 demo companies (4 primary companies with exclusive member pairs, 16 with a single member), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Admins see everything; members only see their own company's submissions (server-enforced). Refuses to run with `APP_ENV=production`. Re-running is a no-op for users/reports, while company membership converges by name. To wipe (orphan files under `./uploads` are harmless in dev):
 
 ```sql
 DELETE FROM users WHERE username LIKE 'demo.member.%';  -- cascades their reports + certificates

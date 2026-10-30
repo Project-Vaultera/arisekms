@@ -2,8 +2,10 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { createReadStream } from 'fs';
 import { basename, join } from 'path';
+import { In } from 'typeorm';
 
 import { ROLE } from '../../auth/constants/role.constant';
+import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
 import { persistUpload,UPLOADS_DIR } from '../../shared/files/file-storage';
@@ -22,6 +24,7 @@ export class ReportService {
   constructor(
     private repository: ReportRepository,
     private userService: UserService,
+    private companyService: CompanyService,
     private aclService: ReportAclService,
     private readonly logger: AppLogger,
   ) {
@@ -74,9 +77,10 @@ export class ReportService {
       throw new UnauthorizedException();
     }
 
-    // Tenant isolation (pre-workspace): members only see their own rows.
-    const where =
-      actor.roles?.includes(ROLE.ADMIN) ? {} : { author: { id: actor.id } };
+    // Company isolation: members see rows from users sharing ≥1 company
+    // (self included); admins see everything.
+    const memberIds = await this.companyService.getCompanyMemberUserIds(actor);
+    const where = memberIds ? { author: { id: In(memberIds) } } : {};
 
     this.logger.log(ctx, `calling ${ReportRepository.name}.findAndCount`);
     const [reports, count] = await this.repository.findAndCount({
@@ -97,6 +101,7 @@ export class ReportService {
 
     const actor: Actor = ctx.user!;
     const report = await this.repository.getById(id);
+    await this.assertCompanyAccess(actor, report.author.id);
 
     const isAllowed = this.aclService
       .forActor(actor)
@@ -158,6 +163,7 @@ export class ReportService {
   ): Promise<{ stream: ReturnType<typeof createReadStream>; filename: string; mimeType: string }> {
     const report = await this.repository.getById(id);
     const actor: Actor = ctx.user!;
+    await this.assertCompanyAccess(actor, report.author.id);
 
     const isAllowed = this.aclService
       .forActor(actor)
@@ -171,5 +177,12 @@ export class ReportService {
       filename: report.originalName,
       mimeType: report.mimeType,
     };
+  }
+
+  private async assertCompanyAccess(actor: Actor, authorId: number): Promise<void> {
+    const memberIds = await this.companyService.getCompanyMemberUserIds(actor);
+    if (memberIds && !memberIds.includes(authorId)) {
+      throw new UnauthorizedException();
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { compare, hash } from 'bcrypt';
 import { plainToClass } from 'class-transformer';
 
@@ -121,6 +121,11 @@ export class UserService {
 
     this.logger.log(ctx, `calling ${UserRepository.name}.getById`);
     const user = await this.repository.getById(userId);
+
+    // Admins cannot disable their own account (route params arrive as strings).
+    if (input.isAccountDisabled === true && Number(ctx.user?.id) === Number(userId)) {
+      throw new ForbiddenException('You cannot disable your own account.');
+    }
 
     // Hash the password if it exists in the input payload.
     if (input.password) {

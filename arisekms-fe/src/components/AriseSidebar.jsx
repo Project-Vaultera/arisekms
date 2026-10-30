@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -6,6 +6,7 @@ import {
   Award01Icon,
   BarChartIcon,
   BookOpen01Icon,
+  CheckmarkCircle01Icon,
   ExternalLinkIcon,
   File02Icon,
   GiftIcon,
@@ -39,8 +40,9 @@ import {
 import { cn } from '@/lib/utils.js';
 
 const ADMIN_CENTER = [
-  { id: 'admin-desk', label: 'Admin Desk', icon: GridViewIcon, to: '/' },
+  { id: 'admin-overview', label: 'Admin Overview', icon: GridViewIcon, to: '/admin-overview' },
   { id: 'member-directory', label: 'Member Directory', icon: UserGroupIcon, to: '/member-directory' },
+  { id: 'admin-approvals', label: 'Approvals', icon: CheckmarkCircle01Icon, to: '/admin-approvals' },
   {
     id: 'reports',
     label: 'Reports',
@@ -142,40 +144,47 @@ export function AriseSidebar() {
             <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Admin Center</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <Item item={ADMIN_CENTER[0]} depth={0} />
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip="Reports"
-                    onClick={() => setReportsOpen((v) => !v)}
-                    className="text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center"
-                  >
-                    <HugeiconsIcon icon={BarChartIcon} size={18} strokeWidth={1.8} />
-                    <span className="group-data-[collapsible=icon]:hidden">Reports</span>
-                    <HugeiconsIcon
-                      icon={ArrowDown01Icon}
-                      size={15}
-                      strokeWidth={2}
-                      className={cn('ml-auto transition-transform group-data-[collapsible=icon]:hidden', reportsOpen && 'rotate-180')}
-                    />
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {reportsOpen && !collapsed &&
-                  ADMIN_CENTER[1].children.map((child) => (
-                    <SidebarMenuItem key={child.id}>
-                      <SidebarMenuButton
-                        tooltip={child.label}
-                        onClick={() => setPlaceholderActive(child.id)}
-                        className={cn(
-                          'text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center',
-                          placeholderActive === child.id && 'bg-[#e9eff5] font-semibold text-[#00ada8]',
-                          'pl-11',
-                        )}
-                      >
-                        <HugeiconsIcon icon={BarChartIcon} size={18} strokeWidth={1.8} />
-                        <span className="group-data-[collapsible=icon]:hidden">{child.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                {ADMIN_CENTER.map((item) =>
+                  item.children ? (
+                    <Fragment key={item.id}>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          tooltip={item.label}
+                          onClick={() => setReportsOpen((v) => !v)}
+                          className="text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center"
+                        >
+                          <HugeiconsIcon icon={item.icon} size={18} strokeWidth={1.8} />
+                          <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                          <HugeiconsIcon
+                            icon={ArrowDown01Icon}
+                            size={15}
+                            strokeWidth={2}
+                            className={cn('ml-auto transition-transform group-data-[collapsible=icon]:hidden', reportsOpen && 'rotate-180')}
+                          />
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      {reportsOpen && !collapsed &&
+                        item.children.map((child) => (
+                          <SidebarMenuItem key={child.id}>
+                            <SidebarMenuButton
+                              tooltip={child.label}
+                              onClick={() => setPlaceholderActive(child.id)}
+                              className={cn(
+                                'text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center',
+                                placeholderActive === child.id && 'bg-[#e9eff5] font-semibold text-[#00ada8]',
+                                'pl-11',
+                              )}
+                            >
+                              <HugeiconsIcon icon={BarChartIcon} size={18} strokeWidth={1.8} />
+                              <span className="group-data-[collapsible=icon]:hidden">{child.label}</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                    </Fragment>
+                  ) : (
+                    <Item key={item.id} item={item} depth={0} />
+                  ),
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

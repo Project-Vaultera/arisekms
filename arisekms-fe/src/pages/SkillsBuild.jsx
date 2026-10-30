@@ -31,6 +31,22 @@ export function SkillsBuild() {
   const [form, setForm] = useState({ name: '', course: '', issuer: 'IBM SkillsBuild', date: '', credentialId: '' });
   const [mine, setMine] = useState([]);
   const [leaders, setLeaders] = useState(FALLBACK_LEADERS);
+  const [companyNames, setCompanyNames] = useState({});
+
+  function refreshCompanies() {
+    return api
+      .get('/companies')
+      .then((res) => {
+        const map = {};
+        for (const company of res.data.data ?? []) {
+          for (const member of company.members ?? []) {
+            map[member.id] = company.name;
+          }
+        }
+        setCompanyNames(map);
+      })
+      .catch(() => {});
+  }
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -45,6 +61,7 @@ export function SkillsBuild() {
 
   useEffect(() => {
     if (view === 'certificate') refreshMine();
+    refreshCompanies();
     if (view === 'leaderboard') {
       api
         .get('/certificates/leaderboard')
@@ -180,7 +197,7 @@ export function SkillsBuild() {
                     <div key={c.id} className="flex items-center gap-2 rounded-sm border border-border px-3 py-2 text-sm">
                       <HugeiconsIcon icon={Award01Icon} size={16} strokeWidth={1.8} className="text-[var(--sendai-orange)]" />
                       <span className="font-medium">{c.course}</span>
-                      <span className="text-muted-foreground">— {c.memberName}</span>
+                      <span className="text-muted-foreground">— {c.memberName}{companyNames[c.submittedBy?.id] ? ` · ${companyNames[c.submittedBy.id]}` : ''}</span>
                       <Badge variant={c.status === 'verified' ? 'default' : 'secondary'} className="ml-auto">
                         {c.status === 'verified' ? 'Verified' : 'Pending review'}
                       </Badge>

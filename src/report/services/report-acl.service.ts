@@ -11,8 +11,8 @@ export class ReportAclService extends BaseAclService<Report> {
   constructor() {
     super();
     this.canDo(ROLE.ADMIN, [Action.Manage]);
-    this.canDo(ROLE.USER, [Action.Create, Action.List]);
-    this.canDo(ROLE.USER, [Action.Read, Action.Update, Action.Delete], this.isAuthor);
+    this.canDo(ROLE.USER, [Action.Create, Action.List, Action.Read]);
+    this.canDo(ROLE.USER, [Action.Update, Action.Delete], this.isAuthor);
   }
 
   isAuthor(report: Report, user: Actor): boolean {

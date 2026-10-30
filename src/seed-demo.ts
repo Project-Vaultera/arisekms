@@ -6,6 +6,8 @@ import { AppModule } from './app.module';
 import { ROLE } from './auth/constants/role.constant';
 import { Certificate } from './certificate/entities/certificate.entity';
 import { CertificateService } from './certificate/services/certificate.service';
+import { Company } from './company/entities/company.entity';
+import { CompanyService } from './company/services/company.service';
 import { KnowledgeDocument } from './knowledge/entities/knowledge-document.entity';
 import { KnowledgeService } from './knowledge/services/knowledge.service';
 import { Report } from './report/entities/report.entity';
@@ -13,6 +15,7 @@ import { ReportService } from './report/services/report.service';
 import { RequestContext } from './shared/request-context/request-context.dto';
 import {
   daysAgoToDate,
+  DEMO_COMPANY_MEMBERS,
   DEMO_COURSES,
   DEMO_PASSWORD,
   DEMO_USERS,
@@ -79,10 +82,8 @@ async function bootstrap() {
     ctx.requestID = 'seed-demo';
 
     if (await users.findByUsername(ctx, MARKER_USERNAME)) {
-      console.log('Demo data already seeded (demo.member.1 exists). Delete it first to re-seed.');
-      return;
-    }
-
+      console.log('Demo users already seeded (demo.member.1 exists). Skipping user/report seeding.');
+    } else {
     let admin = await users.findByUsername(ctx, 'it-admin');
     if (!admin) {
       const fallback = config.get<string>('defaultAdminUserPassword') ?? 'AdminPass123!';
@@ -152,6 +153,34 @@ async function bootstrap() {
     console.log(
       `Seeded ${members.length} demo users (password: ${DEMO_PASSWORD}), ${reportRows.length} reports, ${certRows.length} certificates, ${knowledgeRows.length} knowledge docs. Users total: ${userCount}.`,
     );
+    } // end fresh-seed branch
+
+    // Company seeding converges by name, so re-runs remap existing DBs too:
+    // 4 primary companies hold exclusive member pairs, the other 16 hold a
+    // single floater each.
+    const companiesSvc = app.get(CompanyService);
+    const admin = await users.findByUsername(ctx, 'it-admin');
+    if (!admin) {
+      console.log('Skipping company seeding: no it-admin account found.');
+    } else {
+      const adminCtx = actorCtx({ id: admin.id, username: admin.username, roles: admin.roles });
+      for (const entry of DEMO_COMPANY_MEMBERS) {
+        let company = await dataSource.getRepository(Company).findOne({ where: { name: entry.name } });
+        if (!company) {
+          const created = await companiesSvc.createCompany(adminCtx, { name: entry.name });
+          company = { id: created.id } as Company;
+        }
+        const userIds = [];
+        for (const username of entry.members) {
+          const found = await users.findByUsername(ctx, username);
+          if (found) userIds.push(found.id);
+        }
+        await companiesSvc.setMembers(adminCtx, company.id, userIds);
+      }
+      console.log(
+        `Seeded ${DEMO_COMPANY_MEMBERS.length} demo companies (4 primary pairs + 16 single-member).`,
+      );
+    }
   } finally {
     await app.close();
   }

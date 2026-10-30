@@ -1,7 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
+import { In } from 'typeorm';
 
-import { ROLE } from '../../auth/constants/role.constant';
+import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
 import { AppLogger } from '../../shared/logger/logger.service';
@@ -24,6 +25,7 @@ export class CertificateService {
   constructor(
     private repository: CertificateRepository,
     private userService: UserService,
+    private companyService: CompanyService,
     private aclService: CertificateAclService,
     private readonly logger: AppLogger,
   ) {
@@ -68,9 +70,10 @@ export class CertificateService {
       throw new UnauthorizedException();
     }
 
-    // Tenant isolation (pre-workspace): members only see their own rows.
-    const where =
-      actor.roles?.includes(ROLE.ADMIN) ? {} : { submittedBy: { id: actor.id } };
+    // Company isolation: members see rows from users sharing ≥1 company
+    // (self included); admins see everything.
+    const memberIds = await this.companyService.getCompanyMemberUserIds(actor);
+    const where = memberIds ? { submittedBy: { id: In(memberIds) } } : {};
 
     this.logger.log(ctx, `calling ${CertificateRepository.name}.findAndCount`);
     const [certificates, count] = await this.repository.findAndCount({
@@ -91,6 +94,7 @@ export class CertificateService {
 
     const actor: Actor = ctx.user!;
     const certificate = await this.repository.getById(id);
+    await this.assertCompanyAccess(actor, certificate.submittedBy.id);
 
     const isAllowed = this.aclService
       .forActor(actor)
@@ -111,11 +115,20 @@ export class CertificateService {
       throw new UnauthorizedException();
     }
 
-    const rows = await this.repository
+    // Company isolation: members rank only their companies' verified rows.
+    const memberIds = await this.companyService.getCompanyMemberUserIds(actor);
+    const qb = this.repository
       .createQueryBuilder('certificate')
       .select('certificate.memberName', 'memberName')
       .addSelect('COUNT(*)', 'certificates')
-      .where('certificate.status = :status', { status: CertificateStatus.VERIFIED })
+      .where('certificate.status = :status', { status: CertificateStatus.VERIFIED });
+    if (memberIds) {
+      qb.innerJoin('certificate.submittedBy', 'submitter').andWhere(
+        'submitter.id IN (:...memberIds)',
+        { memberIds },
+      );
+    }
+    const rows = await qb
       .groupBy('certificate.memberName')
       .orderBy('certificates', 'DESC')
       .addOrderBy('certificate.memberName', 'ASC')
@@ -169,5 +182,12 @@ export class CertificateService {
 
     this.logger.log(ctx, `calling ${CertificateRepository.name}.remove`);
     await this.repository.remove(certificate);
+  }
+
+  private async assertCompanyAccess(actor: Actor, authorId: number): Promise<void> {
+    const memberIds = await this.companyService.getCompanyMemberUserIds(actor);
+    if (memberIds && !memberIds.includes(authorId)) {
+      throw new UnauthorizedException();
+    }
   }
 }

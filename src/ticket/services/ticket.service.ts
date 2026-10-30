@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
+import { In } from 'typeorm';
 
 import { ROLE } from '../../auth/constants/role.constant';
+import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
 import { AppLogger } from '../../shared/logger/logger.service';
@@ -19,6 +21,7 @@ export class TicketService {
   constructor(
     private repository: TicketRepository,
     private userService: UserService,
+    private companyService: CompanyService,
     private aclService: TicketAclService,
     private readonly logger: AppLogger,
   ) {
@@ -60,9 +63,10 @@ export class TicketService {
       throw new UnauthorizedException();
     }
 
-    // Tenant isolation (pre-workspace): members only see their own rows.
-    const where =
-      actor.roles?.includes(ROLE.ADMIN) ? {} : { author: { id: actor.id } };
+    // Company isolation: members see rows from users sharing ≥1 company
+    // (self included); admins see everything.
+    const memberIds = await this.companyService.getCompanyMemberUserIds(actor);
+    const where = memberIds ? { author: { id: In(memberIds) } } : {};
 
     this.logger.log(ctx, `calling ${TicketRepository.name}.findAndCount`);
     const [tickets, count] = await this.repository.findAndCount({
@@ -83,6 +87,7 @@ export class TicketService {
 
     const actor: Actor = ctx.user!;
     const ticket = await this.repository.getById(id);
+    await this.assertCompanyAccess(actor, ticket.author.id);
 
     const isAllowed = this.aclService
       .forActor(actor)
@@ -139,5 +144,12 @@ export class TicketService {
 
     this.logger.log(ctx, `calling ${TicketRepository.name}.remove`);
     await this.repository.remove(ticket);
+  }
+
+  private async assertCompanyAccess(actor: Actor, authorId: number): Promise<void> {
+    const memberIds = await this.companyService.getCompanyMemberUserIds(actor);
+    if (memberIds && !memberIds.includes(authorId)) {
+      throw new UnauthorizedException();
+    }
   }
 }

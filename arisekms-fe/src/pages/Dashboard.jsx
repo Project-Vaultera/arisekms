@@ -11,6 +11,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { useDashboardData } from '@/hooks/use-dashboard-data.js';
 import { ADD_ACTIONS } from '@/lib/add-actions.js';
 import { Benefits } from '@/pages/Benefits.jsx';
+import { Approvals } from '@/pages/Approvals.jsx';
+import { AdminOverview } from '@/pages/AdminOverview.jsx';
 import { KnowledgeProducts } from '@/pages/KnowledgeProducts.jsx';
 import { MemberDirectory } from '@/pages/MemberDirectory.jsx';
 import { MembershipForm } from '@/pages/MembershipForm.jsx';
@@ -101,6 +103,8 @@ export function Dashboard() {
                 <Routes>
                   <Route index element={<DashboardHome />} />
                   <Route path="member-directory" element={<MemberDirectory />} />
+                  <Route path="admin-overview" element={<AdminOverview />} />
+                  <Route path="admin-approvals" element={<Approvals />} />
                   <Route path="submit-reports" element={<SubmitReports />} />
                   <Route path="membership-form" element={<MembershipForm />} />
                   <Route path="knowledge-products" element={<KnowledgeProducts />} />

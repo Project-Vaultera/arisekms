@@ -28,6 +28,29 @@ export const DEMO_COURSES = [
   'Climate Resilience Planning',
 ];
 
+export const DEMO_COMPANY_MEMBERS = [
+  { name: 'Luzon Harvest Foods', members: ['demo.member.1', 'demo.member.2'] },
+  { name: 'Visayas Marine Goods', members: ['demo.member.3', 'demo.member.4'] },
+  { name: 'Mindanao Agri Producers', members: ['demo.member.5', 'demo.member.6'] },
+  { name: 'Metro Builders Inc.', members: ['demo.member.7', 'demo.member.8'] },
+  { name: 'Harbor Logistics Co.', members: ['demo.member.5'] },
+  { name: 'Summit Textiles Ltd.', members: ['demo.member.6'] },
+  { name: 'Pacific Components Inc.', members: ['demo.member.7'] },
+  { name: 'Greenfield Energy Corp.', members: ['demo.member.8'] },
+  { name: 'Clearwater Utilities Co.', members: ['demo.member.1'] },
+  { name: 'Northgate Retail Group', members: ['demo.member.2'] },
+  { name: 'Archipelago Health Supplies', members: ['demo.member.3'] },
+  { name: 'Cordillera Crafts Collective', members: ['demo.member.4'] },
+  { name: 'Bayanihan Foods Mfg.', members: ['demo.member.5'] },
+  { name: 'Silangan Electronics Ltd.', members: ['demo.member.6'] },
+  { name: 'Kanluran Freight Services', members: ['demo.member.7'] },
+  { name: 'Timog Aqua Farms', members: ['demo.member.8'] },
+  { name: 'Hilaga Grains Cooperative', members: ['demo.member.1'] },
+  { name: 'Luntian Pharma Distributors', members: ['demo.member.2'] },
+  { name: 'Alon Outdoor Gear Inc.', members: ['demo.member.3'] },
+  { name: 'Sikat Learning Systems Inc.', members: ['demo.member.4'] },
+];
+
 const REPORT_CATEGORIES = [
   ReportCategory.QUARTERLY,
   ReportCategory.ANNUAL,

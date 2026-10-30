@@ -215,8 +215,22 @@ export function SubmitReports() {
       .finally(() => setLoading(false));
   }
 
+  const [companyNames, setCompanyNames] = useState({});
+
   useEffect(() => {
     refreshReports();
+    api
+      .get('/companies')
+      .then((res) => {
+        const map = {};
+        for (const company of res.data.data ?? []) {
+          for (const member of company.members ?? []) {
+            map[member.id] = company.name;
+          }
+        }
+        setCompanyNames(map);
+      })
+      .catch(() => {});
   }, []);
 
   function discard() {
@@ -544,7 +558,9 @@ export function SubmitReports() {
                               </span>
                               <span className="min-w-0">
                                 <span className="block max-w-56 truncate font-medium">{report.originalName || report.filename || report.title || 'Report'}</span>
-                                <span className="block truncate text-xs text-muted-foreground">Report</span>
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {report.author?.name ?? 'Report'}{companyNames[report.author?.id] ? ` · ${companyNames[report.author.id]}` : ''}
+                                </span>
                               </span>
                             </div>
                           </TableCell>
