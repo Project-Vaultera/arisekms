@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
 import { Input } from '@/components/ui/input.jsx';
+import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { api, setTokens } from '@/api/client.js';
 
-import logoUrl from '../arise-ph_logo.png';
+import logoUrl from '/arise-ph_logo.png';
 
 export function Login() {
   const navigate = useNavigate();
@@ -31,8 +32,9 @@ export function Login() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-sm">
+    <main className="flex min-h-screen items-center justify-center overflow-x-clip bg-background p-6">
+      <SendaiFrame className="w-full max-w-sm">
+      <Card className="relative z-10 w-full rounded-2xl">
         <CardHeader>
           <img src={logoUrl} alt="ARISE Philippines" className="h-10 w-auto self-start" />
           <CardTitle className="font-heading text-2xl font-black tracking-tight">Arise KMS</CardTitle>
@@ -55,6 +57,7 @@ export function Login() {
           </form>
         </CardContent>
       </Card>
+      </SendaiFrame>
     </main>
   );
 }

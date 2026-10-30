@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import defaultLogoUrl from '../arise-ph_logo.png';
+import defaultLogoUrl from '/arise-ph_logo.png';
 
 const STORAGE_KEY = 'kms-company-logo';
 

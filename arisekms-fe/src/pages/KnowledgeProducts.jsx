@@ -105,9 +105,7 @@ export function KnowledgeProducts() {
 
   return (
     <div>
-      <PageHeader
-        actions={[ADD_ACTIONS.report, ADD_ACTIONS.certificate]}
-      />
+      <PageHeader />
       <PageHero
         title="Knowledge Products"
         subtitle="Secure repository of manuals, guides, and organizational knowledge."

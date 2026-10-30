@@ -21,7 +21,7 @@ import {
 
 import { ProfileMenu } from '@/components/ProfileMenu.jsx';
 import { clearTokens } from '@/api/client.js';
-import logoUrl from '../arise-ph_logo.png';
+import logoUrl from '/arise-ph_logo.png';
 import { effectiveRole, getTokenRoles } from '@/lib/rbac.js';
 import {
   Sidebar,

@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 // storage (signed URLs, virus scan) before handling real member data.
 export const UPLOADS_DIR = './uploads';
 
-export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 export const ALLOWED_UPLOAD_MIMETYPES = 'application/pdf|image/jpeg|image/png';
 

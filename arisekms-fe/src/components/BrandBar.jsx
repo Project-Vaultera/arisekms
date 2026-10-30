@@ -6,7 +6,7 @@ import { File02Icon, Home01Icon, Search01Icon } from '@hugeicons/core-free-icons
 import { api } from '@/api/client.js';
 import { Input } from '@/components/ui/input.jsx';
 import { cn } from '@/lib/utils.js';
-import logoUrl from '@/arise-ph_logo.png';
+import logoUrl from '/arise-ph_logo.png';
 
 const PAGES = [
   { group: 'Pages', title: 'Admin Desk', sub: 'Dashboard', to: '/', icon: Home01Icon },

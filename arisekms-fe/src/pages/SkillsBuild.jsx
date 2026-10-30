@@ -6,8 +6,9 @@ import { toast } from 'sonner';
 import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
 import { PageHeader } from '@/components/PageHeader.jsx';
+import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { ADD_ACTIONS } from '@/lib/add-actions.js';
-import skillsBg from '../ibmskillsbuild.png';
+import skillsBg from '/ibmskillsbuild.png';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx';
@@ -79,9 +80,7 @@ export function SkillsBuild() {
 
   return (
     <div>
-      <PageHeader
-        actions={[ADD_ACTIONS.report, ADD_ACTIONS.product]}
-      />
+      <PageHeader />
       <PageHero
         title="Building Resilient Communities Together"
         subtitle="Empowering disaster risk reduction through training, collaboration, and knowledge sharing"
@@ -102,9 +101,10 @@ export function SkillsBuild() {
         </div>
       </PageHero>
 
-      <div className="mx-auto max-w-4xl px-4 py-10 lg:px-6">
+      <div className="mx-auto max-w-4xl overflow-x-clip px-4 py-10 lg:px-6">
         {view === 'leaderboard' && (
-          <Card>
+          <SendaiFrame>
+          <Card className="relative z-10 rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-heading text-xl font-black">
                 <HugeiconsIcon icon={TrophyIcon} size={20} strokeWidth={1.8} className="text-[var(--sendai-orange)]" />
@@ -136,10 +136,12 @@ export function SkillsBuild() {
               </table>
             </CardContent>
           </Card>
+          </SendaiFrame>
         )}
 
         {view === 'certificate' && (
-          <Card>
+          <SendaiFrame>
+          <Card className="relative z-10 rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-heading text-xl font-black">
                 <HugeiconsIcon icon={Certificate01Icon} size={20} strokeWidth={1.8} className="text-[#0B4484]" />
@@ -188,6 +190,7 @@ export function SkillsBuild() {
               )}
             </CardContent>
           </Card>
+          </SendaiFrame>
         )}
       </div>
     </div>
