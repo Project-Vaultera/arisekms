@@ -301,13 +301,27 @@ describe('KMS modules (e2e)', () => {
       expect(res.body.data[0].id).toEqual(ticketId);
     });
 
-    it('member status edits are stripped', async () => {
-      const res = await request(app.getHttpServer())
+    it('member can close and reopen own ticket, other statuses are stripped', async () => {
+      const closed = await request(app.getHttpServer())
         .patch(`/support-tickets/${ticketId}`)
         .set('Authorization', auth(memberToken))
         .send({ status: 'Resolved' })
         .expect(HttpStatus.OK);
-      expect(res.body.data.status).toEqual('Open');
+      expect(closed.body.data.status).toEqual('Resolved');
+
+      const stripped = await request(app.getHttpServer())
+        .patch(`/support-tickets/${ticketId}`)
+        .set('Authorization', auth(memberToken))
+        .send({ status: 'In progress' })
+        .expect(HttpStatus.OK);
+      expect(stripped.body.data.status).toEqual('Resolved');
+
+      const reopened = await request(app.getHttpServer())
+        .patch(`/support-tickets/${ticketId}`)
+        .set('Authorization', auth(memberToken))
+        .send({ status: 'Open' })
+        .expect(HttpStatus.OK);
+      expect(reopened.body.data.status).toEqual('Open');
     });
 
     it('admin triages the ticket', async () => {
