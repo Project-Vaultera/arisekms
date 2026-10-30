@@ -10,7 +10,6 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
 import { useDashboardData } from '@/hooks/use-dashboard-data.js';
 import { ADD_ACTIONS } from '@/lib/add-actions.js';
-import { Benefits } from '@/pages/Benefits.jsx';
 import { Approvals } from '@/pages/Approvals.jsx';
 import { AdminOverview } from '@/pages/AdminOverview.jsx';
 import { KnowledgeProducts } from '@/pages/KnowledgeProducts.jsx';
@@ -21,6 +20,7 @@ import { PrivacyPolicy } from '@/pages/PrivacyPolicy.jsx';
 import { SkillsBuild } from '@/pages/SkillsBuild.jsx';
 import { SubmitReports } from '@/pages/SubmitReports.jsx';
 import { Support } from '@/pages/Support.jsx';
+import { UserManual } from '@/pages/UserManual.jsx';
 
 const ActivityChart = lazy(() =>
   import('@/components/dashboard/ActivityChart.jsx').then((m) => ({ default: m.ActivityChart })),
@@ -112,7 +112,7 @@ export function Dashboard() {
                   <Route path="skillsbuild" element={<SkillsBuild />} />
                   <Route path="leaderboards" element={<Leaderboards />} />
                   <Route path="privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="benefits" element={<Benefits />} />
+                  <Route path="user-manual" element={<UserManual />} />
                   <Route path="support" element={<Support />} />
                   <Route path="*" element={<DashboardHome />} />
                 </Routes>

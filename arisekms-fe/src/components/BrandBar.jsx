@@ -15,7 +15,7 @@ const PAGES = [
   { group: 'Pages', title: 'Knowledge Products', sub: 'Manuals and guides', to: '/knowledge-products', icon: File02Icon },
   { group: 'Pages', title: 'SkillsBuild', sub: 'Training and certificates', to: '/skillsbuild', icon: File02Icon },
   { group: 'Pages', title: 'Privacy Policy', sub: 'Data protection', to: '/privacy-policy', icon: File02Icon },
-  { group: 'Pages', title: 'Benefits of Joining', sub: 'Why become a member', to: '/benefits', icon: File02Icon },
+  { group: 'Pages', title: 'User Manual', sub: 'How to use the platform', to: '/user-manual', icon: File02Icon },
   { group: 'Pages', title: 'Support', sub: 'Submit a ticket', to: '/support', icon: File02Icon },
 ];
 

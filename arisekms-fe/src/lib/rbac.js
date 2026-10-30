@@ -34,7 +34,7 @@ const ROUTE_MODULE = {
   '/skillsbuild': 'skillsbuild',
   '/leaderboards': 'skillsbuild',
   '/privacy-policy': 'help',
-  '/benefits': 'help',
+  '/user-manual': 'help',
   '/support': 'support',
 };
 
