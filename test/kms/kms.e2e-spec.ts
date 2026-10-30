@@ -44,6 +44,8 @@ describe('KMS modules (e2e)', () => {
   let app: INestApplication;
   let adminUser: UserOutput;
   let adminToken: AuthTokenOutput;
+  let memberUser: UserOutput;
+  let member2User: UserOutput;
   let memberToken: AuthTokenOutput;
   let member2Token: AuthTokenOutput;
 
@@ -60,8 +62,32 @@ describe('KMS modules (e2e)', () => {
     await app.init();
 
     ({ adminUser, authTokenForAdmin: adminToken } = await seedAdminUser(app));
-    ({ token: memberToken } = await registerAndLogin(app.getHttpServer(), 'member-one'));
-    ({ token: member2Token } = await registerAndLogin(app.getHttpServer(), 'member-two'));
+    ({ user: memberUser, token: memberToken } = await registerAndLogin(app.getHttpServer(), 'member-one'));
+    ({ user: member2User, token: member2Token } = await registerAndLogin(app.getHttpServer(), 'member-two'));
+
+    // New flow: each member gets their own approved company, preserving
+    // the suite's member-vs-member isolation assumptions.
+    const server = app.getHttpServer();
+    for (const [name, user] of [
+      ['Member One Corp', memberUser],
+      ['Member Two Corp', member2User],
+    ] as const) {
+      const created = await request(server)
+        .post('/companies')
+        .set('Authorization', `Bearer ${adminToken.accessToken}`)
+        .send({ name })
+        .expect(HttpStatus.CREATED);
+      await request(server)
+        .post(`/companies/${created.body.data.id}/members`)
+        .set('Authorization', `Bearer ${adminToken.accessToken}`)
+        .send({ userId: user.id })
+        .expect(HttpStatus.OK);
+      await request(server)
+        .post(`/companies/${created.body.data.id}/review`)
+        .set('Authorization', `Bearer ${adminToken.accessToken}`)
+        .send({ status: 'approved' })
+        .expect(HttpStatus.OK);
+    }
   });
 
   const auth = (token: AuthTokenOutput) => `Bearer ${token.accessToken}`;

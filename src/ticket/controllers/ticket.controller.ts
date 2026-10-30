@@ -90,7 +90,7 @@ export class TicketController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update support ticket API (status is admin-only)' })
+  @ApiOperation({ summary: 'Update support ticket API (status: admin-only, except authors closing/reopening own)' })
   @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse(TicketOutput) })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, type: BaseApiErrorResponse })
   @UseGuards(JwtAuthGuard)

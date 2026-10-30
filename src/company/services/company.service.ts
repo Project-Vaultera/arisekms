@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { In } from 'typeorm';
 
@@ -16,7 +16,7 @@ import {
   UpdateCompanyInput,
 } from '../dtos/company-input.dto';
 import { CompanyOutput } from '../dtos/company-output.dto';
-import { Company } from '../entities/company.entity';
+import { Company, MembershipStatus } from '../entities/company.entity';
 import { CompanyRepository } from '../repositories/company.repository';
 import { CompanyAclService } from './company-acl.service';
 
@@ -57,6 +57,64 @@ export class CompanyService {
     const saved = await this.repository.save(company);
 
     return this.toOutput({ ...saved, members: [] });
+  }
+
+  /**
+   * Self-service membership application: any authenticated member creates
+   * their own company shell (draft) and becomes its first member.
+   * Blocked while the user has any non-approved company (one application
+   * at a time); admins keep using the admin-only create endpoint.
+   */
+  async applyForCompany(
+    @ReqContext() ctx: RequestContext,
+    name: string,
+  ): Promise<CompanyOutput> {
+    this.logger.log(ctx, `${this.applyForCompany.name} was called`);
+
+    const actor: Actor = ctx.user!;
+    const ownIds = await this.findOwnCompanyIds(actor.id);
+    if (ownIds.length > 0) {
+      const pending = await this.repository.count({
+        where: {
+          id: In(ownIds),
+          status: In([
+            MembershipStatus.DRAFT,
+            MembershipStatus.SUBMITTED,
+            MembershipStatus.REJECTED,
+          ]),
+        },
+      });
+      if (pending > 0) {
+        throw new BadRequestException(
+          'You already have a membership application in progress.',
+        );
+      }
+    }
+
+    const company = plainToClass(Company, {
+      name: name.trim(),
+      members: [{ id: actor.id } as User],
+    });
+    const saved = await this.repository.save(company);
+
+    return this.toOutput(await this.repository.getById(saved.id));
+  }
+
+  /**
+   * Portal gate: admins always pass; members pass with ≥1 approved company.
+   */
+  async hasApprovedCompany(actor: Actor): Promise<boolean> {
+    if (this.isAdmin(actor)) {
+      return true;
+    }
+    const ids = await this.findOwnCompanyIds(actor.id);
+    if (ids.length === 0) {
+      return false;
+    }
+    const approved = await this.repository.count({
+      where: { id: In(ids), status: MembershipStatus.APPROVED },
+    });
+    return approved > 0;
   }
 
   async getCompanies(ctx: RequestContext): Promise<CompanyOutput[]> {

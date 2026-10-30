@@ -47,8 +47,13 @@ export function SkillsBuild() {
       });
       setForm({ name: '', course: '', issuer: 'IBM SkillsBuild', date: '', credentialId: '' });
       toast.success('Certificate recorded', { description: 'Pending verification by an admin.' });
-    } catch {
-      toast.error('Could not record certificate');
+    } catch (err) {
+      const message = err?.response?.data?.error?.message;
+      if (err?.response?.status === 403) {
+        toast.error('Membership approval required', { description: message });
+      } else {
+        toast.error('Could not record certificate');
+      }
     }
   }
 

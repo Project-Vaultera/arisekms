@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { In } from 'typeorm';
 
@@ -12,7 +12,7 @@ import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
 import { CreateTicketInput, UpdateTicketInput } from '../dtos/ticket-input.dto';
 import { TicketOutput } from '../dtos/ticket-output.dto';
-import { SupportTicket } from '../entities/support-ticket.entity';
+import { SupportTicket, TicketStatus } from '../entities/support-ticket.entity';
 import { TicketRepository } from '../repositories/ticket.repository';
 import { TicketAclService } from './ticket-acl.service';
 
@@ -32,6 +32,11 @@ export class TicketService {
     this.logger.log(ctx, `${this.createTicket.name} was called`);
 
     const actor: Actor = ctx.user!;
+    if (!(await this.companyService.hasApprovedCompany(actor))) {
+      throw new ForbiddenException(
+        'Your membership application must be approved before opening support tickets.',
+      );
+    }
     const ticket = plainToClass(SupportTicket, input);
 
     const isAllowed = this.aclService
@@ -116,10 +121,15 @@ export class TicketService {
       throw new UnauthorizedException();
     }
 
-    // Only admins triage; members' status input is dropped.
+    // Only admins triage; authors may only close/reopen their own tickets.
     const patch: UpdateTicketInput = { ...input };
     if (!actor.roles?.includes(ROLE.ADMIN)) {
-      delete patch.status;
+      const ownCloseOrReopen =
+        ticket.author.id === actor.id &&
+        (patch.status === TicketStatus.RESOLVED || patch.status === TicketStatus.OPEN);
+      if (!ownCloseOrReopen) {
+        delete patch.status;
+      }
     }
     const updated: SupportTicket = { ...ticket, ...patch };
 

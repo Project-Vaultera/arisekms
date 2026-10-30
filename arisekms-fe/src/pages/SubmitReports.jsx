@@ -195,8 +195,13 @@ export function SubmitReports() {
         return next;
       });
       await refreshReports();
-    } catch {
-      toast.error('Submission failed', { description: 'Check the file type and try again.' });
+    } catch (err) {
+      const message = err?.response?.data?.error?.message;
+      if (err?.response?.status === 403) {
+        toast.error('Membership approval required', { description: message });
+      } else {
+        toast.error('Submission failed', { description: 'Check the file type and try again.' });
+      }
     } finally {
       setSubmittingCat(null);
     }
@@ -219,8 +224,13 @@ export function SubmitReports() {
       toast.success('Reports submitted', { description: `${entries.length} file(s) queued for review.` });
       setFiles({});
       await refreshReports();
-    } catch {
-      toast.error('Submission failed', { description: 'Check the file type and try again.' });
+    } catch (err) {
+      const message = err?.response?.data?.error?.message;
+      if (err?.response?.status === 403) {
+        toast.error('Membership approval required', { description: message });
+      } else {
+        toast.error('Submission failed', { description: 'Check the file type and try again.' });
+      }
     } finally {
       setBusy(false);
     }

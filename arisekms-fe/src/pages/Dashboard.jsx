@@ -91,13 +91,13 @@ function DashboardHome() {
   );
 }
 
-export function Dashboard() {
+export function Dashboard({ locked = false }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full flex-col">
         <BrandBar />
         <div className="flex flex-1">
-          <AriseSidebar />
+          <AriseSidebar locked={locked} />
           <SidebarInset className="min-w-0 overflow-x-clip">
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="@container/main flex min-w-0 flex-1 flex-col gap-2">

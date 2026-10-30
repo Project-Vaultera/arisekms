@@ -103,6 +103,12 @@ describe('Company visibility (e2e)', () => {
           .expect(HttpStatus.OK);
         expect(res.body.data.members.map((m: any) => m.id).sort()).toEqual(step.expected.sort());
       }
+      // New flow: submissions require an approved company.
+      await request(app.getHttpServer())
+        .post(`/companies/${companyId}/review`)
+        .set('Authorization', auth(adminToken))
+        .send({ status: 'approved' })
+        .expect(HttpStatus.OK);
     });
 
     it('member lists only their own companies', async () => {
@@ -248,6 +254,23 @@ describe('Company visibility (e2e)', () => {
     });
 
     it('leaderboard is company-scoped for members, full for admins', async () => {
+      // Outsider gets their own approved company first (new flow: writes need approval).
+      const otherCompany = await request(app.getHttpServer())
+        .post('/companies')
+        .set('Authorization', auth(adminToken))
+        .send({ name: 'Other Corp' })
+        .expect(HttpStatus.CREATED);
+      await request(app.getHttpServer())
+        .post(`/companies/${otherCompany.body.data.id}/members`)
+        .set('Authorization', auth(adminToken))
+        .send({ userId: bUser.id })
+        .expect(HttpStatus.OK);
+      await request(app.getHttpServer())
+        .post(`/companies/${otherCompany.body.data.id}/review`)
+        .set('Authorization', auth(adminToken))
+        .send({ status: 'approved' })
+        .expect(HttpStatus.OK);
+
       const outsiderCert = await request(app.getHttpServer())
         .post('/certificates')
         .set('Authorization', auth(bToken))

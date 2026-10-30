@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { createReadStream } from 'fs';
 import { basename, join } from 'path';
@@ -39,6 +39,11 @@ export class ReportService {
     this.logger.log(ctx, `${this.createReport.name} was called`);
 
     const actor: Actor = ctx.user!;
+    if (!(await this.companyService.hasApprovedCompany(actor))) {
+      throw new ForbiddenException(
+        'Your membership application must be approved before submitting reports.',
+      );
+    }
     const storedName = persistUpload(file);
     const report = plainToClass(Report, {
       category: input.category,

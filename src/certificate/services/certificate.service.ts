@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { In } from 'typeorm';
 
@@ -39,6 +39,11 @@ export class CertificateService {
     this.logger.log(ctx, `${this.createCertificate.name} was called`);
 
     const actor: Actor = ctx.user!;
+    if (!(await this.companyService.hasApprovedCompany(actor))) {
+      throw new ForbiddenException(
+        'Your membership application must be approved before recording certificates.',
+      );
+    }
     const certificate = plainToClass(Certificate, input);
 
     const isAllowed = this.aclService

@@ -171,13 +171,15 @@ function CollapsedReportsMenu({ item, activeId, onSelect }) {
   );
 }
 
-export function AriseSidebar() {
+export function AriseSidebar({ locked = false }) {
   const [reportsOpen, setReportsOpen] = useState(false);
   const [placeholderActive, setPlaceholderActive] = useState(null);
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const role = effectiveRole(getTokenRoles());
   const navigate = useNavigate();
+  // Pending members see only the membership form until approval.
+  const main = locked ? MAIN.filter((item) => item.id === 'membership-form') : MAIN;
 
   function logout() {
     clearTokens();
@@ -256,7 +258,7 @@ export function AriseSidebar() {
           <SidebarGroupLabel className="uppercase tracking-wider group-data-[collapsible=icon]:hidden">Main</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {MAIN.map((item) => (
+              {main.map((item) => (
                 <Item key={item.id} item={item} />
               ))}
             </SidebarMenu>

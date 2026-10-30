@@ -47,6 +47,9 @@ export function Approvals() {
   const [tab, setTab] = useState('reports');
   const [reports, setReports] = useState([]);
   const [certificates, setCertificates] = useState([]);
+  const [memberships, setMemberships] = useState([]);
+  const [rejectId, setRejectId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [companyNames, setCompanyNames] = useState({});
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
@@ -95,6 +98,7 @@ export function Approvals() {
     return Promise.all([
       api.get('/reports', { params: { limit: 100, offset: 0 } }).then((res) => setReports(res.data.data ?? [])),
       api.get('/certificates', { params: { limit: 100, offset: 0 } }).then((res) => setCertificates(res.data.data ?? [])),
+      api.get('/companies/membership/submissions').then((res) => setMemberships(res.data.data ?? [])).catch(() => setMemberships([])),
       api
         .get('/companies')
         .then((res) => {
@@ -149,8 +153,23 @@ export function Approvals() {
     }
   }
 
-  function downloadReport(report) {
-    if (!report?.id) return;
+  async function decideMembership(id, status, label, reason) {
+    setActing(`membership-${id}`);
+    try {
+      await api.post(`/companies/${id}/review`, { status, ...(reason ? { reason } : {}) });
+      toast.success(label);
+      setRejectId(null);
+      setRejectReason('');
+      await refresh();
+    } catch (err) {
+      const message = err?.response?.data?.error?.message ?? err?.response?.data?.message;
+      toast.error('Action failed', { description: typeof message === 'string' ? message : 'Please try again.' });
+    } finally {
+      setActing(null);
+    }
+  }
+
+  function downloadReport(report) {    if (!report?.id) return;
     downloadFile(`/reports/${report.id}/file`, report.originalName || 'report').catch(() =>
       toast.error('Download failed'),
     );
@@ -176,6 +195,7 @@ export function Approvals() {
   const tabs = [
     { id: 'reports', label: 'Reports', count: pendingReports.length },
     { id: 'certificates', label: 'Certificates', count: pendingCertificates.length },
+    { id: 'membership', label: 'Membership', count: memberships.length },
   ];
 
   return (
@@ -413,6 +433,74 @@ export function Approvals() {
                             })}
                           </TableBody>
                         </Table>
+                      </div>
+                    )
+                  )}
+
+
+                  {tab === 'membership' && (
+                    memberships.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">All caught up — no pending membership applications.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {memberships.map((m) => {
+                          const busy = acting === `membership-${m.id}`;
+                          const primary = (m.contacts ?? []).find((c) => c.isPrimary);
+                          return (
+                            <div key={m.id} className="rounded-lg border px-3 py-2.5 text-sm">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium">{m.name}</p>
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {primary ? `${[primary.firstName, primary.lastName].filter(Boolean).join(' ')} · ${primary.email ?? ''}` : 'No primary contact'}
+                                    {` · ${m.city ?? '—'}, ${m.country ?? '—'}`}
+                                    {` · ${fmtDate(m.updatedAt)}`}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    disabled={busy}
+                                    onClick={() => decideMembership(m.id, 'approved', 'Membership approved')}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="bg-[var(--sendai-crimson)] text-white hover:bg-[var(--sendai-crimson)]/90 hover:text-white"
+                                    disabled={busy}
+                                    onClick={() => { setRejectId(m.id); setRejectReason(''); }}
+                                  >
+                                    Reject
+                                  </Button>
+                                </div>
+                              </div>
+                              {rejectId === m.id && (
+                                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                  <input
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    placeholder="Reject reason (required)…"
+                                    className="h-9 flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-sm outline-none placeholder:text-muted-foreground"
+                                  />
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      className="bg-[var(--sendai-crimson)] text-white hover:bg-[var(--sendai-crimson)]/90 hover:text-white"
+                                      disabled={busy || !rejectReason.trim()}
+                                      onClick={() => decideMembership(m.id, 'rejected', 'Membership rejected', rejectReason.trim())}
+                                    >
+                                      Confirm reject
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setRejectId(null)}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )
                   )}

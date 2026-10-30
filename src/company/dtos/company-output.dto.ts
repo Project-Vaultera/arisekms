@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
+import { MembershipStatus } from '../entities/company.entity';
+
 export class CompanyMemberOutput {
   @Expose()
   @ApiProperty()
@@ -28,6 +30,10 @@ export class CompanyOutput {
   @Type(() => CompanyMemberOutput)
   @ApiProperty({ type: [CompanyMemberOutput] })
   members: CompanyMemberOutput[];
+
+  @Expose()
+  @ApiProperty({ enum: MembershipStatus })
+  status: MembershipStatus;
 
   @Expose()
   @ApiProperty()
