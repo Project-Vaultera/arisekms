@@ -7,6 +7,7 @@ import { api, getAccessToken } from '@/api/client.js';
 import { allowedRoute, approvalLocked, effectiveRole } from '@/lib/rbac.js';
 import { Dashboard } from '@/pages/Dashboard.jsx';
 import { Login } from '@/pages/Login.jsx';
+import { Signup } from '@/pages/Signup.jsx';
 
 function decodeRoles() {
   try {
@@ -76,6 +77,7 @@ export default function App() {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/*" element={<Shell />} />
       </Routes>
     </ThemeProvider>
