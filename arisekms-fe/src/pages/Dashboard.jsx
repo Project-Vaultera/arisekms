@@ -46,14 +46,14 @@ function DashboardHome() {
   const dashboard = useDashboardData();
 
   return (
-    <div className="flex flex-col gap-4 py-2 md:gap-6 md:py-3">
+    <div className="flex flex-col gap-2.5 py-1.5 md:gap-3 md:py-2">
       <PageHeader
         title="Building Resilient Communities Together"
         subtitle="Empowering disaster risk reduction through training, collaboration, and knowledge sharing"
         actions={[ADD_ACTIONS.report, ADD_ACTIONS.product, ADD_ACTIONS.certificate]}
       />
       <SectionCards summary={dashboard} />
-      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 xl:grid-cols-10">
+      <div className="grid grid-cols-1 gap-3 px-4 lg:px-6 xl:grid-cols-10">
         <div className="xl:col-span-7">
           <Suspense fallback={<ChartFallback />}>
             <MemberGrowthChart
@@ -91,27 +91,29 @@ function DashboardHome() {
 export function Dashboard() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-svh w-full">
-        <AriseSidebar />
-        <SidebarInset>
-          <BrandBar />
-          <div className="flex flex-1 flex-col">
-            <div className="@container/main flex flex-1 flex-col gap-2">
-              <Routes>
-                <Route index element={<DashboardHome />} />
-                <Route path="member-directory" element={<MemberDirectory />} />
-                <Route path="submit-reports" element={<SubmitReports />} />
-                <Route path="membership-form" element={<MembershipForm />} />
-                <Route path="knowledge-products" element={<KnowledgeProducts />} />
-                <Route path="skillsbuild" element={<SkillsBuild />} />
-                <Route path="privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="benefits" element={<Benefits />} />
-                <Route path="support" element={<Support />} />
-                <Route path="*" element={<DashboardHome />} />
-              </Routes>
+      <div className="flex min-h-svh w-full flex-col">
+        <BrandBar />
+        <div className="flex flex-1">
+          <AriseSidebar />
+          <SidebarInset>
+            <div className="flex flex-1 flex-col">
+              <div className="@container/main flex flex-1 flex-col gap-2">
+                <Routes>
+                  <Route index element={<DashboardHome />} />
+                  <Route path="member-directory" element={<MemberDirectory />} />
+                  <Route path="submit-reports" element={<SubmitReports />} />
+                  <Route path="membership-form" element={<MembershipForm />} />
+                  <Route path="knowledge-products" element={<KnowledgeProducts />} />
+                  <Route path="skillsbuild" element={<SkillsBuild />} />
+                  <Route path="privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="benefits" element={<Benefits />} />
+                  <Route path="support" element={<Support />} />
+                  <Route path="*" element={<DashboardHome />} />
+                </Routes>
+              </div>
             </div>
-          </div>
-        </SidebarInset>
+          </SidebarInset>
+        </div>
       </div>
       <Toaster />
     </SidebarProvider>

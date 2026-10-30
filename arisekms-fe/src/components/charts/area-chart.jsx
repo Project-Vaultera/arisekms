@@ -9,7 +9,7 @@ import { DEFAULT_CHART_STATUS, DEFAULT_Y_DOMAIN_TWEEN_MS, resolveRestingChartPha
 import { PatternArea } from "./pattern-area";
 import { TimeSeriesChartInner } from "./time-series-chart-shell";
 
-const DEFAULT_MARGIN = { top: 40, right: 40, bottom: 40, left: 40 };
+const DEFAULT_MARGIN = { top: 8, right: 20, bottom: 28, left: 20 };
 
 function extractAreaConfigs(children) {
   const configs = [];

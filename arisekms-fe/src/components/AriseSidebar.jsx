@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ArrowDown01Icon,
@@ -12,6 +12,7 @@ import {
   GridViewIcon,
   HelpCircleIcon,
   Home01Icon,
+  Logout01Icon,
   Shield01Icon,
   Upload01Icon,
   UserAdd01Icon,
@@ -19,6 +20,7 @@ import {
 } from '@hugeicons/core-free-icons';
 
 import { ProfileMenu } from '@/components/ProfileMenu.jsx';
+import { clearTokens } from '@/api/client.js';
 import logoUrl from '../arise-ph_logo.png';
 import { effectiveRole, getTokenRoles } from '@/lib/rbac.js';
 import {
@@ -120,22 +122,20 @@ export function AriseSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const role = effectiveRole(getTokenRoles());
+  const navigate = useNavigate();
+
+  function logout() {
+    clearTokens();
+    navigate('/login', { replace: true });
+  }
 
   return (
-    <Sidebar collapsible="icon" className="sticky top-0 h-svh shrink-0 border-r border-sidebar-border bg-white transition-[width] duration-300 ease-out">
+    <Sidebar collapsible="icon" className="sticky top-14 h-[calc(100svh-3.5rem)] shrink-0 border-r border-sidebar-border bg-white transition-[width] duration-300 ease-out">
       <SidebarContent className="bg-white" style={{ overflowX: 'hidden' }}>
-        <div className="flex items-center gap-2 px-3 pt-4 pb-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2 group-data-[collapsible=icon]:px-0">
-          <img
-            src={logoUrl}
-            alt="ARISE Philippines"
-            className="h-9 min-w-0 flex-1 object-contain object-left group-data-[collapsible=icon]:hidden"
-          />
-          <img
-            src="/arise.svg"
-            alt="ARISE"
-            className="hidden size-9 group-data-[collapsible=icon]:block"
-          />
+        <div className="px-2 pt-3 pb-1">
+          <ProfileMenu />
         </div>
+        <SidebarSeparator className="mx-2" />
 
         {role === 'ADMIN' && (
           <SidebarGroup>
@@ -205,10 +205,21 @@ export function AriseSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarFooter className="mt-auto border-t border-sidebar-border px-3 py-3">
-          <ProfileMenu />
-        </SidebarFooter>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border px-2 py-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={logout}
+              tooltip="Log out"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <HugeiconsIcon icon={Logout01Icon} size={18} strokeWidth={1.8} />
+              <span className="group-data-[collapsible=icon]:hidden">Log out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

@@ -23,13 +23,13 @@ export function MemberGrowthChart({ months = [], loading = false }) {
 
   return (
     <Card className="h-full">
-      <CardHeader>
-        <div>
+      <CardHeader className="pb-0.5 pt-3">
+        <div className="space-y-0.5">
           <CardTitle>Member Growth</CardTitle>
           <CardDescription>Active Vs. Inactive Over Time</CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0.5 pb-3">
         {loading ? (
           <p className="flex h-48 items-center justify-center text-sm text-muted-foreground">
             Loading members…
@@ -40,7 +40,7 @@ export function MemberGrowthChart({ months = [], loading = false }) {
           </p>
         ) : (
           <>
-            <AreaChart data={data} xDataKey="date" aspectRatio="3 / 1">
+            <AreaChart data={data} xDataKey="date" aspectRatio="3 / 1" margin={{ top: 8, right: 16, bottom: 24, left: 16 }}>
               <Grid horizontal />
               {SERIES.map((s) => (
                 <Area
@@ -56,7 +56,7 @@ export function MemberGrowthChart({ months = [], loading = false }) {
               <XAxis />
               <ChartTooltip />
             </AreaChart>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
               {SERIES.map((s) => (
                 <span key={s.key} className="flex items-center gap-1.5">
                   <span

@@ -89,14 +89,14 @@ export function RecentActivity({ items = [], loading = false }) {
 
   return (
     <Card className="h-full">
-      <CardHeader className="pb-0">
-        <div>
+      <CardHeader className="pb-0.5 pt-3">
+        <div className="space-y-0.5">
           <CardTitle>Recent Activity</CardTitle>
           <CardDescription>Latest reports, knowledge uploads, and certifications</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="pt-1">
-        <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-end">
+      <CardContent className="pt-1 pb-3">
+        <div className="mb-1.5 flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="relative flex-1">
             <HugeiconsIcon
               icon={Search01Icon}
@@ -142,12 +142,12 @@ export function RecentActivity({ items = [], loading = false }) {
           </div>
         </div>
         {loading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Loading activity…</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Loading activity…</p>
         ) : filtered.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No recent activity yet.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">No recent activity yet.</p>
         ) : (
           <>
-            <div className="overflow-hidden rounded-lg border">
+            <div className="overflow-hidden rounded-lg border mt-1">
               <Table>
                 <TableHeader>
                   <TableRow>
