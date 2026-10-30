@@ -22,14 +22,14 @@ function decodeRoles() {
 function Shell() {
   const { pathname } = useLocation();
   const [roles] = useState(decodeRoles);
-  const [approval, setApproval] = useState({ loading: true, hasApproved: false });
+  const [approval, setApproval] = useState({ loading: true, hasApproved: false, hasCompany: false });
   const hasToken = !!getAccessToken();
   const role = effectiveRole(roles);
   const isAdmin = role === 'ADMIN';
 
   useEffect(() => {
     if (!hasToken || isAdmin) {
-      setApproval({ loading: false, hasApproved: isAdmin });
+      setApproval({ loading: false, hasApproved: isAdmin, hasCompany: false });
       return;
     }
     let cancelled = false;
@@ -40,10 +40,14 @@ function Shell() {
       .then((res) => {
         if (cancelled) return;
         const rows = res.data.data ?? [];
-        setApproval({ loading: false, hasApproved: rows.some((c) => c.status === 'approved') });
+        setApproval({
+          loading: false,
+          hasApproved: rows.some((c) => c.status === 'approved'),
+          hasCompany: rows.length > 0,
+        });
       })
       .catch(() => {
-        if (!cancelled) setApproval({ loading: false, hasApproved: false });
+        if (!cancelled) setApproval({ loading: false, hasApproved: false, hasCompany: false });
       });
     return () => {
       cancelled = true;
@@ -55,7 +59,11 @@ function Shell() {
   if (!allowedRoute(role, pathname)) return <Navigate to="/" replace />;
 
   const locked = !approval.loading && approvalLocked(pathname, { isAdmin, hasApproved: approval.hasApproved });
-  if (locked) return <Navigate to="/membership-form" replace />;
+  // Locked members with a company edit on the profile; without one they start
+  // the application on the form (which forwards once a company exists).
+  if (locked) {
+    return <Navigate to={approval.hasCompany ? '/profile#overview' : '/membership-form'} replace />;
+  }
   return (
     <TooltipProvider>
       <Dashboard locked={!approval.loading && !isAdmin && !approval.hasApproved} />

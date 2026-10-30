@@ -17,6 +17,7 @@ import { Leaderboards } from '@/pages/Leaderboards.jsx';
 import { MemberDirectory } from '@/pages/MemberDirectory.jsx';
 import { MembershipForm } from '@/pages/MembershipForm.jsx';
 import { PrivacyPolicy } from '@/pages/PrivacyPolicy.jsx';
+import { Profile } from '@/pages/Profile.jsx';
 import { SkillsBuild } from '@/pages/SkillsBuild.jsx';
 import { SubmitReports } from '@/pages/SubmitReports.jsx';
 import { Support } from '@/pages/Support.jsx';
@@ -108,6 +109,7 @@ export function Dashboard({ locked = false }) {
                   <Route path="admin-approvals" element={<Approvals />} />
                   <Route path="submit-reports" element={<SubmitReports />} />
                   <Route path="membership-form" element={<MembershipForm />} />
+                  <Route path="profile" element={<Profile />} />
                   <Route path="knowledge-products" element={<KnowledgeProducts />} />
                   <Route path="skillsbuild" element={<SkillsBuild />} />
                   <Route path="leaderboards" element={<Leaderboards />} />

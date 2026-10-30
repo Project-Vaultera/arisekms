@@ -1,11 +1,22 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { SidebarLeftIcon, SidebarRightIcon } from '@hugeicons/core-free-icons';
 
+import { api } from '@/api/client.js';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils.js';
 
-function Avatar({ size, className }) {
+function initialsOf(name) {
+  return (name ?? '?')
+    .split(' ')
+    .map((w) => w.charAt(0))
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function Avatar({ size, className, label }) {
   const px = { width: size, height: size };
   const innerSize = size - 6;
   const fontSize = Math.max(10, Math.round(size * 0.28));
@@ -26,7 +37,7 @@ function Avatar({ size, className }) {
         style={{ width: innerSize, height: innerSize, fontSize }}
         className="relative grid place-items-center rounded-full bg-[#0B4484] font-heading font-black text-white"
       >
-        IA
+        {label ?? 'IA'}
       </span>
     </span>
   );
@@ -36,6 +47,23 @@ export function ProfileMenu() {
   const navigate = useNavigate();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
+  const [me, setMe] = useState(null);
+  const [companyName, setCompanyName] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      api.get('/users/me').then((res) => res.data.data).catch(() => null),
+      api.get('/companies').then((res) => res.data.data ?? []).catch(() => []),
+    ]).then(([user, companies]) => {
+      if (cancelled) return;
+      setMe(user);
+      setCompanyName(companies[0]?.name ?? '');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex w-full flex-col items-center gap-2 rounded-sm px-1 py-1">
@@ -53,13 +81,13 @@ export function ProfileMenu() {
       <div className="flex w-full items-center gap-2">
         <button
           type="button"
-          onClick={() => navigate('/membership-form')}
+          onClick={() => navigate('/profile')}
           className="group flex min-w-0 flex-1 items-center gap-3 rounded-sm px-1 py-1 text-left transition-colors hover:bg-[#e9eff5] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
         >
-          <Avatar size={40} className="relative" />
+          <Avatar size={40} className="relative" label={initialsOf(me?.name)} />
           <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <span className="block truncate text-sm font-semibold text-[#1e3a5f]">Juan Dela Cruz</span>
-            <span className="block truncate text-xs text-muted-foreground">ARISE Philippines</span>
+            <span className="block truncate text-sm font-semibold text-[#1e3a5f]">{me?.name ?? '…'}</span>
+            <span className="block truncate text-xs text-muted-foreground">{companyName || 'ARISE Philippines'}</span>
           </span>
         </button>
         <button

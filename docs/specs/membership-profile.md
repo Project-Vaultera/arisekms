@@ -119,3 +119,19 @@ see `shortcut` in `file-storage.ts`).
 
 - Forward-only migration adding columns + 2 tables; rollback via `migration:revert`.
   Existing companies default to `draft` with null profile fields — no backfill.
+
+## Member profile page
+
+`/profile` is the member-facing overview (Profile-V2 inspired, no SendaiFrame,
+left-aligned like other dashboard pages): header (avatar, name, company, status
+badge, completion %) plus Gamsys-style icon tabs — Overview (first-run
+checklist for drafts + the full inline application editor: all sections,
+documents, submit), About (`PATCH /users/me`), Primary Contact (inline edit via
+the contacts API; the approved → draft rule applies with an on-screen notice),
+Activity (nested Mine/Company tabs over reports + certificates; Company hidden
+until approval), SkillsBuild (own recorded credentials + continue-learning CTA).
+Tabs are URL-hash deep-linked. `/membership-form` is now a thin forwarder
+(start-application card when company-less, else redirect to `/profile#overview`);
+locked users land on the form only when they have no company, otherwise straight
+on the profile. `/profile` is in the pending allowlist (read-only where it
+matters). The sidebar avatar menu shows the real member name + company.

@@ -32,6 +32,7 @@ import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { UserOutput } from '../dtos/user-output.dto';
 import { UpdateUserInput } from '../dtos/user-update-input.dto';
+import { UpdateMyProfileInput } from '../dtos/user-update-me-input.dto';
 import { UserService } from '../services/user.service';
 
 @ApiTags('users')
@@ -68,6 +69,32 @@ export class UserController {
     return { data: user, meta: {} };
   }
 
+  // Declared before ':id' routes so 'me' is never swallowed as a param.
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(ClassSerializerInterceptor)
+  @Patch('me')
+  @ApiOperation({
+    summary: 'Update own profile API (name + email only)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: SwaggerBaseApiResponse(UserOutput),
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    type: BaseApiErrorResponse,
+  })
+  async updateMyProfile(
+    @ReqContext() ctx: RequestContext,
+    @Body() input: UpdateMyProfileInput,
+  ): Promise<BaseApiResponse<UserOutput>> {
+    this.logger.log(ctx, `${this.updateMyProfile.name} was called`);
+
+    const user = await this.userService.updateMyProfile(ctx, ctx.user!.id, input);
+    return { data: user, meta: {} };
+  }
+
   @UseInterceptors(ClassSerializerInterceptor)
   @Get()
   @ApiOperation({
@@ -99,7 +126,7 @@ export class UserController {
     return { data: users, meta: { count } };
   }
 
-  // Admin-only: members use GET /me. (No PATCH /me exists yet — see TODO below.)
+  // Admin-only: members use GET /me and PATCH /me.
   @UseInterceptors(ClassSerializerInterceptor)
   @Get(':id')
   @ApiOperation({
@@ -126,8 +153,7 @@ export class UserController {
     return { data: user, meta: {} };
   }
 
-  // Admin-only for now. Members need PATCH /me for self-service updates.
-  // TODO: add PATCH /me, then keep this endpoint ADMIN-only.
+  // Admin-only full update. Members self-serve via PATCH /me.
   @Patch(':id')
   @ApiOperation({
     summary: 'Update user API',

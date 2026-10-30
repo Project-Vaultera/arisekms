@@ -147,6 +147,58 @@ describe('UserController (e2e)', () => {
     });
   });
 
+  describe('update own profile', () => {
+    it('member updates own name and email', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ name: 'Self Editor', username: 'self-editor', password: 'member-pass-1', email: 'self-editor@example.com' })
+        .expect(HttpStatus.CREATED);
+
+      const login = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ username: 'self-editor', password: 'member-pass-1' })
+        .expect(HttpStatus.OK);
+      const token = login.body.data.accessToken;
+
+      const res = await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Edited Name', email: 'edited@example.com' })
+        .expect(HttpStatus.OK);
+      expect(res.body.data.name).toEqual('Edited Name');
+      expect(res.body.data.email).toEqual('edited@example.com');
+      expect(res.body.data.username).toEqual('self-editor');
+
+      // Role smuggling is ignored: only name + email are self-editable.
+      const smuggle = await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Edited Name', roles: ['ADMIN'] })
+        .expect(HttpStatus.OK);
+      expect(smuggle.body.data.roles).toEqual(['USER']);
+    });
+
+    it('duplicate email is rejected', async () => {
+      const login = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ username: 'self-editor', password: 'member-pass-1' })
+        .expect(HttpStatus.OK);
+
+      await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${login.body.data.accessToken}`)
+        .send({ email: 'default-admin@example.com' })
+        .expect(HttpStatus.CONFLICT);
+    });
+
+    it('unauthenticated PATCH /me is rejected', async () => {
+      await request(app.getHttpServer())
+        .patch('/users/me')
+        .send({ name: 'Nope' })
+        .expect(HttpStatus.UNAUTHORIZED);
+    });
+  });
+
   afterAll(async () => {
     await app.close();
     await closeDBAfterTest();

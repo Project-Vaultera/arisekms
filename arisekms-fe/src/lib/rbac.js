@@ -40,6 +40,7 @@ const ROUTE_MODULE = {
   '/admin-approvals': 'admin-center',
   '/submit-reports': 'submit',
   '/membership-form': 'membership',
+  '/profile': 'membership',
   '/knowledge-products': 'knowledge',
   '/skillsbuild': 'skillsbuild',
   '/leaderboards': 'skillsbuild',
@@ -52,6 +53,7 @@ const ROUTE_MODULE = {
 // Everything else redirects to /membership-form until approval.
 const PENDING_ALLOWLIST = new Set([
   '/membership-form',
+  '/profile',
   '/support',
   '/privacy-policy',
   '/user-manual',
