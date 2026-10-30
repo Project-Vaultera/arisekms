@@ -15,6 +15,7 @@ import {
   Home01Icon,
   Logout01Icon,
   Shield01Icon,
+  TrophyIcon,
   Upload01Icon,
   UserAdd01Icon,
   UserGroupIcon,
@@ -58,6 +59,7 @@ const MAIN = [
   { id: 'membership-form', label: 'Membership Form', icon: UserAdd01Icon, to: '/membership-form' },
   { id: 'knowledge-products', label: 'Knowledge Products', icon: BookOpen01Icon, to: '/knowledge-products' },
   { id: 'skillsbuild', label: 'SkillsBuild', icon: Award01Icon, to: '/skillsbuild' },
+  { id: 'leaderboards', label: 'Leaderboards', icon: TrophyIcon, to: '/leaderboards' },
 ];
 
 const HELP_CENTER = [

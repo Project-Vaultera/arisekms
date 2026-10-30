@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon, PlusSignIcon, Search01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
@@ -34,7 +35,8 @@ function statusStyle(status) {
 }
 
 export function MemberDirectory() {
-  const [tab, setTab] = useState('members');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState(params.get('tab') === 'companies' ? 'companies' : 'members');
 
   // Members state
   const [members, setMembers] = useState([]);
@@ -50,7 +52,10 @@ export function MemberDirectory() {
   const [companiesLoading, setCompaniesLoading] = useState(true);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(() => {
+    const id = Number(params.get('company'));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
   const [username, setUsername] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [togglingId, setTogglingId] = useState(null);

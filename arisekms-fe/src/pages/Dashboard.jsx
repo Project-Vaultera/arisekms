@@ -14,6 +14,7 @@ import { Benefits } from '@/pages/Benefits.jsx';
 import { Approvals } from '@/pages/Approvals.jsx';
 import { AdminOverview } from '@/pages/AdminOverview.jsx';
 import { KnowledgeProducts } from '@/pages/KnowledgeProducts.jsx';
+import { Leaderboards } from '@/pages/Leaderboards.jsx';
 import { MemberDirectory } from '@/pages/MemberDirectory.jsx';
 import { MembershipForm } from '@/pages/MembershipForm.jsx';
 import { PrivacyPolicy } from '@/pages/PrivacyPolicy.jsx';
@@ -97,9 +98,9 @@ export function Dashboard() {
         <BrandBar />
         <div className="flex flex-1">
           <AriseSidebar />
-          <SidebarInset>
-            <div className="flex flex-1 flex-col">
-              <div className="@container/main flex flex-1 flex-col gap-2">
+          <SidebarInset className="min-w-0 overflow-x-clip">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="@container/main flex min-w-0 flex-1 flex-col gap-2">
                 <Routes>
                   <Route index element={<DashboardHome />} />
                   <Route path="member-directory" element={<MemberDirectory />} />
@@ -109,6 +110,7 @@ export function Dashboard() {
                   <Route path="membership-form" element={<MembershipForm />} />
                   <Route path="knowledge-products" element={<KnowledgeProducts />} />
                   <Route path="skillsbuild" element={<SkillsBuild />} />
+                  <Route path="leaderboards" element={<Leaderboards />} />
                   <Route path="privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="benefits" element={<Benefits />} />
                   <Route path="support" element={<Support />} />

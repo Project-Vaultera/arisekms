@@ -32,6 +32,7 @@ const ROUTE_MODULE = {
   '/membership-form': 'membership',
   '/knowledge-products': 'knowledge',
   '/skillsbuild': 'skillsbuild',
+  '/leaderboards': 'skillsbuild',
   '/privacy-policy': 'help',
   '/benefits': 'help',
   '/support': 'support',
