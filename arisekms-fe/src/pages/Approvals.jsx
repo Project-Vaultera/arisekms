@@ -92,6 +92,7 @@ export function Approvals() {
     }
   }
   const [preview, setPreview] = useState(null);
+  const [certPreview, setCertPreview] = useState(null);
 
   function refresh() {
     setLoading(true);
@@ -426,6 +427,9 @@ export function Approvals() {
                                       >
                                         Reject
                                       </Button>
+                                      <Button variant="ghost" size="icon" className="size-8" onClick={() => setCertPreview(cert)} aria-label="Preview">
+                                        <HugeiconsIcon icon={EyeIcon} size={16} strokeWidth={1.8} />
+                                      </Button>
                                     </div>
                                   </TableCell>
                                 </TableRow>
@@ -526,6 +530,28 @@ export function Approvals() {
               ) : (
                 <p className="py-8 text-center text-sm text-muted-foreground">Preview not available for this file type — use Download instead.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {certPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCertPreview(null)}>
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 border-b p-4">
+              <p className="truncate text-sm font-medium">{certPreview.course || `Certificate #${certPreview.id}`}</p>
+              <Button variant="outline" size="sm" onClick={() => setCertPreview(null)}>Close</Button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-4">
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Course</dt><dd className="text-right font-medium">{certPreview.course || '—'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Issuer</dt><dd className="text-right font-medium">{certPreview.issuer || '—'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Member</dt><dd className="text-right font-medium">{certPreview.memberName || '—'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Credential ID</dt><dd className="text-right font-medium">{certPreview.credentialId || '—'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Date issued</dt><dd className="text-right font-medium">{fmtDate(certPreview.dateIssued)}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Submitted by</dt><dd className="text-right font-medium">{authorOf(certPreview).name}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Company</dt><dd className="text-right font-medium">{authorOf(certPreview).company || '—'}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Status</dt><dd className="text-right font-medium">{certPreview.status || 'pending'}</dd></div>
+              </dl>
             </div>
           </div>
         </div>

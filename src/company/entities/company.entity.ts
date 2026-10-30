@@ -59,6 +59,9 @@ export class Company {
   @Column({ type: 'varchar', length: 200, nullable: true })
   sector: string | null;
 
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  region?: string | null;
+
   @Column({ type: 'boolean', nullable: true })
   isTradeAssociation: boolean | null;
 

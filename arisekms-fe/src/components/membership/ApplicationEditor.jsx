@@ -86,12 +86,43 @@ function Section({ title, children, id }) {
 
 const TAB_FIELDS = {
   company: ['legalRepName', 'legalRepTitle', 'applicantCountry', 'registeredCountry',
-    'noAttachmentExplanation', 'sector', 'isTradeAssociation', 'isBusinessAssociation',
+    'noAttachmentExplanation', 'sector', 'region', 'isTradeAssociation', 'isBusinessAssociation',
     'exchangeSymbol', 'parentCompanyDetails', 'street', 'city', 'province', 'zip',
     'country', 'phone', 'website', 'fax', 'staffCount', 'annualRevenue'],
   affiliations: ['unGlobalCompact', 'otherUnAgency', 'whichAgency', 'otherOrgs', 'affiliationDetails'],
   other: ['businessOverview', 'geographicFocus'],
 };
+
+const COMPANY_SECTORS = [
+  'Administrative, Support, Waste Management & Remediation Service',
+  'Agriculture',
+  'Arts, Entertainment & Recreation',
+  'Construction',
+  'Consumer Goods',
+  'Educational Services',
+  'Energy',
+  'Engineering',
+  'Finance',
+  'Healthcare',
+  'Hospitality',
+  'Information & Communication',
+  'Insurance and Reinsurance',
+  'Management of Companies & Enterprises',
+  'Manufacturing',
+  'Media',
+  'Mining',
+  'Other Services (except public administration)',
+  'Professional, Scientific & Technical Services (incl. consulting)',
+  'Real Estate, Rental and Leasing',
+  'Retail Trade',
+  'Social Assistance',
+  'Transportation',
+  'Tourism',
+  'Wholesale Trade',
+  'Utilities',
+  'Health',
+  'Technology',
+];
 
 // The full application editor: company sections, affiliations, other info,
 // documents, and submit. Used inline on the profile Overview tab.
@@ -106,6 +137,7 @@ export function ApplicationEditor({ companyId, profile, onProfile, editable }) {
       legalRepName: profile.legalRepName ?? '', legalRepTitle: profile.legalRepTitle ?? '',
       applicantCountry: profile.applicantCountry ?? '', registeredCountry: profile.registeredCountry ?? '',
       noAttachmentExplanation: profile.noAttachmentExplanation ?? '', sector: profile.sector ?? '',
+      region: profile.region ?? '',
       isTradeAssociation: profile.isTradeAssociation, isBusinessAssociation: profile.isBusinessAssociation,
       exchangeSymbol: profile.exchangeSymbol ?? '', parentCompanyDetails: profile.parentCompanyDetails ?? '',
       street: profile.street ?? '', city: profile.city ?? '', province: profile.province ?? '', zip: profile.zip ?? '',
@@ -268,9 +300,21 @@ export function ApplicationEditor({ companyId, profile, onProfile, editable }) {
         </div>
       </Section>
       <Section title="C. Company Classification">
-        <TextRow label="Company Sector" required value={form.sector} onChange={set('sector')} disabled={!editable} />
+        <FilterSelect
+          label={<>Company Sector<span className="text-[var(--sendai-crimson)]"> *</span></>}
+          value={form.sector ?? ''}
+          onValueChange={set('sector')}
+          placeholder="— Select —"
+          options={
+            form.sector && !COMPANY_SECTORS.includes(form.sector)
+              ? [form.sector, ...COMPANY_SECTORS]
+              : COMPANY_SECTORS
+          }
+          disabled={!editable}
+        />
         <BoolRow label="Are You a Trade Association" value={form.isTradeAssociation} onChange={set('isTradeAssociation')} />
         <BoolRow label="Are You a Business Association / Alliance / Network" value={form.isBusinessAssociation} onChange={set('isBusinessAssociation')} />
+        <TextRow label="Region" value={form.region} onChange={set('region')} disabled={!editable} placeholder="e.g. NCR, CALABARZON" />
         <TextRow label="Publicly Traded Company — Exchange Name and Symbol" value={form.exchangeSymbol} onChange={set('exchangeSymbol')} disabled={!editable} />
         <div className="sm:col-span-2">
           <AreaRow label="Subsidiary of Another Company — Details" value={form.parentCompanyDetails} onChange={set('parentCompanyDetails')} rows={2} />

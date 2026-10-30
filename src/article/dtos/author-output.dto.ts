@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
 export class AuthorOutput {
@@ -9,4 +9,8 @@ export class AuthorOutput {
   @Expose()
   @ApiProperty()
   name: string;
+
+  @Expose()
+  @ApiPropertyOptional()
+  gender?: string | null;
 }

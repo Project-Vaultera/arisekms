@@ -31,6 +31,9 @@ export class User {
   @Column()
   isAccountDisabled: boolean;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  gender?: string | null;
+
   @Unique('email', ['email'])
   @Column({ length: 200 })
   email: string;

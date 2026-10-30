@@ -43,6 +43,7 @@ export class MembershipProfileOutput {
   @Expose() @ApiPropertyOptional() registeredCountry: string | null;
   @Expose() @ApiPropertyOptional() noAttachmentExplanation: string | null;
   @Expose() @ApiPropertyOptional() sector: string | null;
+  @Expose() @ApiPropertyOptional() region?: string | null;
   @Expose() @ApiPropertyOptional() isTradeAssociation: boolean | null;
   @Expose() @ApiPropertyOptional() isBusinessAssociation: boolean | null;
   @Expose() @ApiPropertyOptional() exchangeSymbol: string | null;

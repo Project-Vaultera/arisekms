@@ -29,6 +29,7 @@ export class UpdateMembershipProfileInput {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) registeredCountry?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() noAttachmentExplanation?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) sector?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) region?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isTradeAssociation?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isBusinessAssociation?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) exchangeSymbol?: string;

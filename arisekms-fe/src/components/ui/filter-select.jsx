@@ -17,11 +17,12 @@ export function FilterSelect({
   options = [],
   className,
   triggerClassName,
+  disabled = false,
 }) {
   return (
     <div className={cn('w-full space-y-1.5', className)}>
       {label && <p className="editorial-label text-muted-foreground">{label}</p>}
-      <Select value={value} onValueChange={onValueChange}>
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger className={cn('w-full', triggerClassName)}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>

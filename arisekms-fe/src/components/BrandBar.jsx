@@ -13,7 +13,7 @@ const PAGES = [
   { group: 'Pages', title: 'Submit Reports', sub: 'Quarterly, annual, good practices', to: '/submit-reports', icon: File02Icon },
   { group: 'Pages', title: 'Membership Form', sub: 'Apply or update membership', to: '/membership-form', icon: File02Icon },
   { group: 'Pages', title: 'Knowledge Products', sub: 'Manuals and guides', to: '/knowledge-products', icon: File02Icon },
-  { group: 'Pages', title: 'SkillsBuild', sub: 'Training and certificates', to: '/skillsbuild', icon: File02Icon },
+  { group: 'Pages', title: 'SkillsBuild', sub: 'Training and certificates', to: '/activity', icon: File02Icon },
   { group: 'Pages', title: 'Privacy Policy', sub: 'Data protection', to: '/privacy-policy', icon: File02Icon },
   { group: 'Pages', title: 'User Manual', sub: 'How to use the platform', to: '/user-manual', icon: File02Icon },
   { group: 'Pages', title: 'Support', sub: 'Submit a ticket', to: '/support', icon: File02Icon },

@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table.jsx';
 import { cn } from '@/lib/utils.js';
 
-const TYPE_LINK = { Report: '/submit-reports', Knowledge: '/knowledge-products', Certificate: '/skillsbuild' };
+const TYPE_LINK = { Report: '/submit-reports', Knowledge: '/knowledge-products', Certificate: '/activity' };
 
 const TYPE_ICON = {
   Report: File02Icon,

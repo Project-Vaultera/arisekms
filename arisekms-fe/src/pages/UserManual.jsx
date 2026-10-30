@@ -22,7 +22,7 @@ const SECTIONS = [
     links: [
       { to: '/submit-reports', label: 'Submit Reports', hint: 'Quarterly, annual, and good-practice reports.' },
       { to: '/knowledge-products', label: 'Knowledge Products', hint: 'Manuals, guides, and organizational knowledge.' },
-      { to: '/skillsbuild', label: 'SkillsBuild', hint: 'Training courses and certificates.' },
+      { to: '/activity', label: 'SkillsBuild', hint: 'Training courses and certificates.' },
       { to: '/leaderboards', label: 'Leaderboards', hint: 'Member recognition standings.' },
     ],
   },

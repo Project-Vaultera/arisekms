@@ -10,5 +10,5 @@ export const ADD_ACTIONS = {
     icon: BookOpen01Icon,
     adminOnly: true,
   },
-  certificate: { label: 'Record Certificate', to: '/skillsbuild', icon: Award01Icon },
+  certificate: { label: 'Record Certificate', to: '/activity', icon: Award01Icon },
 };

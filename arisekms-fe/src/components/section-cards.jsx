@@ -40,7 +40,7 @@ export function SectionCards({ summary } = {}) {
             hint: 'SkillsBuild certificates',
             icon: Award01Icon,
             tint: 'text-[var(--sendai-orange)]/10',
-            link: { label: 'View Certificates', to: '/skillsbuild' },
+            link: { label: 'View Certificates', to: '/activity' },
           },
           {
             label: 'Submitted Reports',
@@ -66,7 +66,7 @@ export function SectionCards({ summary } = {}) {
             hint: 'SkillsBuild certificates',
             icon: Award01Icon,
             tint: 'text-[var(--sendai-orange)]/10',
-            link: { label: 'View Certificates', to: '/skillsbuild' },
+            link: { label: 'View Certificates', to: '/activity' },
           },
           {
             label: 'My Reports',

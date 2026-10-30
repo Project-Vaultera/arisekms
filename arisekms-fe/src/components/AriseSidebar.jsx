@@ -58,9 +58,9 @@ const ADMIN_CENTER = [
     icon: BarChartIcon,
     // TODO: replace with real report destinations.
     children: [
-      { id: 'reports-membership', label: 'Membership', icon: Agreement01Icon },
-      { id: 'reports-summary', label: 'Report Summary', icon: ChartUpIcon },
-      { id: 'reports-performance', label: 'Performance and Metrics', icon: Medal01Icon },
+      { id: 'reports-membership', label: 'Membership', icon: Agreement01Icon, to: '/reports-membership' },
+      { id: 'reports-summary', label: 'Report Summary', icon: ChartUpIcon, to: '/reports-summary' },
+      { id: 'reports-performance', label: 'Performance and Metrics', icon: Medal01Icon, to: '/reports-performance' },
     ],
   },
 ];
@@ -70,7 +70,7 @@ const MAIN = [
   { id: 'submit-reports', label: 'Submit Reports', icon: Upload01Icon, to: '/submit-reports' },
   { id: 'membership-form', label: 'Membership Form', icon: UserAdd01Icon, to: '/membership-form' },
   { id: 'knowledge-products', label: 'Knowledge Products', icon: BookOpen01Icon, to: '/knowledge-products' },
-  { id: 'skillsbuild', label: 'SkillsBuild', icon: Award01Icon, to: '/skillsbuild' },
+  { id: 'skillsbuild', label: 'Activity', icon: Award01Icon, to: '/activity' },
   { id: 'leaderboards', label: 'Leaderboards', icon: TrophyIcon, to: '/leaderboards' },
 ];
 
@@ -137,7 +137,7 @@ function Item({ item }) {
 }
 
 // Icon-collapsed mode: Reports children open in a click-to-open flyout card.
-function CollapsedReportsMenu({ item, activeId, onSelect }) {
+  function CollapsedReportsMenu({ item, activeId, onSelect }) {
   return (
     <SidebarMenuItem>
       <DropdownMenu>
@@ -154,7 +154,7 @@ function CollapsedReportsMenu({ item, activeId, onSelect }) {
           {item.children.map((child) => (
             <DropdownMenuItem
               key={child.id}
-              onSelect={() => onSelect(child.id)}
+              onSelect={() => onSelect(child)}
               className={cn(
                 'cursor-pointer gap-2 rounded-lg px-3 py-2.5 text-sm text-[#0c4585] focus:bg-sidebar-accent focus:text-[#0c4585]',
                 activeId === child.id &&
@@ -173,6 +173,7 @@ function CollapsedReportsMenu({ item, activeId, onSelect }) {
 
 export function AriseSidebar({ locked = false }) {
   const [reportsOpen, setReportsOpen] = useState(false);
+  const { pathname } = useLocation();
   const [placeholderActive, setPlaceholderActive] = useState(null);
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
@@ -205,8 +206,8 @@ export function AriseSidebar({ locked = false }) {
                       <CollapsedReportsMenu
                         key={item.id}
                         item={item}
-                        activeId={placeholderActive}
-                        onSelect={setPlaceholderActive}
+                        activeId={placeholderActive ?? item.children.find((c) => c.to === pathname)?.id}
+                        onSelect={(child) => { setPlaceholderActive(child.id); if (child.to) navigate(child.to); }}
                       />
                     ) : (
                       <Fragment key={item.id}>
@@ -227,21 +228,26 @@ export function AriseSidebar({ locked = false }) {
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                         {reportsOpen &&
-                          item.children.map((child) => (
+                          item.children.map((child) => {
+                            const isActive = pathname === child.to || placeholderActive === child.id;
+                            return (
                             <SidebarMenuItem key={child.id}>
                               <SidebarMenuButton
+                                asChild
                                 tooltip={child.label}
-                                onClick={() => setPlaceholderActive(child.id)}
                                 className={cn(
                                   'text-[#0c4585] hover:text-[#00ada8] group-data-[collapsible=icon]:justify-center',
-                                  placeholderActive === child.id && 'bg-[var(--sendai-teal)] font-semibold text-white hover:text-white',
+                                  isActive && 'bg-[var(--sendai-teal)] font-semibold text-white hover:text-white',
                                 )}
                               >
-                                <HugeiconsIcon icon={child.icon} size={18} strokeWidth={1.8} />
-                                <span className="group-data-[collapsible=icon]:hidden truncate">{child.label}</span>
+                                <NavLink to={child.to} onClick={() => setPlaceholderActive(child.id)}>
+                                  <HugeiconsIcon icon={child.icon} size={18} strokeWidth={1.8} />
+                                  <span className="group-data-[collapsible=icon]:hidden truncate">{child.label}</span>
+                                </NavLink>
                               </SidebarMenuButton>
                             </SidebarMenuItem>
-                          ))}
+                            );
+                          })}
                       </Fragment>
                     )
                   ) : (

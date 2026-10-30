@@ -130,11 +130,12 @@ export class UserService {
       }
     }
 
-    // Whitelist merge: only name + email are self-editable.
+    // Whitelist merge: only name + email + gender are self-editable.
     const updatedUser: User = {
       ...user,
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.email !== undefined ? { email: input.email } : {}),
+      ...(input.gender !== undefined ? { gender: input.gender } : {}),
     };
 
     this.logger.log(ctx, `calling ${UserRepository.name}.save`);

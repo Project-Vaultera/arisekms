@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card.jsx';
 import { Checkbox } from '@/components/ui/checkbox.jsx';
+import { FilterSelect } from '@/components/ui/filter-select.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Label } from '@/components/ui/label.jsx';
 import { SectionTitle } from '@/components/ui/section-title.jsx';
@@ -95,7 +96,7 @@ export function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingAbout, setEditingAbout] = useState(false);
-  const [about, setAbout] = useState({ name: '', email: '' });
+  const [about, setAbout] = useState({ name: '', email: '', gender: '' });
   const [editingContact, setEditingContact] = useState(false);
   const [contact, setContact] = useState({ ...EMPTY_PRIMARY });
 
@@ -136,7 +137,7 @@ export function Profile() {
     Promise.all([
       api.get('/users/me').then((res) => {
         setMe(res.data.data);
-        setAbout({ name: res.data.data.name ?? '', email: res.data.data.email ?? '' });
+        setAbout({ name: res.data.data.name ?? '', email: res.data.data.email ?? '', gender: res.data.data.gender ?? '' });
       }),
       api.get('/companies').then((res) => setCompanies(res.data.data ?? [])),
       api.get('/reports', { params: { limit: 100, offset: 0 } }).then((res) => setReports(res.data.data ?? [])).catch(() => {}),
@@ -217,7 +218,11 @@ export function Profile() {
     }
     setSaving(true);
     try {
-      const res = await api.patch('/users/me', { name: about.name.trim(), email: about.email.trim() });
+      const res = await api.patch('/users/me', {
+        name: about.name.trim(),
+        email: about.email.trim(),
+        ...(about.gender ? { gender: about.gender } : {}),
+      });
       setMe(res.data.data);
       setEditingAbout(false);
       toast.success('Profile updated');
@@ -350,7 +355,7 @@ export function Profile() {
                           <Button size="sm" variant="outline" onClick={() => setEditingAbout(true)}>Edit</Button>
                         ) : (
                           <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" disabled={saving} onClick={() => { setAbout({ name: me?.name ?? '', email: me?.email ?? '' }); setEditingAbout(false); }}>Cancel</Button>
+                            <Button size="sm" variant="ghost" disabled={saving} onClick={() => { setAbout({ name: me?.name ?? '', email: me?.email ?? '', gender: me?.gender ?? '' }); setEditingAbout(false); }}>Cancel</Button>
                             <Button size="sm" disabled={saving} onClick={saveAbout}>{saving ? 'Saving…' : 'Save'}</Button>
                           </div>
                         )}
@@ -362,6 +367,7 @@ export function Profile() {
                           <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{me?.name ?? '—'}</dd></div>
                           <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Username</dt><dd className="font-medium">@{me?.username ?? '—'}</dd></div>
                           <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Email</dt><dd className="truncate font-medium">{me?.email ?? '—'}</dd></div>
+                          <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Gender</dt><dd className="font-medium">{me?.gender ?? '—'}</dd></div>
                         </dl>
                       ) : (
                         <div className="space-y-3">
@@ -373,6 +379,13 @@ export function Profile() {
                             <Label className="text-sm">Email</Label>
                             <Input value={about.email} onChange={(e) => setAbout((a) => ({ ...a, email: e.target.value }))} type="email" />
                           </div>
+                          <FilterSelect
+                            label="Gender"
+                            value={about.gender ?? ''}
+                            onValueChange={(v) => setAbout((a) => ({ ...a, gender: v }))}
+                            placeholder="— Select —"
+                            options={['male', 'female', 'other', 'prefer-not-to-say']}
+                          />
                         </div>
                       )}
                     </CardContent>
@@ -543,7 +556,7 @@ export function Profile() {
                           <SectionTitle>IBM SkillsBuild</SectionTitle>
                           <CardDescription>Your recorded learning credentials.</CardDescription>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => navigate('/skillsbuild')}>
+                        <Button size="sm" variant="outline" onClick={() => navigate('/activity')}>
                           Continue learning
                         </Button>
                       </div>

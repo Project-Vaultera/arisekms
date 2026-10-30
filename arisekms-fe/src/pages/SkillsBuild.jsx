@@ -8,6 +8,7 @@ import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
 import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { SendaiHoverButton } from '@/components/SendaiHoverButton.jsx';
+import { ActivityForm } from '@/components/activities/ActivityForm.jsx';
 import { ADD_ACTIONS } from '@/lib/add-actions.js';
 import skillsBg from '/ibmskillsbuild.png';
 import { Button } from '@/components/ui/button.jsx';
@@ -25,6 +26,7 @@ const SKILLSBUILD_URL = 'https://skillsbuild.org/';
 export function SkillsBuild() {
   const navigate = useNavigate();
   const [certOpen, setCertOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [form, setForm] = useState({ name: '', course: '', issuer: 'IBM SkillsBuild', date: '', credentialId: '' });
 
   function set(field, value) {
@@ -74,20 +76,24 @@ export function SkillsBuild() {
         titleClassName="text-4xl leading-tight font-extrabold sm:text-5xl lg:text-6xl"
         subtitleClassName="text-base text-white/80"
       >
-        <div className="flex w-full max-w-full flex-col flex-wrap items-center justify-center gap-3 sm:flex-row">
-          <SendaiHoverButton asChild className="border border-white/60 bg-[#0B4484]/90 text-white hover:bg-[#0B4484] hover:text-white">
+        <div className="flex w-full max-w-full flex-row flex-wrap items-center justify-center gap-2">
+          <SendaiHoverButton asChild className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white">
             <a href={SKILLSBUILD_URL} target="_blank" rel="noreferrer">
               <HugeiconsIcon icon={ExternalLinkIcon} size={18} strokeWidth={2} />
               Access IBM SkillsBuild
             </a>
           </SendaiHoverButton>
-          <SendaiHoverButton className="border border-white/60 bg-[#0B4484]/90 text-white hover:bg-[#0B4484] hover:text-white" onClick={() => navigate('/leaderboards')}>
+          <SendaiHoverButton className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => navigate('/leaderboards')}>
             <HugeiconsIcon icon={TrophyIcon} size={18} strokeWidth={2} />
             Leaderboards
           </SendaiHoverButton>
-          <SendaiHoverButton className="border border-white/60 bg-[#0B4484]/90 text-white hover:bg-[#0B4484] hover:text-white" onClick={() => setCertOpen(true)}>
+          <SendaiHoverButton className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => setCertOpen(true)}>
             <HugeiconsIcon icon={Certificate01Icon} size={18} strokeWidth={2} />
             Add Certificate
+          </SendaiHoverButton>
+          <SendaiHoverButton className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => setActivityOpen(true)}>
+            <HugeiconsIcon icon={Medal01Icon} size={18} strokeWidth={2} />
+            Add Activity
           </SendaiHoverButton>
         </div>
       </PageHero>
@@ -132,6 +138,22 @@ export function SkillsBuild() {
                   View my certificates
                 </button>
               </div>
+            </div>
+          </SendaiFrame>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
+        <DialogContent showCloseButton={false} className="border-0 bg-transparent p-0 shadow-none">
+          <SendaiFrame>
+            <div className="relative z-10 max-h-[90vh] overflow-y-auto rounded-lg bg-background p-6">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 font-heading text-xl font-normal">
+                  <HugeiconsIcon icon={Medal01Icon} size={20} strokeWidth={1.8} className="text-[#0B4484]" />
+                  Add Activity
+                </DialogTitle>
+                <DialogDescription>Log a performance activity for review.</DialogDescription>
+              </DialogHeader>
+              <ActivityForm onSuccess={() => setActivityOpen(false)} />
             </div>
           </SendaiFrame>
         </DialogContent>

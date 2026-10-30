@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AriseSidebar } from '@/components/AriseSidebar.jsx';
 import { BrandBar } from '@/components/BrandBar.jsx';
@@ -16,6 +16,9 @@ import { KnowledgeProducts } from '@/pages/KnowledgeProducts.jsx';
 import { Leaderboards } from '@/pages/Leaderboards.jsx';
 import { MemberDirectory } from '@/pages/MemberDirectory.jsx';
 import { MembershipForm } from '@/pages/MembershipForm.jsx';
+import { ReportsMembership } from '@/pages/reports/ReportsMembership.jsx';
+import { ReportsPerformance } from '@/pages/reports/ReportsPerformance.jsx';
+import { ReportsSummary } from '@/pages/reports/ReportsSummary.jsx';
 import { PrivacyPolicy } from '@/pages/PrivacyPolicy.jsx';
 import { Profile } from '@/pages/Profile.jsx';
 import { SkillsBuild } from '@/pages/SkillsBuild.jsx';
@@ -107,11 +110,15 @@ export function Dashboard({ locked = false }) {
                   <Route path="member-directory" element={<MemberDirectory />} />
                   <Route path="admin-overview" element={<AdminOverview />} />
                   <Route path="admin-approvals" element={<Approvals />} />
+                  <Route path="reports-membership" element={<ReportsMembership />} />
+                  <Route path="reports-summary" element={<ReportsSummary />} />
+                  <Route path="reports-performance" element={<ReportsPerformance />} />
                   <Route path="submit-reports" element={<SubmitReports />} />
                   <Route path="membership-form" element={<MembershipForm />} />
                   <Route path="profile" element={<Profile />} />
                   <Route path="knowledge-products" element={<KnowledgeProducts />} />
-                  <Route path="skillsbuild" element={<SkillsBuild />} />
+                  <Route path="activity" element={<SkillsBuild />} />
+                  <Route path="skillsbuild" element={<Navigate to="/activity" replace />} />
                   <Route path="leaderboards" element={<Leaderboards />} />
                   <Route path="privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="user-manual" element={<UserManual />} />
