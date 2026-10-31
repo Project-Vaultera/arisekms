@@ -5,6 +5,7 @@ import { In } from 'typeorm';
 import { isPrivileged } from '../../auth/constants/role.constant';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
+import { clampPagination } from '../../shared/dtos/pagination-params.dto';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
@@ -117,7 +118,7 @@ export class CompanyService {
     return approved > 0;
   }
 
-  async getCompanies(ctx: RequestContext): Promise<CompanyOutput[]> {
+  async getCompanies(ctx: RequestContext, limit = 100, offset = 0): Promise<CompanyOutput[]> {
     this.logger.log(ctx, `${this.getCompanies.name} was called`);
 
     const actor: Actor = ctx.user!;
@@ -125,13 +126,14 @@ export class CompanyService {
     if (!isAllowed) {
       throw new UnauthorizedException();
     }
+    const { take, skip } = clampPagination(limit, offset);
 
     // Admins see every company; members only see their own.
     // Two-step load: filtering on the members relation would also filter the
     // loaded members, so resolve ids first, then load full rows.
     const companies = this.isAdmin(actor)
-      ? await this.repository.find({ relations: { members: true }, order: { name: 'ASC' } })
-      : await this.findCompaniesWithMembers(await this.findOwnCompanyIds(actor.id));
+      ? await this.repository.find({ relations: { members: true }, order: { name: 'ASC' }, take, skip })
+      : await this.findCompaniesWithMembers(await this.findOwnCompanyIds(actor.id), take, skip);
 
     return companies.map((c) => this.toOutput(c));
   }
@@ -145,7 +147,7 @@ export class CompanyService {
     return rows.map((r) => r.id);
   }
 
-  private async findCompaniesWithMembers(ids: number[]): Promise<Company[]> {
+  private async findCompaniesWithMembers(ids: number[], take?: number, skip?: number): Promise<Company[]> {
     if (ids.length === 0) {
       return [];
     }
@@ -153,6 +155,8 @@ export class CompanyService {
       where: { id: In(ids) },
       relations: { members: true },
       order: { name: 'ASC' },
+      ...(take !== undefined ? { take } : {}),
+      ...(skip !== undefined ? { skip } : {}),
     });
   }
 

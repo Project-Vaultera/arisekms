@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToClass } from 'class-transformer';
-import { Between, ILike, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { normalizeRoles,ROLE } from '../../auth/constants/role.constant';
 import { AppLogger } from '../../shared/logger/logger.service';
@@ -19,6 +19,19 @@ export interface AuditQuery {
   search?: string;
   page?: number;
   limit?: number;
+}
+
+// Single place for generic audit rows: strip query, drop api/v1 prefix so
+// generic `POST api/v1/users` and explicit `users` share one filter value.
+export function normalizeAuditEntityType(url: string): string {
+  const path = (url ?? '').split('?')[0];
+  const parts = path.split('/').filter(Boolean);
+  if (parts[0] === 'api' && parts[1] === 'v1') return parts.slice(2).join('/');
+  return parts.join('/');
+}
+
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
 @Injectable()
@@ -101,12 +114,25 @@ export class AuditService {
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = Math.min(Math.max(query.limit ?? 20, 1), 500);
 
-    const [items, total] = await this.repository.findAndCount({
-      where: this.buildWhere(query),
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const qb = this.repository.createQueryBuilder('log');
+    if (query.action) qb.andWhere('log.action = :action', { action: query.action });
+    if (query.entityType) qb.andWhere('log.entityType = :entityType', { entityType: query.entityType });
+    if (query.actorId !== undefined) qb.andWhere('log.actorId = :actorId', { actorId: query.actorId });
+    if (query.outcome) qb.andWhere('log.outcome = :outcome', { outcome: query.outcome });
+    if (query.from) qb.andWhere('log.createdAt >= :from', { from: new Date(query.from) });
+    if (query.to) qb.andWhere('log.createdAt <= :to', { to: new Date(query.to) });
+    if (query.search) {
+      const term = `%${escapeLike(query.search)}%`;
+      qb.andWhere(
+        '(log.action ILIKE :term ESCAPE \'\\\' OR log.entityType ILIKE :term ESCAPE \'\\\' OR log.entityId ILIKE :term ESCAPE \'\\\')',
+        { term },
+      );
+    }
+    qb.orderBy('log.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
 
     return {
       items: plainToClass(AuditLogOutput, items, { excludeExtraneousValues: true }),
@@ -119,22 +145,5 @@ export class AuditService {
     if (!roles.includes(ROLE.ARISE_IT_ADMIN)) {
       throw new ForbiddenException('Audit records require IT admin access');
     }
-  }
-
-  private buildWhere(query: AuditQuery): Record<string, unknown> | Record<string, unknown>[] {
-    if (query.search) {
-      const term = ILike(`%${query.search}%`);
-      return [{ action: term }, { entityType: term }];
-    }
-
-    const where: Record<string, unknown> = {};
-    if (query.action) where.action = query.action;
-    if (query.entityType) where.entityType = query.entityType;
-    if (query.actorId !== undefined) where.actorId = query.actorId;
-    if (query.outcome) where.outcome = query.outcome;
-    if (query.from && query.to) {
-      where.createdAt = Between(new Date(query.from), new Date(query.to));
-    }
-    return where;
   }
 }

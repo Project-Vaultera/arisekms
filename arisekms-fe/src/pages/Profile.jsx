@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input.jsx';
 import { Label } from '@/components/ui/label.jsx';
 import { SectionTitle } from '@/components/ui/section-title.jsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx';
-import { getTokenRoles, getTokenUserId, ROLE } from '@/lib/rbac.js';
+import { getTokenRoles, getTokenUserId, normalizeRole, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,7 +99,7 @@ export function Profile() {
     window.location.hash = value;
   }
 
-  const isAdmin = getTokenRoles().includes(ROLE.IT_ADMIN);
+  const isAdmin = getTokenRoles().some((r) => [ROLE.IT_ADMIN, ROLE.SECRETARIAT].includes(normalizeRole(r)));
   const hasApproved = isAdmin || companies.some((c) => c.status === 'approved');
 
   const myId = getTokenUserId();

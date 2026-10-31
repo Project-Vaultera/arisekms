@@ -2,6 +2,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
@@ -60,6 +61,8 @@ describe('AuthService', () => {
 
   const mockedConfigService = { get: jest.fn() };
 
+  const mockedDataSource = { query: jest.fn(async () => [{ tokenVersion: 0 }]) };
+
   const mockedLogger = { setContext: jest.fn(), log: jest.fn() };
 
   beforeEach(async () => {
@@ -70,6 +73,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockedJwtService },
         { provide: ConfigService, useValue: mockedConfigService },
         { provide: AppLogger, useValue: mockedLogger },
+        { provide: DataSource, useValue: mockedDataSource },
       ],
     }).compile();
 
@@ -88,9 +92,10 @@ describe('AuthService', () => {
         .spyOn(mockedUserService, 'validateUsernamePassword')
         .mockImplementation(() => userOutput);
 
-      expect(await service.validateUser(ctx, 'jhon', 'somepass')).toEqual(
-        userOutput,
-      );
+      expect(await service.validateUser(ctx, 'jhon', 'somepass')).toEqual({
+        ...userOutput,
+        tokenVersion: 0,
+      });
       expect(mockedUserService.validateUsernamePassword).toBeCalledWith(
         ctx,
         'jhon',
@@ -157,7 +162,7 @@ describe('AuthService', () => {
 
       const result = await service.refreshToken(ctx);
 
-      expect(service.getAuthToken).toBeCalledWith(ctx, userOutput);
+      expect(service.getAuthToken).toBeCalledWith(ctx, { ...userOutput, tokenVersion: 0 });
       expect(result).toMatchObject(authToken);
     });
 
@@ -181,11 +186,12 @@ describe('AuthService', () => {
     const refreshTokenExpiry = 200;
     const user = { id: 5, username: 'username', roles: [ROLE.ARISE_MEMBER] };
 
-    const subject = { sub: user.id };
+    const subject = { sub: user.id, tokenVersion: 0 };
     const payload = {
       username: user.username,
       sub: user.id,
       roles: [ROLE.ARISE_MEMBER],
+      tokenVersion: 0,
     };
 
     beforeEach(() => {

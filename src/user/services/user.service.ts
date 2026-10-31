@@ -3,6 +3,7 @@ import { compare, hash } from 'bcrypt';
 import { plainToClass } from 'class-transformer';
 
 import { AuditService } from '../../audit/services/audit.service';
+import { clampPagination } from '../../shared/dtos/pagination-params.dto';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { CreateUserInput } from '../dtos/user-create-input.dto';
@@ -27,12 +28,27 @@ export class UserService {
   ): Promise<UserOutput> {
     this.logger.log(ctx, `${this.createUser.name} was called`);
 
+    const clash = await this.repository.findOne({
+      where: [{ username: input.username }, { email: input.email }],
+    });
+    if (clash) {
+      throw new ConflictException('Username or email is already in use.');
+    }
+
     const user = plainToClass(User, input);
 
     user.password = await hash(input.password, 10);
 
     this.logger.log(ctx, `calling ${UserRepository.name}.saveUser`);
-    await this.repository.save(user);
+    try {
+      await this.repository.save(user);
+    } catch (e) {
+      // Race: two concurrent signups pass the pre-check, DB unique wins.
+      if (e && typeof e === 'object' && (e as { code?: string }).code === '23505') {
+        throw new ConflictException('Username or email is already in use.');
+      }
+      throw e;
+    }
 
     return plainToClass(UserOutput, user, {
       excludeExtraneousValues: true,
@@ -68,8 +84,8 @@ export class UserService {
     this.logger.log(ctx, `calling ${UserRepository.name}.findAndCount`);
     const [users, count] = await this.repository.findAndCount({
       where: {},
-      take: limit,
-      skip: offset,
+      take: clampPagination(limit, offset).take,
+      skip: clampPagination(limit, offset).skip,
     });
 
     const usersOutput = plainToClass(UserOutput, users, {
@@ -174,9 +190,13 @@ export class UserService {
     }
 
     // merges the input (2nd line) to the found user (1st line)
+    // Bump tokenVersion on sensitive changes so old access/refresh tokens stop working.
+    const sensitiveChanged =
+      input.roles !== undefined || input.isAccountDisabled !== undefined || input.password !== undefined;
     const updatedUser: User = {
       ...user,
       ...input,
+      ...(sensitiveChanged ? { tokenVersion: (user.tokenVersion ?? 0) + 1 } : {}),
     };
 
     this.logger.log(ctx, `calling ${UserRepository.name}.save`);

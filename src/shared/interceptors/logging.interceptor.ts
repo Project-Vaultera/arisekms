@@ -8,12 +8,12 @@ import { ModuleRef } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
-import { AuditService } from '../../audit/services/audit.service';
+import { AuditService, normalizeAuditEntityType } from '../../audit/services/audit.service';
 import { AppLogger } from '../logger/logger.service';
 import { createRequestContext } from '../request-context/util';
 
-// Mutations only: GETs would flood the trail.
-const AUDITED_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
+// Single source for audited verbs; keep in sync with AllExceptionsFilter.
+export const AUDITED_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -63,7 +63,7 @@ export class LoggingInterceptor implements NestInterceptor {
       audit.record({
         actorId: request.user?.id ?? null,
         action: method,
-        entityType: url.split('?')[0].split('/').filter(Boolean).join('/'),
+        entityType: normalizeAuditEntityType(url),
         entityId:
           idCandidate !== null && idCandidate !== undefined
             ? String(idCandidate).slice(0, 64)

@@ -14,6 +14,7 @@ import { isPrivileged } from '../../auth/constants/role.constant';
 import { Actor } from '../../shared/acl/actor.constant';
 import {
   persistUpload,
+  removeUploadFile,
   UPLOADS_DIR,
 } from '../../shared/files/file-storage';
 import { AppLogger } from '../../shared/logger/logger.service';
@@ -479,6 +480,7 @@ export class MembershipService {
       throw new UnauthorizedException();
     }
     await this.documentRepository.remove(doc);
+    removeUploadFile(doc.storedName);
     return this.toOutput(await this.loadCompany(companyId));
   }
 

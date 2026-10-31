@@ -394,6 +394,42 @@ describe('KMS modules (e2e)', () => {
     });
   });
 
+  describe('Hardening fixes', () => {
+    it('duplicate signup returns 409, not 500', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({
+          name: 'member-one',
+          username: 'member-one',
+          password: 'member-pass-1',
+          email: 'member-one@example.com',
+        })
+        .expect(HttpStatus.CONFLICT);
+    });
+
+    it('huge limit is clamped, not OOM', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/reports')
+        .query({ limit: 1000000, offset: 0 })
+        .set('Authorization', auth(memberToken))
+        .expect(HttpStatus.OK);
+      expect(res.body.data.length).toBeLessThanOrEqual(100);
+    });
+
+    it('disabled user token stops working', async () => {
+      const { user: temp, token: tempToken } = await registerAndLogin(app.getHttpServer(), 'temp-disable');
+      await request(app.getHttpServer())
+        .patch(`/users/${temp.id}`)
+        .set('Authorization', auth(adminToken))
+        .send({ isAccountDisabled: true })
+        .expect(HttpStatus.OK);
+      await request(app.getHttpServer())
+        .get('/reports')
+        .set('Authorization', auth(tempToken))
+        .expect(HttpStatus.UNAUTHORIZED);
+    });
+  });
+
   afterAll(async () => {
     await app.close();
     await closeDBAfterTest();

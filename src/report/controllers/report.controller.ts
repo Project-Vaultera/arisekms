@@ -16,7 +16,6 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileTypeValidator, MaxFileSizeValidator, ParseFilePipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -29,10 +28,9 @@ import {
 } from '../../shared/dtos/base-api-response.dto';
 import { PaginationParamsDto } from '../../shared/dtos/pagination-params.dto';
 import {
-  ALLOWED_UPLOAD_MIMETYPES,
-  MAX_UPLOAD_BYTES,
   multerMemoryOptions,
-} from '../../shared/files/file-storage';
+  safeDownloadFilename,
+  uploadFilePipe } from '../../shared/files/file-storage';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
@@ -40,13 +38,8 @@ import { CreateReportInput, UpdateReportInput } from '../dtos/report-input.dto';
 import { ReportOutput } from '../dtos/report-output.dto';
 import { ReportService } from '../services/report.service';
 
-const reportFilePipe = new ParseFilePipe({
-  fileIsRequired: true,
-  validators: [
-    new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
-    new FileTypeValidator({ fileType: ALLOWED_UPLOAD_MIMETYPES, fallbackToMimetype: true }),
-  ],
-});
+
+const reportFilePipe = uploadFilePipe();
 
 @ApiTags('reports')
 @Controller('reports')
@@ -127,7 +120,7 @@ export class ReportController {
     const file = await this.reportService.getReportFile(ctx, id);
     res.set({
       'Content-Type': file.mimeType,
-      'Content-Disposition': `attachment; filename="${file.filename}"`,
+      'Content-Disposition': `attachment; filename="${safeDownloadFilename(file.filename)}"`,
     });
     return new StreamableFile(file.stream);
   }

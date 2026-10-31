@@ -9,7 +9,7 @@ import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { cn } from '@/lib/utils.js';
-import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
+import { effectiveRole, getTokenRoles, isPrivilegedRoles, ROLE } from '@/lib/rbac.js';
 
 // shortcut: static fallback until the first verified certificate lands;
 // the table below always prefers live GET /companies + /certificates data.
@@ -288,7 +288,7 @@ export function Leaderboards() {
   const [selectedName, setSelectedName] = useState(null);
   const selected = display.find((r) => r.companyName === selectedName) ?? display[0] ?? null;
   const selectedCerts = (selected && board.certsByCompany.get(selected.companyName)) ?? [];
-  const isAdmin = effectiveRole(getTokenRoles()) === ROLE.IT_ADMIN;
+  const isAdmin = isPrivilegedRoles(getTokenRoles());
   const selectedMembers = (selected?.companyId && companies.find((c) => c.id === selected.companyId)?.members) ?? [];
   const [first, second, third] = display;
   const rest = display.slice(3);

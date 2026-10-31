@@ -33,6 +33,7 @@ describe('UserService', () => {
   const mockedLogger = { setContext: jest.fn(), log: jest.fn() };
 
   beforeEach(async () => {
+    mockedRepository.findOne.mockResolvedValue(null);
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
@@ -305,6 +306,7 @@ describe('UserService', () => {
         password: 'random-password',
         roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
+        tokenVersion: 0,
         email: 'randomUser@random.com',
         createdAt: currentDate,
         updatedAt: currentDate,
@@ -320,6 +322,7 @@ describe('UserService', () => {
         password: input.password,
         roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
+        tokenVersion: 1,
         email: 'randomUser@random.com',
         createdAt: currentDate,
         updatedAt: currentDate,
@@ -359,6 +362,7 @@ describe('UserService', () => {
         password: 'random-password',
         roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
+        tokenVersion: 0,
         email: 'randomUser@random.com',
         createdAt: new Date(),
         updatedAt: new Date(),

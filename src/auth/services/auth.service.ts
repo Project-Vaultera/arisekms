@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { plainToClass } from 'class-transformer';
+import { DataSource } from 'typeorm';
 
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
@@ -21,6 +22,7 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private dataSource: DataSource,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(AuthService.name);
@@ -45,7 +47,9 @@ export class AuthService {
       throw new UnauthorizedException('This user account has been disabled');
     }
 
-    return user;
+    const row = await this.dataSource.query(`SELECT "tokenVersion" FROM users WHERE id = $1`, [user.id]);
+
+    return { ...user, tokenVersion: row?.[0]?.tokenVersion ?? 0 } as UserAccessTokenClaims;
   }
 
   login(ctx: RequestContext): AuthTokenOutput {
@@ -77,8 +81,9 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid user id');
     }
+    const row = await this.dataSource.query(`SELECT "tokenVersion" FROM users WHERE id = $1`, [user.id]);
 
-    return this.getAuthToken(ctx, user);
+    return this.getAuthToken(ctx, { ...user, tokenVersion: row?.[0]?.tokenVersion ?? 0 } as never);
   }
 
   getAuthToken(
@@ -87,11 +92,13 @@ export class AuthService {
   ): AuthTokenOutput {
     this.logger.log(ctx, `${this.getAuthToken.name} was called`);
 
-    const subject = { sub: user.id };
+    const tokenVersion = (user as { tokenVersion?: number }).tokenVersion ?? 0;
+    const subject = { sub: user.id, tokenVersion };
     const payload = {
-      username: user.username,
+      username: (user as { username?: string }).username,
       sub: user.id,
-      roles: user.roles,
+      roles: (user as { roles?: unknown }).roles,
+      tokenVersion,
     };
 
     const authToken = {

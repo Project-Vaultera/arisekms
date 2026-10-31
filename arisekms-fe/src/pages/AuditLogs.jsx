@@ -164,48 +164,46 @@ export function AuditLogs() {
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState(null);
 
+  const [debouncedQ, setDebouncedQ] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
   useEffect(() => {
     setLoading(true);
+    const params = { limit: pageSize, offset: page * pageSize };
+    if (action !== 'all') params.action = action;
+    if (entity !== 'all') params.entityType = entity;
+    if (outcome !== 'all') params.outcome = outcome;
+    if (debouncedQ) params.search = debouncedQ;
     api
-      .get('/audit-logs', { params: { limit: 100, offset: 0 } })
+      .get('/audit-logs', { params })
       .then((res) => {
         setLogs(res.data.data ?? []);
         setTotal(res.data.meta?.count ?? 0);
       })
       .catch(() => toast.error('Could not load audit logs'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [action, entity, outcome, debouncedQ, page, pageSize]);
 
-  // Distinct values come from the loaded snapshot, nothing hardcoded.
+  // Distinct values come from the loaded page; pick All to clear a filter
+  // that no longer appears on this page.
   const actions = useMemo(() => [...new Set(logs.map((l) => l.action).filter(Boolean))].sort(), [logs]);
   const entities = useMemo(() => [...new Set(logs.map((l) => l.entityType).filter(Boolean))].sort(), [logs]);
 
-  // shortcut: client-side filter + paging over a fetch-100 snapshot; move to
-  // limit/offset + BE filters if the trail outgrows it.
-  const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return logs.filter((l) => {
-      if (action !== 'all' && l.action !== action) return false;
-      if (entity !== 'all' && l.entityType !== entity) return false;
-      if (outcome !== 'all' && (l.outcome ?? '—') !== outcome) return false;
-      if (!needle) return true;
-      return [l.action, l.entityType, l.entityId, String(l.actorId ?? ''), JSON.stringify(l.metadata ?? {})]
-        .join(' ')
-        .toLowerCase()
-        .includes(needle);
-    });
-  }, [logs, q, action, entity, outcome]);
-
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const rows = logs;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, pageCount - 1);
-  const visible = rows.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const visible = rows;
 
   function updateFilter(setter, value) {
     setter(value);
     setPage(0);
   }
 
-  // Dashboard aggregates over the full snapshot (not the log filters).
+  // Charts aggregate the current page only; use BE aggregates when the trail grows.
   const errors = useMemo(() => logs.filter((l) => l.outcome === 'error').length, [logs]);
   const errorRate = useMemo(
     () => (logs.length === 0 ? '—' : `${((errors / logs.length) * 100).toFixed(1)}%`),
@@ -279,10 +277,10 @@ export function AuditLogs() {
         subtitle="Mutating requests and sensitive admin actions across the system"
       />
       <div className="grid grid-cols-1 gap-3 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-4">
-        <StatCard label="Rows (snapshot)" value={logs.length} hint="Latest 100 writes" loading={loading} />
-        <StatCard label="Errors" value={errors} hint="Outcome = error" tint="text-[var(--sendai-crimson)]/10" loading={loading} />
-        <StatCard label="Error rate" value={errorRate} hint="Errors ÷ rows" tint="text-[var(--sendai-orange)]/10" loading={loading} />
-        <StatCard label="Distinct actors" value={distinctActors} hint="Non-null actor ids" tint="text-[#0B4484]/10" loading={loading} />
+        <StatCard label="Rows (total)" value={total} hint="All matching writes" loading={loading} />
+        <StatCard label="Errors (page)" value={errors} hint="Outcome = error · current page" tint="text-[var(--sendai-crimson)]/10" loading={loading} />
+        <StatCard label="Error rate (page)" value={errorRate} hint="Errors ÷ page rows" tint="text-[var(--sendai-orange)]/10" loading={loading} />
+        <StatCard label="Distinct actors (page)" value={distinctActors} hint="Non-null actor ids · current page" tint="text-[#0B4484]/10" loading={loading} />
       </div>
       <div className="grid grid-cols-1 gap-3 px-4 lg:px-6 xl:grid-cols-2">
         <Card>
@@ -443,7 +441,7 @@ export function AuditLogs() {
       </div>
       <Card className="mx-4 lg:mx-6">
         <CardHeader>
-          <CardTitle>Trail ({rows.length}{total ? ` of ${total}` : ''})</CardTitle>
+          <CardTitle>Trail ({total} rows)</CardTitle>
           <CardDescription>
             Governance is IT-admin only. Reads are never audited; writes are.
             {donutSelected !== null && ` Filtered by chart: ${donutSelected} only — click the slice again to clear.`}
@@ -522,7 +520,7 @@ export function AuditLogs() {
               )}
             </TableBody>
           </Table>
-          {rows.length > 0 && (
+          {total > 0 && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
               <div className="flex items-center gap-3">
                 <FilterSelect
@@ -533,7 +531,7 @@ export function AuditLogs() {
                   options={['10', '25', '50', '100']}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Showing {safePage * pageSize + 1}–{Math.min(rows.length, safePage * pageSize + visible.length)} of {rows.length}
+                  Showing {total === 0 ? 0 : safePage * pageSize + 1}–{Math.min(total, safePage * pageSize + visible.length)} of {total}
                 </p>
               </div>
               <div className="flex items-center gap-2">

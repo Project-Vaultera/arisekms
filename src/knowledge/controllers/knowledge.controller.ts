@@ -3,13 +3,10 @@ import {
   ClassSerializerInterceptor,
   Controller,
   Delete,
-  FileTypeValidator,
   Get,
   HttpCode,
   HttpStatus,
-  MaxFileSizeValidator,
   Param,
-  ParseFilePipe,
   Patch,
   Post,
   Query,
@@ -31,10 +28,9 @@ import {
 } from '../../shared/dtos/base-api-response.dto';
 import { PaginationParamsDto } from '../../shared/dtos/pagination-params.dto';
 import {
-  ALLOWED_UPLOAD_MIMETYPES,
-  MAX_UPLOAD_BYTES,
   multerMemoryOptions,
-} from '../../shared/files/file-storage';
+  safeDownloadFilename,
+  uploadFilePipe } from '../../shared/files/file-storage';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
@@ -42,13 +38,8 @@ import { CreateKnowledgeInput, UpdateKnowledgeInput } from '../dtos/knowledge-in
 import { KnowledgeOutput } from '../dtos/knowledge-output.dto';
 import { KnowledgeService } from '../services/knowledge.service';
 
-const knowledgeFilePipe = new ParseFilePipe({
-  fileIsRequired: true,
-  validators: [
-    new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
-    new FileTypeValidator({ fileType: ALLOWED_UPLOAD_MIMETYPES, fallbackToMimetype: true }),
-  ],
-});
+
+const knowledgeFilePipe = uploadFilePipe();
 
 @ApiTags('knowledge')
 @Controller('knowledge')
@@ -129,7 +120,7 @@ export class KnowledgeController {
     const file = await this.knowledgeService.getDocumentFile(ctx, id);
     res.set({
       'Content-Type': file.mimeType,
-      'Content-Disposition': `attachment; filename="${file.filename}"`,
+      'Content-Disposition': `attachment; filename="${safeDownloadFilename(file.filename)}"`,
     });
     return new StreamableFile(file.stream);
   }
