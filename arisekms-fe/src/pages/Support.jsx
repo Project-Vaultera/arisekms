@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { FilterSelect } from '@/components/ui/filter-select.jsx';
-import { effectiveRole, getTokenRoles, getTokenUserId } from '@/lib/rbac.js';
+import { effectiveRole, getTokenRoles, getTokenUserId, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
 const CATEGORIES = ['Report submission', 'Knowledge Products', 'Membership', 'SkillsBuild', 'Account access', 'Other'];
@@ -38,7 +38,7 @@ const CHIP_STYLE = {
 };
 
 export function Support() {
-  const isAdmin = effectiveRole(getTokenRoles()) === 'ADMIN';
+  const isAdmin = effectiveRole(getTokenRoles()) === ROLE.IT_ADMIN;
   const userId = getTokenUserId();
   const [tickets, setTickets] = useState([]);
   const [filter, setFilter] = useState('All');

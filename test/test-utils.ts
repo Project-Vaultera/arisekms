@@ -58,7 +58,7 @@ export const seedAdminUser = async (
     name: 'Default Admin User',
     username: 'default-admin',
     password: 'default-admin-password',
-    roles: [ROLE.ADMIN],
+    roles: [ROLE.ARISE_IT_ADMIN],
     isAccountDisabled: false,
     email: 'default-admin@example.com',
   };

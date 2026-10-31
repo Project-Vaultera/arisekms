@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuditModule } from '../audit/audit.module';
 import { JwtAuthStrategy } from '../auth/strategies/jwt-auth.strategy';
 import { SharedModule } from '../shared/shared.module';
 import { UserModule } from '../user/user.module';
@@ -16,7 +17,7 @@ import { CompanyAclService } from './services/company-acl.service';
 import { MembershipService } from './services/membership.service';
 
 @Module({
-  imports: [SharedModule, TypeOrmModule.forFeature([Company, MembershipContact, MembershipDocument]), UserModule],
+  imports: [SharedModule, TypeOrmModule.forFeature([Company, MembershipContact, MembershipDocument]), UserModule, AuditModule],
   providers: [CompanyService, JwtAuthStrategy, CompanyAclService, CompanyRepository, MembershipService, MembershipContactRepository, MembershipDocumentRepository],
   controllers: [CompanyController],
   exports: [CompanyService, MembershipService],

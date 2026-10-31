@@ -2,14 +2,16 @@
 // shape: stable id, outcome title, one-line summary, how-to details,
 // CTA button label + route). Steps complete only when the user marks them
 // done — visiting a page never completes anything.
+import { ROLE } from './rbac.js';
+
 export const QUICKSTART_STEPS = {
-  ADMIN: [
+  [ROLE.IT_ADMIN]: [
     {
       id: 'review-approvals',
       title: 'Review pending approvals',
       summary: 'Decide on membership applications waiting in the queue.',
       details: [
-        'Open Approvals from the Admin Center section of the sidebar.',
+        'Open Approvals from the Secretariat Overview section of the sidebar.',
         'Read the company profile, then approve — or reject with a reason so the member knows what to fix.',
         'Rejected applications return to draft; the member is notified of your feedback.',
       ],
@@ -88,7 +90,7 @@ export const QUICKSTART_STEPS = {
       to: '/support',
     },
   ],
-  USER: [
+  [ROLE.MEMBER]: [
     {
       id: 'membership-form',
       title: 'Complete your membership application',
@@ -173,3 +175,54 @@ export const QUICKSTART_STEPS = {
     },
   ],
 };
+
+// Secretariat works the same ops queue as IT admin (approvals, directory, reports).
+QUICKSTART_STEPS[ROLE.SECRETARIAT] = QUICKSTART_STEPS[ROLE.IT_ADMIN];
+
+// Analysts read content only: no submissions, uploads, or membership actions.
+QUICKSTART_STEPS[ROLE.DATA_ANALYST] = [
+  {
+    id: 'browse-knowledge',
+    title: 'Browse knowledge products',
+    summary: 'Manuals, guides, and policies from across the network.',
+    details: [
+      'Search by title or filter by category: ECE, manuals, policies, or terms.',
+      'Download what you need for analysis work.',
+    ],
+    cta: 'Browse knowledge',
+    to: '/knowledge-products',
+  },
+  {
+    id: 'review-reports',
+    title: 'Read submitted reports',
+    summary: 'Quarterly, annual, and practice reports from members.',
+    details: [
+      'Filter the report summary by type, author gender, or date range.',
+      'Watch each report move through the review pipeline: submitted, approved, or rejected.',
+    ],
+    cta: 'Open report summary',
+    to: '/reports-summary',
+  },
+  {
+    id: 'review-activities',
+    title: 'Read logged activities',
+    summary: 'Performance entries members log, once approved.',
+    details: [
+      'Filter the activity log by type, target audience, and review status.',
+      'Only approved entries feed the KPI cards.',
+    ],
+    cta: 'Open activity log',
+    to: '/activity',
+  },
+  {
+    id: 'track-performance',
+    title: 'Track performance and metrics',
+    summary: 'Approved activities, KPIs, and the momentum chart.',
+    details: [
+      'Key outcomes (approved only) sit above the context cards.',
+      'The SkillsBuild card counts certificates as a proxy — it is labeled as such.',
+    ],
+    cta: 'Open performance',
+    to: '/reports-performance',
+  },
+];

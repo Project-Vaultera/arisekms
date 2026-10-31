@@ -4,7 +4,7 @@ import { ThemeProvider } from 'next-themes';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { api, getAccessToken } from '@/api/client.js';
-import { allowedRoute, approvalLocked, effectiveRole } from '@/lib/rbac.js';
+import { allowedRoute, approvalLocked, effectiveRole, isStaffRole } from '@/lib/rbac.js';
 import { Dashboard } from '@/pages/Dashboard.jsx';
 import { Login } from '@/pages/Login.jsx';
 import { Signup } from '@/pages/Signup.jsx';
@@ -26,7 +26,8 @@ function Shell() {
   const [approval, setApproval] = useState({ loading: true, hasApproved: false, hasCompany: false });
   const hasToken = !!getAccessToken();
   const role = effectiveRole(roles);
-  const isAdmin = role === 'ADMIN';
+  // Staff (IT admin, secretariat, analyst) bypass the membership-approval lock.
+  const isAdmin = isStaffRole(role);
 
   useEffect(() => {
     if (!hasToken || isAdmin) {

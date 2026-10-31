@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/c
 import { plainToClass } from 'class-transformer';
 import { In } from 'typeorm';
 
-import { ROLE } from '../../auth/constants/role.constant';
+import { isPrivileged } from '../../auth/constants/role.constant';
 import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
@@ -121,9 +121,9 @@ export class TicketService {
       throw new UnauthorizedException();
     }
 
-    // Only admins triage; authors may only close/reopen their own tickets.
+    // Only staff triage; authors may only close/reopen their own tickets.
     const patch: UpdateTicketInput = { ...input };
-    if (!actor.roles?.includes(ROLE.ADMIN)) {
+    if (!isPrivileged(actor.roles)) {
       const ownCloseOrReopen =
         ticket.author.id === actor.id &&
         (patch.status === TicketStatus.RESOLVED || patch.status === TicketStatus.OPEN);

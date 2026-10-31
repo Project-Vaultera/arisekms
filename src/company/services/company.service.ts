@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { plainToClass } from 'class-transformer';
 import { In } from 'typeorm';
 
-import { ROLE } from '../../auth/constants/role.constant';
+import { isPrivileged } from '../../auth/constants/role.constant';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
 import { AppLogger } from '../../shared/logger/logger.service';
@@ -32,7 +32,7 @@ export class CompanyService {
   }
 
   private isAdmin(actor: Actor): boolean {
-    return actor.roles?.includes(ROLE.ADMIN) ?? false;
+    return isPrivileged(actor.roles);
   }
 
   private toOutput(company: Company): CompanyOutput {

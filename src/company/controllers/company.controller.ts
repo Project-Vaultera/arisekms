@@ -87,7 +87,7 @@ export class CompanyController {
   @ApiResponse({ status: HttpStatus.CREATED, type: SwaggerBaseApiResponse(CompanyOutput) })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, type: BaseApiErrorResponse })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async createCompany(
@@ -153,7 +153,7 @@ export class CompanyController {
   @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse(CompanyOutput) })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, type: BaseApiErrorResponse })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async updateCompany(
@@ -173,7 +173,7 @@ export class CompanyController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, type: BaseApiErrorResponse })
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   async deleteCompany(
     @ReqContext() ctx: RequestContext,
@@ -190,7 +190,7 @@ export class CompanyController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, type: BaseApiErrorResponse })
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async addMember(
@@ -209,7 +209,7 @@ export class CompanyController {
   @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse(CompanyOutput) })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, type: BaseApiErrorResponse })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async removeMember(
@@ -227,7 +227,7 @@ export class CompanyController {
   @ApiOperation({ summary: 'List submitted membership profiles API (admin-only)' })
   @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse([MembershipProfileOutput]) })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async listSubmissions(
@@ -291,7 +291,7 @@ export class CompanyController {
   @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse(MembershipProfileOutput) })
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async reviewProfile(

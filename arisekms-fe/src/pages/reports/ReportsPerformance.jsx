@@ -22,7 +22,7 @@ import { DateRangeFilter, presetRange } from '@/components/reports/DateRangeFilt
 import { StatCard } from '@/components/reports/StatCard.jsx';
 import { TablePager } from '@/components/reports/TablePager.jsx';
 import { TARGET_AUDIENCES } from '@/lib/target-audiences.js';
-import { getTokenRoles } from '@/lib/rbac.js';
+import { getTokenRoles, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
 const ACTIVITY_TYPES = [{ value: 'all', label: 'All activity' }, ...ACTIVITY_TYPE_OPTIONS];
@@ -55,6 +55,7 @@ function statusStyle(status) {
 
 export function ReportsPerformance() {
   const [users, setUsers] = useState([]);
+  const [usersVisible, setUsersVisible] = useState(true);
   const [reports, setReports] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -70,7 +71,7 @@ export function ReportsPerformance() {
   const [formOpen, setFormOpen] = useState(false);
   const [actingId, setActingId] = useState(null);
 
-  const isAdmin = getTokenRoles().includes('ADMIN');
+  const isAdmin = getTokenRoles().includes(ROLE.IT_ADMIN);
 
   function refreshActivities() {
     return api.get('/activities', { params: { limit: 100, offset: 0 } })
@@ -82,7 +83,8 @@ export function ReportsPerformance() {
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      api.get('/users', { params: { limit: 100, offset: 0 } }),
+      // Analysts are denied /users: degrade to hiding the member card, not failing the page.
+      api.get('/users', { params: { limit: 100, offset: 0 } }).catch(() => ({ data: { data: null } })),
       api.get('/reports', { params: { limit: 100, offset: 0 } }),
       api.get('/certificates', { params: { limit: 100, offset: 0 } }),
       api.get('/activities', { params: { limit: 100, offset: 0 } }).catch(() => ({ data: { data: [] } })),
@@ -90,6 +92,7 @@ export function ReportsPerformance() {
       .then(([u, r, c, a]) => {
         if (cancelled) return;
         setUsers(u.data.data ?? []);
+        setUsersVisible(u.data.data !== null);
         setReports(r.data.data ?? []);
         setCertificates(c.data.data ?? []);
         setActivities(a.data.data ?? []);
@@ -228,7 +231,7 @@ export function ReportsPerformance() {
       </div>
       <p className="px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase lg:px-6">Context · not KPIs</p>
       <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-4">
-        <StatCard label="Active members" value={val(activeMembers)} hint="Users · live" icon={UserGroupIcon} tint="text-[#00ada8]/10" loading={loading} />
+        {usersVisible && <StatCard label="Active members" value={val(activeMembers)} hint="Users · live" icon={UserGroupIcon} tint="text-[#00ada8]/10" loading={loading} />}
         <StatCard label="SkillsBuild proxy" value={val(skillsbuild)} hint="Certificates issued · proxy, not enrollment" icon={Award01Icon} tint="text-[var(--sendai-orange)]/10" loading={loading} />
         <StatCard label="Reports in date range" value={val(filteredReports.length)} hint="Reports matching dates" icon={File02Icon} tint="text-[var(--sendai-teal)]/10" loading={loading} />
         <StatCard label="Activities logged" value={val(filteredActivities.length)} hint="Matching date/type/audience/status" icon={Medal01Icon} tint="text-[var(--sendai-plum)]/10" loading={loading} />

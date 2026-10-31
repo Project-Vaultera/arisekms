@@ -9,7 +9,7 @@ import {
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useDashboardData } from '@/hooks/use-dashboard-data.js';
-import { effectiveRole, getTokenRoles } from '@/lib/rbac.js';
+import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
 function fmt(n) {
@@ -24,7 +24,7 @@ export function SectionCards({ summary } = {}) {
   const c = data.counts;
 
   const cards =
-    role === 'ADMIN'
+    role === ROLE.IT_ADMIN
       ? [
           {
             label: 'Active Members',

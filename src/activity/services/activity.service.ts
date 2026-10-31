@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/c
 import { plainToClass } from 'class-transformer';
 import { In } from 'typeorm';
 
-import { ROLE } from '../../auth/constants/role.constant';
+import { isPrivileged } from '../../auth/constants/role.constant';
 import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
@@ -122,8 +122,8 @@ export class ActivityService {
       throw new UnauthorizedException();
     }
 
-    // Only admins decide approval; members' status input is dropped.
-    const patch = actor.roles?.includes(ROLE.ADMIN) ? { ...input } : { ...input, status: undefined };
+    // Only staff decide approval; members' status input is dropped.
+    const patch = isPrivileged(actor.roles) ? { ...input } : { ...input, status: undefined };
     if (patch.status === undefined) delete (patch as Partial<Activity>).status;
     const updated: Activity = { ...activity, ...patch } as Activity;
     if (input.happenedAt !== undefined) updated.happenedAt = input.happenedAt as unknown as Date;

@@ -63,7 +63,7 @@ describe('ArticleService', () => {
     it('should get user from user claims user id', () => {
       ctx.user = {
         id: 1,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         username: 'testuser',
       };
 
@@ -74,7 +74,7 @@ describe('ArticleService', () => {
     it('should call repository save with proper article input and return proper output', async () => {
       ctx.user = {
         id: 1,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         username: 'testuser',
       };
 
@@ -186,7 +186,7 @@ describe('ArticleService', () => {
     it('should get article by id', () => {
       ctx.user = {
         id: 1,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         username: 'testuser',
       };
       const articleId = 1;
@@ -211,7 +211,7 @@ describe('ArticleService', () => {
     it('should save article with updated title and post', async () => {
       ctx.user = {
         id: 1,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         username: 'testuser',
       };
       const articleId = 1;
@@ -242,7 +242,7 @@ describe('ArticleService', () => {
     it('should throw unauthorized exception when someone other than resource owner tries to update article', async () => {
       ctx.user = {
         id: 2,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         username: 'testuser',
       };
       const articleId = 1;
@@ -275,7 +275,7 @@ describe('ArticleService', () => {
     it('should call repository.remove with correct parameter', async () => {
       ctx.user = {
         id: 1,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         username: 'testuser',
       };
 
@@ -303,7 +303,7 @@ describe('ArticleService', () => {
     it('should throw unauthorized exception when someone other than resource owner tries to delete article', async () => {
       ctx.user = {
         id: 2,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         username: 'testuser',
       };
       const articleId = 1;

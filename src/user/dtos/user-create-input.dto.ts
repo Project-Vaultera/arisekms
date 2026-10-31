@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
   ArrayNotEmpty,
   IsAlphanumeric,
   IsArray,
@@ -34,9 +35,10 @@ export class CreateUserInput {
   @Length(6, 100)
   password: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Exactly one role per user.' })
   @IsArray()
   @ArrayNotEmpty()
+  @ArrayMaxSize(1)
   @IsEnum(ROLE, { each: true })
   roles: ROLE[];
 

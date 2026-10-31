@@ -10,7 +10,6 @@ import {
   CheckmarkCircle01Icon,
   ExternalLinkIcon,
   File02Icon,
-  GridViewIcon,
   HelpCircleIcon,
   Home01Icon,
   Logout01Icon,
@@ -26,7 +25,7 @@ import {
 import { ProfileMenu } from '@/components/ProfileMenu.jsx';
 import { clearTokens } from '@/api/client.js';
 import logoUrl from '/arise-ph_logo.png';
-import { effectiveRole, getTokenRoles } from '@/lib/rbac.js';
+import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
 import {
   Sidebar,
   SidebarContent,
@@ -48,8 +47,13 @@ import {
 } from '@/components/ui/dropdown-menu.jsx';
 import { cn } from '@/lib/utils.js';
 
-const ADMIN_CENTER = [
-  { id: 'admin-overview', label: 'Admin Overview', icon: GridViewIcon, to: '/admin-overview' },
+const REPORTS_LINKS = [
+  { id: 'reports-membership', label: 'Membership', icon: Agreement01Icon, to: '/reports-membership' },
+  { id: 'reports-summary', label: 'Report Summary', icon: ChartUpIcon, to: '/reports-summary' },
+  { id: 'reports-performance', label: 'Performance and Metrics', icon: Medal01Icon, to: '/reports-performance' },
+];
+
+const SECRETARIAT_OVERVIEW = [
   { id: 'member-directory', label: 'Member Directory', icon: UserGroupIcon, to: '/member-directory' },
   { id: 'admin-approvals', label: 'Approvals', icon: CheckmarkCircle01Icon, to: '/admin-approvals' },
   {
@@ -57,12 +61,15 @@ const ADMIN_CENTER = [
     label: 'Reports',
     icon: BarChartIcon,
     // TODO: replace with real report destinations.
-    children: [
-      { id: 'reports-membership', label: 'Membership', icon: Agreement01Icon, to: '/reports-membership' },
-      { id: 'reports-summary', label: 'Report Summary', icon: ChartUpIcon, to: '/reports-summary' },
-      { id: 'reports-performance', label: 'Performance and Metrics', icon: Medal01Icon, to: '/reports-performance' },
-    ],
+    children: REPORTS_LINKS,
   },
+];
+
+// IT-admin-only system section: accounts + troubleshooting (support queue).
+const GOVERNANCE = [
+  { id: 'governance-audit', label: 'Audit Logs', icon: File02Icon, to: '/governance-audit' },
+  { id: 'governance-users', label: 'User Directory', icon: Shield01Icon, to: '/governance-users' },
+  { id: 'governance-support', label: 'Support Monitoring', icon: HelpCircleIcon, to: '/governance-support' },
 ];
 
 const MAIN = [
@@ -178,6 +185,8 @@ export function AriseSidebar({ locked = false }) {
   const collapsed = state === 'collapsed';
   const role = effectiveRole(getTokenRoles());
   const navigate = useNavigate();
+  const isStaff = role === ROLE.IT_ADMIN || role === ROLE.SECRETARIAT;
+  const isAnalyst = role === ROLE.DATA_ANALYST;
   // Pending members see only the membership form until approval.
   const main = locked ? MAIN.filter((item) => item.id === 'membership-form') : MAIN;
 
@@ -192,14 +201,41 @@ export function AriseSidebar({ locked = false }) {
         <div className="px-2 pt-3 pb-1">
           <ProfileMenu />
         </div>
-        {role === 'ADMIN' && <SidebarSeparator className="mx-2" />}
+        {isStaff && <SidebarSeparator className="mx-2" />}
+        {isAnalyst && <SidebarSeparator className="mx-2" />}
 
-        {role === 'ADMIN' && (
+        {role === ROLE.IT_ADMIN && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sm uppercase tracking-wider group-data-[collapsible=icon]:hidden">Admin Center</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sm uppercase tracking-wider group-data-[collapsible=icon]:hidden">Governance</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {ADMIN_CENTER.map((item) =>
+                {GOVERNANCE.map((item) => (
+                  <Item key={item.id} item={item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isAnalyst && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sm uppercase tracking-wider group-data-[collapsible=icon]:hidden">Reports</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {REPORTS_LINKS.filter((item) => item.id !== 'reports-membership').map((item) => (
+                  <Item key={item.id} item={item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isStaff && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sm uppercase tracking-wider group-data-[collapsible=icon]:hidden">Secretariat Overview</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {SECRETARIAT_OVERVIEW.map((item) =>
                   item.children ? (
                     collapsed ? (
                       <CollapsedReportsMenu

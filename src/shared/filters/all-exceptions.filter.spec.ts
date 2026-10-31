@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ModuleRef } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -27,6 +28,8 @@ describe('AllExceptionsFilter', () => {
     warn: jest.fn().mockReturnThis(),
     setContext: jest.fn().mockReturnThis(),
   };
+  const mockedAudit = { record: jest.fn() };
+  const mockedModuleRef = { get: jest.fn(() => mockedAudit) };
   let filter: AllExceptionsFilter<any>;
 
   beforeEach(async () => {
@@ -57,6 +60,7 @@ describe('AllExceptionsFilter', () => {
         AllExceptionsFilter,
         { provide: ConfigService, useValue: mockConfigService },
         { provide: AppLogger, useValue: mockedLogger },
+        { provide: ModuleRef, useValue: mockedModuleRef },
       ],
     }).compile();
 
@@ -192,5 +196,34 @@ describe('AllExceptionsFilter', () => {
       }),
     );
     dateSpy.mockClear();
+  });
+
+  it('should audit failed mutations but not failed reads', async () => {
+    const postCtx = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          ...mockRequest,
+          method: 'POST',
+          url: '/api/v1/auth/login',
+          body: { username: 'intruder' },
+          params: {},
+        }),
+        getResponse: () => mockResponse,
+      }),
+    };
+    filter.catch(new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED), postCtx as any);
+    expect(mockedAudit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'POST', outcome: 'error', statusCode: 401 }),
+    );
+
+    mockedAudit.record.mockClear();
+    const getCtx = {
+      switchToHttp: () => ({
+        getRequest: () => ({ ...mockRequest, method: 'GET', url: '/api/v1/users' }),
+        getResponse: () => mockResponse,
+      }),
+    };
+    filter.catch(new HttpException('Forbidden', HttpStatus.FORBIDDEN), getCtx as any);
+    expect(mockedAudit.record).not.toHaveBeenCalled();
   });
 });

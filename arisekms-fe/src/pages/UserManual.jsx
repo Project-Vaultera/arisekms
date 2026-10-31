@@ -20,7 +20,7 @@ import {
 import { PageHero } from '@/components/PageHero.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
-import { effectiveRole, getTokenRoles } from '@/lib/rbac.js';
+import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
 const CAPTURED = 'October 2026';
@@ -52,7 +52,7 @@ function Shot({ shots }) {
 }
 
 const MANUAL = {
-  USER: [
+  [ROLE.MEMBER]: [
     {
       id: 'u-home',
       title: 'Start at Home',
@@ -142,18 +142,18 @@ const MANUAL = {
       ],
     },
   ],
-  ADMIN: [
+  [ROLE.IT_ADMIN]: [
     {
       id: 'a-overview',
-      title: 'Start at the Admin Overview',
+      title: 'Start at the Secretariat Overview',
       icon: GridViewIcon,
       body: [
-        'The Admin Overview is the morning check. Four cards summarize the network — Active Members (with inactive and total counts), Certifications Submitted, Submitted Reports, and Knowledge Items — each linking to its area.',
+        'The Secretariat Overview is the morning check. Four cards summarize the network — Active Members (with inactive and total counts), Certifications Submitted, Submitted Reports, and Knowledge Items — each linking to its area.',
         'Below them, three queue cards count exactly what needs decisions: Pending reports awaiting approval, Pending certificates awaiting verification, and Open tickets awaiting triage. Every card links straight to the Approvals page.',
         'The company table attributes every report, certificate, and open ticket to its author’s company, with per-company counts and ten rows per page. The Recent Activity feed closes the page with the latest submissions across all queues.',
         'Use the overview to triage the day: clear the queues first, then read the analytics pages for the bigger picture.',
       ],
-      shots: [{ src: 'admin-overview.png', caption: 'Admin overview dashboard' }],
+      shots: [{ src: 'admin-overview.png', caption: 'Secretariat overview dashboard' }],
       links: [],
     },
     {
@@ -216,6 +216,7 @@ const MANUAL = {
         'Open tickets appear in two places: the topbar bell (with a count badge, alongside submitted reports and activities) and the Support page queue. Both link each item straight to its screen.',
         'Each ticket carries a title, a category (Report submission, Knowledge Products, Membership, SkillsBuild, Account access, or Other), and a priority of Low, Medium, or High. Work the queue by status: Open to In progress while you investigate, then Resolved — members see every change immediately.',
         'Reply inside the ticket thread so the whole history stays in one place. Resolve only when the member’s issue is actually fixed; a resolved ticket drops out of everyone’s bell.',
+        'The Governance section adds a Support Monitoring analytics page: open/in-progress/resolved counts, average days to resolve, breakdowns by category and priority, and the oldest-first open backlog — read-only, triage still happens here.',
       ],
       shots: [{ src: 'admin-support.png', caption: 'Support ticket queue' }],
       links: [{ to: '/support', label: 'Support', hint: 'Answer member tickets.' }],
@@ -225,7 +226,7 @@ const MANUAL = {
       title: 'Get help',
       icon: File02Icon,
       body: [
-        'This manual, the privacy policy, and support live in the Help Center section of the sidebar — the same three destinations for both roles.',
+        'This manual, the privacy policy, and support live in the Help Center section of the sidebar — the same three destinations for every role.',
         'The lightning icon in the topbar replays the seven-step admin quickstart checklist anytime; steps tick off only when you mark them done, and Reset progress starts the list over. Progress is stored per user in this browser.',
         'The info icon opens the About box with your signed-in role and the Powered-by row naming the platform partners.',
       ],
@@ -235,9 +236,35 @@ const MANUAL = {
   ],
 };
 
+// Secretariat works the same ops queue as IT admin; the analyst guide is read-only.
+MANUAL[ROLE.SECRETARIAT] = MANUAL[ROLE.IT_ADMIN];
+MANUAL[ROLE.DATA_ANALYST] = [
+  {
+    id: 'd-read',
+    title: 'Read, don’t submit',
+    icon: File02Icon,
+    body: [
+      'Analysts have read-only access to content: knowledge products, reports, report summary, performance metrics, activities, certificates, and support tickets. Submission pages, uploads, membership actions, membership analytics, and the Secretariat Overview are hidden.',
+      'Use Knowledge Products (search + category filter), Report Summary (type/gender/date filters), Membership analytics, and Performance (approved-only KPIs) as the reading list. The Support page is available for filing and tracking your own tickets.',
+    ],
+    shots: [],
+    links: [
+      { to: '/knowledge-products', label: 'Knowledge Products', hint: 'Browse shared documents.' },
+      { to: '/reports-summary', label: 'Report Summary', hint: 'Read submitted reports.' },
+    ],
+  },
+];
+
+const GUIDE_TABS = [
+  { value: ROLE.MEMBER, label: 'Member guide' },
+  { value: ROLE.SECRETARIAT, label: 'Secretariat guide' },
+  { value: ROLE.DATA_ANALYST, label: 'Analyst guide' },
+  { value: ROLE.IT_ADMIN, label: 'IT Admin guide' },
+];
+
 export function UserManual() {
   const viewerRole = effectiveRole(getTokenRoles());
-  const [role, setRole] = useState(viewerRole === 'ADMIN' ? 'ADMIN' : 'USER');
+  const [role, setRole] = useState(MANUAL[viewerRole] ? viewerRole : ROLE.MEMBER);
   const sections = MANUAL[role];
   const [activeId, setActiveId] = useState(sections[0].id);
 
@@ -267,15 +294,15 @@ export function UserManual() {
       />
       <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
         <div className="mb-4 flex items-center gap-1 rounded-lg border border-border bg-card p-1">
-          {['USER', 'ADMIN'].map((r) => (
+          {GUIDE_TABS.map((r) => (
             <Button
-              key={r}
+              key={r.value}
               size="sm"
-              variant={role === r ? 'default' : 'ghost'}
-              onClick={() => setRole(r)}
+              variant={role === r.value ? 'default' : 'ghost'}
+              onClick={() => setRole(r.value)}
               className="flex-1"
             >
-              {r === 'USER' ? 'Member guide' : 'Administrator guide'}
+              {r.label}
             </Button>
           ))}
         </div>

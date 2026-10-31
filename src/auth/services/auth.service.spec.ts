@@ -20,14 +20,14 @@ describe('AuthService', () => {
   const accessTokenClaims: UserAccessTokenClaims = {
     id: 6,
     username: 'john',
-    roles: [ROLE.USER],
+    roles: [ROLE.ARISE_MEMBER],
   };
 
   const registerInput = {
     username: 'jhon',
     name: 'Jhon doe',
     password: 'any password',
-    roles: [ROLE.USER],
+    roles: [ROLE.ARISE_MEMBER],
     isAccountDisabled: false,
     email: 'randomUser@random.com',
   };
@@ -179,13 +179,13 @@ describe('AuthService', () => {
   describe('getAuthToken', () => {
     const accessTokenExpiry = 100;
     const refreshTokenExpiry = 200;
-    const user = { id: 5, username: 'username', roles: [ROLE.USER] };
+    const user = { id: 5, username: 'username', roles: [ROLE.ARISE_MEMBER] };
 
     const subject = { sub: user.id };
     const payload = {
       username: user.username,
       sub: user.id,
-      roles: [ROLE.USER],
+      roles: [ROLE.ARISE_MEMBER],
     };
 
     beforeEach(() => {

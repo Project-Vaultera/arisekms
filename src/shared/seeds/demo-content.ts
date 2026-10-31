@@ -1,6 +1,6 @@
-import { CertificateStatus } from '../../certificate/entities/certificate.entity';
-import { ActivityStatus, ActivityType } from '../../activity/entities/activity.entity';
 import { TARGET_AUDIENCES } from '../../activity/dtos/activity-input.dto';
+import { ActivityStatus, ActivityType } from '../../activity/entities/activity.entity';
+import { CertificateStatus } from '../../certificate/entities/certificate.entity';
 import { COMPANY_SECTORS } from '../../company/dtos/membership-input.dto';
 import { KnowledgeCategory } from '../../knowledge/entities/knowledge-document.entity';
 import { ReportCategory, ReportStatus } from '../../report/entities/report.entity';

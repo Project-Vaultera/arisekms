@@ -60,8 +60,8 @@ export class AuthService {
   ): Promise<RegisterOutput> {
     this.logger.log(ctx, `${this.register.name} was called`);
 
-    // TODO : Setting default role as USER here. Will add option to change this later via ADMIN users.
-    input.roles = [ROLE.USER];
+    // TODO : Setting default role as ARISE_MEMBER here. Will add option to change this later via IT admin users.
+    input.roles = [ROLE.ARISE_MEMBER];
     input.isAccountDisabled = false;
 
     const registeredUser = await this.userService.createUser(ctx, input);

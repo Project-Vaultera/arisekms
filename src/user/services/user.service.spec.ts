@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 
+import { AuditService } from '../../audit/services/audit.service';
 import { ROLE } from '../../auth/constants/role.constant';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
@@ -26,7 +27,7 @@ describe('UserService', () => {
     id: 6,
     username: 'jhon',
     name: 'Jhon doe',
-    roles: [ROLE.USER],
+    roles: [ROLE.ARISE_MEMBER],
   };
 
   const mockedLogger = { setContext: jest.fn(), log: jest.fn() };
@@ -40,6 +41,7 @@ describe('UserService', () => {
           useValue: mockedRepository,
         },
         { provide: AppLogger, useValue: mockedLogger },
+        { provide: AuditService, useValue: { record: jest.fn() } },
       ],
     }).compile();
 
@@ -68,7 +70,7 @@ describe('UserService', () => {
         name: user.name,
         username: user.username,
         password: 'plain-password',
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
         email: 'randomUser@random.com',
       };
@@ -82,7 +84,7 @@ describe('UserService', () => {
         name: user.name,
         username: user.username,
         password: 'plain-password',
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
         email: 'randomUser@random.com',
       };
@@ -93,7 +95,7 @@ describe('UserService', () => {
         name: user.name,
         username: user.username,
         password: 'hashed-password',
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
         email: 'randomUser@random.com',
       });
@@ -109,7 +111,7 @@ describe('UserService', () => {
         name: user.name,
         username: user.username,
         password: 'plain-password',
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
         email: 'randomUser@random.com',
       };
@@ -120,7 +122,7 @@ describe('UserService', () => {
         id: user.id,
         name: userInput.name,
         username: userInput.username,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
         email: 'randomUser@random.com',
       });
@@ -153,7 +155,7 @@ describe('UserService', () => {
         id: user.id,
         name: user.name,
         username: user.username,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
       });
     });
 
@@ -181,7 +183,7 @@ describe('UserService', () => {
         id: user.id,
         name: user.name,
         username: user.username,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
       });
     });
 
@@ -239,7 +241,7 @@ describe('UserService', () => {
         id: user.id,
         name: user.name,
         username: user.username,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
       });
     });
   });
@@ -277,7 +279,7 @@ describe('UserService', () => {
         id: user.id,
         name: user.name,
         username: user.username,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
       });
     });
 
@@ -301,7 +303,7 @@ describe('UserService', () => {
         name: 'Default User',
         username: 'default-user',
         password: 'random-password',
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
         email: 'randomUser@random.com',
         createdAt: currentDate,
@@ -316,7 +318,7 @@ describe('UserService', () => {
         name: input.name,
         username: 'default-user',
         password: input.password,
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
         isAccountDisabled: false,
         email: 'randomUser@random.com',
         createdAt: currentDate,
@@ -346,6 +348,37 @@ describe('UserService', () => {
       } catch (error: any) {
         expect(error).toBeInstanceOf(NotFoundException);
       }
+    });
+
+    it('should record an audit row on role change and disable', async () => {
+      const userId = 1;
+      const foundUser: User = {
+        id: userId,
+        name: 'Default User',
+        username: 'default-user',
+        password: 'random-password',
+        roles: [ROLE.ARISE_MEMBER],
+        isAccountDisabled: false,
+        email: 'randomUser@random.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        articles: [],
+      };
+      mockedRepository.getById.mockResolvedValue(foundUser);
+      mockedRepository.save.mockResolvedValue(foundUser);
+
+      const audit = (service as any).auditService;
+      await service.updateUser(ctx, userId, {
+        roles: [ROLE.ARISE_DATA_ANALYST],
+        isAccountDisabled: true,
+      } as UpdateUserInput);
+
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'USER_ROLE_CHANGED', entityId: '1' }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'USER_ACCESS_TOGGLED', entityId: '1' }),
+      );
     });
   });
 });

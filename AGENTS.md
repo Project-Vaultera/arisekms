@@ -97,6 +97,17 @@ What/why changed; files + contracts; migration/env action required; checks run w
 
 Starter JWT only. Enforce in guards + services; deny by default. `401` = unauthenticated, `403` = unauthorized. `shortcut: localStorage tokens are dev-only; HttpOnly refresh cookies + revocation list are the prod upgrade.`
 
+Single role per user, `ARISE_*` strings (`src/auth/constants/role.constant.ts`):
+
+| Role | Powers |
+|---|---|
+| `ARISE_IT_ADMIN` | `Manage` everywhere; Governance (User Directory, Support Monitoring, Audit Logs) |
+| `ARISE_SECRETARIAT` | Membership approvals + `Manage` on content; no user CRUD |
+| `ARISE_MEMBER` | Author-scoped CRUD on content; membership application |
+| `ARISE_DATA_ANALYST` | `List`/`Read` on the 6 content modules; no users/companies, no writes |
+
+Rules: `RolesGuard` + per-module `*-acl.service.ts` (BE is authoritative; FE `arisekms-fe/src/lib/rbac.js` is display-only). `normalizeRole()` keeps legacy `ADMIN`/`USER` rows and JWTs working — never reintroduce the old values. `isPrivileged()` = IT_ADMIN + SECRETARIAT (approvals, triage, unscoped ticket/company views). Routes: `/secretariat-overview` (no sidebar item, group label only), `/admin-approvals`, `/member-directory`, `/reports-*`, `/governance-users` + `/governance-audit` (IT_ADMIN). POV accounts via `npm run seed:roles` (idempotent, all `Arise@2026`): `ariseitadmin` / `arisesecretariat` / `arisemember` / `ariseanalyst`. Audit trail (`src/audit/`, single-tenant, no org column): POST/PATCH/DELETE auto-recorded fire-and-forget (success via logging interceptor, failures incl. bad logins via exception filter); explicit rows for role changes, access toggles, membership decisions; reads IT_ADMIN-only.
+
 ## 10. Security
 
 - Never commit secrets, keys, passwords, tokens, prod data, `.env`.
