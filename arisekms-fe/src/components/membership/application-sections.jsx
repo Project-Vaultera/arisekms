@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button.jsx';
 import { FilterSelect } from '@/components/ui/filter-select.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Label } from '@/components/ui/label.jsx';
+import { COMPANY_SECTORS } from '@/lib/company-sectors.js';
 import { stripToDigits, stripToPhone } from './validation.js';
 
 export function Field({ label, required, children, hint }) {
@@ -112,14 +113,12 @@ export function DocList({ docs, editable, onDownload, onRemove }) {
   );
 }
 
-export function CompanySections({ form, set, editable, companyName, proofs, onUploadProof, onDownload, onRemove, errors = {} }) {
+export function CompanySections({ form, set, editable, proofs, onUploadProof, onDownload, onRemove, errors = {} }) {
   return (
     <>
       <Section title="A. Company Identity" id="app-company">
         <div className="sm:col-span-2">
-          <Field label="Company Name">
-            <Input value={companyName ?? ''} disabled />
-          </Field>
+          <TextRow label="Company Name" required value={form.name} onChange={set('name')} disabled={!editable} error={errors.name} />
         </div>
         <TextRow label="Legal Representative (Name)" required value={form.legalRepName} onChange={set('legalRepName')} disabled={!editable} error={errors.legalRepName} />
         <TextRow label="Legal Representative (Title)" required value={form.legalRepTitle} onChange={set('legalRepTitle')} disabled={!editable} error={errors.legalRepTitle} />
@@ -138,7 +137,12 @@ export function CompanySections({ form, set, editable, companyName, proofs, onUp
         </div>
       </Section>
       <Section title="C. Company Classification">
-        <TextRow label="Company Sector" required value={form.sector} onChange={set('sector')} disabled={!editable} error={errors.sector} />
+        <div>
+          <FilterSelect label={<>Industry Sector<span className="text-[var(--sendai-crimson)]"> *</span></>}
+            value={form.sector ?? ''} onValueChange={set('sector')} disabled={!editable}
+            placeholder="— Select —" options={COMPANY_SECTORS} />
+          {errors.sector && <p className="mt-1 text-[11px] text-[var(--sendai-crimson)]">{errors.sector}</p>}
+        </div>
         <BoolRow label="Are You a Trade Association" value={form.isTradeAssociation} onChange={set('isTradeAssociation')} />
         <BoolRow label="Are You a Business Association / Alliance / Network" value={form.isBusinessAssociation} onChange={set('isBusinessAssociation')} />
         <TextRow label="Publicly Traded Company — Exchange Name and Symbol" value={form.exchangeSymbol} onChange={set('exchangeSymbol')} disabled={!editable} />

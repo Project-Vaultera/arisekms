@@ -81,6 +81,19 @@ see `shortcut` in `file-storage.ts`).
   website, fax (optional), staffCount, annualRevenue,
   unGlobalCompact, otherUnAgency, whichAgency, otherOrgs, affiliationDetails,
   businessOverview, geographicFocus, status, rejectReason`.
+- `sector` is the admission applicant taxonomy (28 values, kept verbatim;
+  `COMPANY_SECTORS` in `src/company/dtos/membership-input.dto.ts`, mirrored in
+  `arisekms-fe/src/lib/company-sectors.js`): labeled "Industry Sector" in the
+  application form dropdown and the membership report filter, `IsIn` on draft
+  saves, re-checked on submit; migrations `NormalizeCompanySectors1793380000000`
+  + `AdoptAdmissionSectors1793381000000` reconciled earlier values.
+- Company `name` is editable from the application form (`PUT /profile`);
+  duplicates (other companies) → `400`, empty → `400`.
+- Seed (`seed-demo.ts` + `planDemoCompanyDetails`/`planDemoUserDetails`/
+  `planDemoActivityDetails`) manages 70 demo companies (rotating
+  sector/region/joined-date, every 3rd approved), 71 demo users (~1 in 7
+  inactive, spread join dates), and 42 demo activities (all types/statuses/
+  audiences) so dashboards always have data.
 - `membership_contacts(id, company_id FK, isPrimary, title, firstName, middleName,
   lastName, position, email, phone, contactType, sameAsRegistered, country, province,
   city, street, zip)`.

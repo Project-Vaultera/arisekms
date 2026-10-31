@@ -23,13 +23,53 @@ export const CONTACT_TYPE_OPTIONS = [
   'Other',
 ];
 
+// Canonical company sectors — mirrors the admission applicant taxonomy (28
+// values, kept verbatim including near-duplicates so both apps group by the
+// same strings). Single source for the membership form dropdown, report
+// filter, and server validation. Keep FE mirror in
+// arisekms-fe/src/lib/company-sectors.js in sync.
+export const COMPANY_SECTORS = [
+  'Administrative, Support, Waste Management & Remediation Service',
+  'Agriculture',
+  'Arts, Entertainment & Recreation',
+  'Construction',
+  'Consumer Goods',
+  'Educational Services',
+  'Energy',
+  'Engineering',
+  'Finance',
+  'Healthcare',
+  'Hospitality',
+  'Information & Communication',
+  'Insurance and Reinsurance',
+  'Management of Companies & Enterprises',
+  'Manufacturing',
+  'Media',
+  'Mining',
+  'Other Services (except public administration)',
+  'Professional, Scientific & Technical Services (incl. consulting)',
+  'Real Estate, Rental and Leasing',
+  'Retail Trade',
+  'Social Assistance',
+  'Transportation',
+  'Tourism',
+  'Wholesale Trade',
+  'Utilities',
+  'Health',
+  'Technology',
+] as const;
+
 export class UpdateMembershipProfileInput {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) name?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) legalRepName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) legalRepTitle?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) applicantCountry?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) registeredCountry?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() noAttachmentExplanation?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) sector?: string;
+  @ApiPropertyOptional({ enum: COMPANY_SECTORS })
+  @IsOptional()
+  @IsIn([...COMPANY_SECTORS])
+  sector?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) region?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isTradeAssociation?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isBusinessAssociation?: boolean;

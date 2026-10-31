@@ -4,7 +4,6 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Agreement01Icon,
   ArrowDown01Icon,
-  Award01Icon,
   BarChartIcon,
   BookOpen01Icon,
   ChartUpIcon,
@@ -16,6 +15,7 @@ import {
   Home01Icon,
   Logout01Icon,
   Medal01Icon,
+  Medal02Icon,
   Shield01Icon,
   TrophyIcon,
   Upload01Icon,
@@ -70,7 +70,7 @@ const MAIN = [
   { id: 'submit-reports', label: 'Submit Reports', icon: Upload01Icon, to: '/submit-reports' },
   { id: 'membership-form', label: 'Membership Form', icon: UserAdd01Icon, to: '/membership-form' },
   { id: 'knowledge-products', label: 'Knowledge Products', icon: BookOpen01Icon, to: '/knowledge-products' },
-  { id: 'skillsbuild', label: 'Activity', icon: Award01Icon, to: '/activity' },
+  { id: 'skillsbuild', label: 'Activity', icon: Medal02Icon, to: '/activity' },
   { id: 'leaderboards', label: 'Leaderboards', icon: TrophyIcon, to: '/leaderboards' },
 ];
 
@@ -174,7 +174,6 @@ function Item({ item }) {
 export function AriseSidebar({ locked = false }) {
   const [reportsOpen, setReportsOpen] = useState(false);
   const { pathname } = useLocation();
-  const [placeholderActive, setPlaceholderActive] = useState(null);
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const role = effectiveRole(getTokenRoles());
@@ -206,8 +205,8 @@ export function AriseSidebar({ locked = false }) {
                       <CollapsedReportsMenu
                         key={item.id}
                         item={item}
-                        activeId={placeholderActive ?? item.children.find((c) => c.to === pathname)?.id}
-                        onSelect={(child) => { setPlaceholderActive(child.id); if (child.to) navigate(child.to); }}
+                        activeId={item.children.find((c) => c.to === pathname)?.id}
+                        onSelect={(child) => { if (child.to) navigate(child.to); }}
                       />
                     ) : (
                       <Fragment key={item.id}>
@@ -229,7 +228,7 @@ export function AriseSidebar({ locked = false }) {
                         </SidebarMenuItem>
                         {reportsOpen &&
                           item.children.map((child) => {
-                            const isActive = pathname === child.to || placeholderActive === child.id;
+                            const isActive = pathname === child.to;
                             return (
                             <SidebarMenuItem key={child.id}>
                               <SidebarMenuButton
@@ -240,7 +239,7 @@ export function AriseSidebar({ locked = false }) {
                                   isActive && 'bg-[var(--sendai-teal)] font-semibold text-white hover:text-white',
                                 )}
                               >
-                                <NavLink to={child.to} onClick={() => setPlaceholderActive(child.id)}>
+                                <NavLink to={child.to}>
                                   <HugeiconsIcon icon={child.icon} size={20} strokeWidth={1.8} />
                                   <span className="group-data-[collapsible=icon]:hidden truncate">{child.label}</span>
                                 </NavLink>

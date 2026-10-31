@@ -240,6 +240,35 @@ describe('Membership profile (e2e)', () => {
       .expect(HttpStatus.OK);
   });
 
+  it('member renames the company from the application form', async () => {
+    const res = await request(app.getHttpServer())
+      .put(`/companies/${companyId}/profile`)
+      .set('Authorization', auth(memberToken))
+      .send({ name: 'Renamed Member Corp' })
+      .expect(HttpStatus.OK);
+    expect(res.body.data.name).toEqual('Renamed Member Corp');
+  });
+
+  it('rename to a taken or empty name fails', async () => {
+    await request(app.getHttpServer())
+      .post('/companies')
+      .set('Authorization', auth(adminToken))
+      .send({ name: 'Other Corp' })
+      .expect(HttpStatus.CREATED);
+
+    await request(app.getHttpServer())
+      .put(`/companies/${companyId}/profile`)
+      .set('Authorization', auth(memberToken))
+      .send({ name: 'Other Corp' })
+      .expect(HttpStatus.BAD_REQUEST);
+
+    await request(app.getHttpServer())
+      .put(`/companies/${companyId}/profile`)
+      .set('Authorization', auth(memberToken))
+      .send({ name: '  ' })
+      .expect(HttpStatus.BAD_REQUEST);
+  });
+
   afterAll(async () => {
     await app.close();
     await closeDBAfterTest();

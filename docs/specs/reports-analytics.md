@@ -53,6 +53,10 @@ stay, noted in UI), region enum hard-coding, SkillsBuild true enrollment
 
 - `users.gender varchar(20)`, `companies.region varchar(120)` (migration
   `AddReportsAnalytics1793370000000`).
+- `companies.sector` stays `varchar(200)` but is restricted to the 28-value
+  admission applicant taxonomy (`COMPANY_SECTORS`, no schema change; migrations
+  `NormalizeCompanySectors1793380000000` + `AdoptAdmissionSectors1793381000000`
+  reconciled earlier values).
 - `activities(id, title, activityType enum, targetAudience enum [6 fixed values],
   status enum
   default submitted, happenedAt date, youthCount int, trainedCount int,

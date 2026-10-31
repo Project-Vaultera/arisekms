@@ -5,13 +5,11 @@ import { toast } from 'sonner';
 
 import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
-import { Area } from '@/components/charts/area';
-import { AreaChart } from '@/components/charts/area-chart';
-import { Grid } from '@/components/charts/grid';
-import { XAxis } from '@/components/charts/x-axis';
+import stocksBg from '/stocks-arise.jpg';
 import { Bar } from '@/components/charts/bar';
 import { BarChart } from '@/components/charts/bar-chart';
 import { BarXAxis } from '@/components/charts/bar-x-axis';
+import { Grid } from '@/components/charts/grid';
 import { ChartTooltip } from '@/components/charts/tooltip';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
@@ -126,14 +124,35 @@ export function ReportsSummary() {
     return [...map.entries()].map(([key, count]) => ({ key, label: TYPE_LABEL[key] ?? key, count, fill: TYPE_FILL[key] ?? 'var(--chart-1)' }));
   }, [filtered]);
 
+  // Review pipeline replaces the old duplicate line chart: submitted → decided.
+  const byStatus = useMemo(() => {
+    const order = ['submitted', 'approved', 'rejected'];
+    return order.map((s) => ({
+      label: s,
+      count: filtered.filter((r) => (r.status ?? 'submitted') === s).length,
+    }));
+  }, [filtered]);
+
+  const total = filtered.length;
+  const approved = byStatus.find((b) => b.label === 'approved')?.count ?? 0;
+  const pending = byStatus.find((b) => b.label === 'submitted')?.count ?? 0;
+  const approvalRate = total === 0 ? null : Math.round((approved / total) * 100);
+  const topType = useMemo(() => {
+    if (byType.length === 0) return null;
+    const top = [...byType].sort((a, b) => b.count - a.count)[0];
+    return { ...top, share: total === 0 ? 0 : Math.round((top.count / total) * 100) };
+  }, [byType, total]);
+
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
-  const visible = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const visible = [...filtered]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(safePage * pageSize, safePage * pageSize + pageSize);
 
   return (
     <div className="flex flex-col gap-2.5 py-1.5 md:gap-3 md:py-2">
-      {/* shortcut: pass bg={reportsSummaryHero} once public/reports-summary.png lands */}
-      <PageHero title="Report Summary" subtitle="Creation trends and breakdowns from live submissions" />
+      <PageHero title="Report Summary" subtitle="Creation trends and breakdowns from live submissions"
+        bg={stocksBg} overlayClassName="bg-[var(--sendai-teal)]/70" />
       <div className="px-4 lg:px-6">
         <Card>
           <CardContent className="flex flex-col gap-2 pt-4 lg:flex-row lg:items-end">
@@ -144,8 +163,10 @@ export function ReportsSummary() {
         </Card>
         <p className="mt-1 px-1 text-xs text-muted-foreground">Gender = report author gender. Unspecified covers accounts created before gender capture.</p>
       </div>
-      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6">
-        <StatCard label="Total reports" value={filtered.length.toLocaleString()} hint="Reports matching filters" icon={File02Icon} tint="text-[var(--sendai-teal)]/10" to="/submit-reports" linkLabel="View Reports" loading={loading} />
+      <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-3 lg:px-6">
+        <StatCard label="Total reports" value={total.toLocaleString()} hint="Reports matching filters" icon={File02Icon} tint="text-[var(--sendai-teal)]/10" to="/submit-reports" linkLabel="View Reports" loading={loading} />
+        <StatCard label="Approval rate" value={approvalRate === null ? '—' : `${approvalRate}%`} hint={loading ? undefined : `${approved} approved of ${total} in filter`} icon={File02Icon} tint="text-[#00ada8]/10" loading={loading} />
+        <StatCard label="Pending review" value={pending.toLocaleString()} hint="Submitted, awaiting decision" icon={File02Icon} tint="text-[var(--sendai-orange)]/10" to="/submit-reports" linkLabel="Review" loading={loading} />
       </div>
       <div className="grid grid-cols-1 gap-3 px-4 lg:px-6 xl:grid-cols-2">
         <Card>
@@ -174,7 +195,7 @@ export function ReportsSummary() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-0.5 pt-3"><CardTitle>Reports by type</CardTitle><CardDescription>Count per report type in filter</CardDescription></CardHeader>
+          <CardHeader className="pb-0.5 pt-3"><CardTitle>Reports by type</CardTitle><CardDescription>{topType ? `${topType.label} is the largest share at ${topType.share}% (${topType.count} of ${total})` : 'Count per report type in filter'}</CardDescription></CardHeader>
           <CardContent>
             {loading ? <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
               : byType.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No data.</p> : (
@@ -195,17 +216,17 @@ export function ReportsSummary() {
       </div>
       <div className="grid grid-cols-1 gap-3 px-4 lg:px-6">
         <Card>
-          <CardHeader className="pb-0.5 pt-3"><CardTitle>Report type trend</CardTitle><CardDescription>Total per month · line view</CardDescription></CardHeader>
+          <CardHeader className="pb-0.5 pt-3"><CardTitle>Review pipeline</CardTitle><CardDescription>{approvalRate === null ? 'No reports in filter' : `${approvalRate}% approved · ${pending} awaiting decision`}</CardDescription></CardHeader>
           <CardContent>
             {loading ? <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p> : (
               <>
-                <AreaChart data={trend} xDataKey="date" aspectRatio="3 / 1" margin={{ top: 8, right: 16, bottom: 24, left: 16 }}>
-                  <Grid horizontal /><Area dataKey="count" fill="#00ada8" fillOpacity={0.12} showLine stroke="#00ada8" strokeWidth={2} /><XAxis /><ChartTooltip />
-                </AreaChart>
+                <BarChart data={byStatus} xDataKey="label" aspectRatio="3 / 1" margin={{ top: 8, right: 16, bottom: 24, left: 16 }}>
+                  <Grid horizontal /><Bar dataKey="count" fill="var(--chart-2)" /><BarXAxis maxLabels={6} /><ChartTooltip />
+                </BarChart>
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
-                    <span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: '#00ada8' }} />
-                    Total reports
+                    <span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: 'var(--chart-2)' }} />
+                    Reports by review status
                   </span>
                 </div>
               </>
@@ -213,14 +234,14 @@ export function ReportsSummary() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-0.5 pt-3"><CardTitle>Reports table</CardTitle><CardDescription>{filtered.length} reports</CardDescription></CardHeader>
+          <CardHeader className="pb-0.5 pt-3"><CardTitle>Reports table</CardTitle><CardDescription>{total} reports · newest first</CardDescription></CardHeader>
           <CardContent>
             {loading ? <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
-              : filtered.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No reports match filters.</p> : (
+              : filtered.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No reports match the current filters. Clear the type or widen the dates.</p> : (
               <>
                 <div className="overflow-hidden rounded-lg border">
                   <Table>
-                    <TableHeader><TableRow><TableHead>Created</TableHead><TableHead>Report title</TableHead><TableHead>Report type</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>Created</TableHead><TableHead>Report title</TableHead><TableHead>Report type</TableHead><TableHead>Author</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {visible.map((r) => (
                         <TableRow key={r.id}>
@@ -232,6 +253,7 @@ export function ReportsSummary() {
                             </span>
                           </TableCell>
                           <TableCell className="text-muted-foreground">{TYPE_LABEL[r.category] || r.category || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">{r.author?.name || '—'}</TableCell>
                           <TableCell>
                             <Badge className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase', statusStyle(r.status || 'submitted'))}>
                               {r.status || 'submitted'}

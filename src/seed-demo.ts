@@ -2,8 +2,11 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
 
+import { Activity } from './activity/entities/activity.entity';
+import { MembershipStatus } from './company/entities/company.entity';
 import { AppModule } from './app.module';
 import { ROLE } from './auth/constants/role.constant';
+import { ActivityService } from './activity/services/activity.service';
 import { Certificate } from './certificate/entities/certificate.entity';
 import { CertificateService } from './certificate/services/certificate.service';
 import { Company } from './company/entities/company.entity';
@@ -20,8 +23,11 @@ import {
   DEMO_PASSWORD,
   DEMO_USERS,
   planDemoCertificates,
+  planDemoCompanyDetails,
+  planDemoActivityDetails,
   planDemoKnowledge,
   planDemoReports,
+  planDemoUserDetails,
 } from './shared/seeds/demo-content';
 import { User } from './user/entities/user.entity';
 import { UserService } from './user/services/user.service';
@@ -81,9 +87,7 @@ async function bootstrap() {
     const ctx = new RequestContext();
     ctx.requestID = 'seed-demo';
 
-    if (await users.findByUsername(ctx, MARKER_USERNAME)) {
-      console.log('Demo users already seeded (demo.member.1 exists). Skipping user/report seeding.');
-    } else {
+    const hadMarker = await users.findByUsername(ctx, MARKER_USERNAME);
     let admin = await users.findByUsername(ctx, 'it-admin');
     if (!admin) {
       const fallback = config.get<string>('defaultAdminUserPassword') ?? 'AdminPass123!';
@@ -99,19 +103,37 @@ async function bootstrap() {
     }
     const adminCtx = actorCtx({ id: admin.id, username: admin.username, roles: admin.roles });
 
+    // Users converge by username: only missing demo accounts are created
+    // (with their planned active/inactive flag). Join dates are backdated for
+    // every demo user so the directory timeline has shape; existing disabled
+    // flags are left alone to respect admin toggles.
+    const userDetails = new Map(planDemoUserDetails().map((d) => [d.username, d]));
     const members: Array<{ id: number; username: string; roles: string[]; name: string }> = [];
+    let createdUsers = 0;
     for (const m of DEMO_USERS) {
-      const created = await users.createUser(ctx, {
-        name: m.name,
-        username: m.username,
-        password: DEMO_PASSWORD,
-        roles: [ROLE.USER],
-        isAccountDisabled: m.disabled,
-        email: `${m.username}@example.com`,
-      });
-      members.push({ id: created.id, username: created.username, roles: created.roles, name: m.name });
+      let found = await users.findByUsername(ctx, m.username);
+      if (!found) {
+        found = await users.createUser(ctx, {
+          name: m.name,
+          username: m.username,
+          password: DEMO_PASSWORD,
+          roles: [ROLE.USER],
+          isAccountDisabled: userDetails.get(m.username)?.disabled ?? m.disabled,
+          email: `${m.username}@example.com`,
+        });
+        createdUsers += 1;
+      }
+      members.push({ id: found.id, username: found.username, roles: found.roles, name: found.name });
+      const detail = userDetails.get(m.username);
+      if (detail) {
+        await dataSource.getRepository(User).update(found.id, { createdAt: daysAgoToDate(detail.daysAgo) });
+      }
+    }
+    if (createdUsers > 0) {
+      console.log(`Seeded ${createdUsers} new demo users (password: ${DEMO_PASSWORD}).`);
     }
 
+    if (!hadMarker) {
     const reportRows = planDemoReports();
     for (const row of reportRows) {
       const author = members[row.authorIndex];
@@ -151,20 +173,18 @@ async function bootstrap() {
 
     const userCount = await dataSource.getRepository(User).count();
     console.log(
-      `Seeded ${members.length} demo users (password: ${DEMO_PASSWORD}), ${reportRows.length} reports, ${certRows.length} certificates, ${knowledgeRows.length} knowledge docs. Users total: ${userCount}.`,
+      `Seeded ${reportRows.length} reports, ${certRows.length} certificates, ${knowledgeRows.length} knowledge docs. Users total: ${userCount}.`,
     );
-    } // end fresh-seed branch
+    } // end fresh-content branch
 
     // Company seeding converges by name, so re-runs remap existing DBs too:
-    // 4 primary companies hold exclusive member pairs, the other 16 hold a
-    // single floater each.
+    // details (sector/region/joined date) are backfilled for every seed
+    // company so the membership dashboards always have data to show.
     const companiesSvc = app.get(CompanyService);
-    const admin = await users.findByUsername(ctx, 'it-admin');
-    if (!admin) {
-      console.log('Skipping company seeding: no it-admin account found.');
-    } else {
+    {
       const adminCtx = actorCtx({ id: admin.id, username: admin.username, roles: admin.roles });
-      for (const entry of DEMO_COMPANY_MEMBERS) {
+      const details = new Map(planDemoCompanyDetails().map((d) => [d.name, d]));
+      for (const [i, entry] of DEMO_COMPANY_MEMBERS.entries()) {
         let company = await dataSource.getRepository(Company).findOne({ where: { name: entry.name } });
         if (!company) {
           const created = await companiesSvc.createCompany(adminCtx, { name: entry.name });
@@ -176,11 +196,58 @@ async function bootstrap() {
           if (found) userIds.push(found.id);
         }
         await companiesSvc.setMembers(adminCtx, company.id, userIds);
+        const detail = details.get(entry.name);
+        if (detail) {
+          await dataSource.getRepository(Company).update(company.id, {
+            sector: detail.sector,
+            region: detail.region,
+            createdAt: daysAgoToDate(detail.daysAgo),
+            // Every 3rd seed company reads as approved (Active in the
+            // directory); the rest stay as-is so manual states survive.
+            ...(i % 3 === 0 ? { status: MembershipStatus.APPROVED } : {}),
+          });
+        }
       }
-      console.log(
-        `Seeded ${DEMO_COMPANY_MEMBERS.length} demo companies (4 primary pairs + 16 single-member).`,
-      );
+      console.log(`Seeded ${DEMO_COMPANY_MEMBERS.length} demo companies with sector/region/joined-date details.`);
     }
+
+    // Activities converge by title so re-runs backfill without duplicating.
+    const activitySvc = app.get(ActivityService);
+    const activityRows = planDemoActivityDetails();
+    let createdActivities = 0;
+    for (const row of activityRows) {
+      const author = await users.findByUsername(ctx, row.authorUsername);
+      const company = await dataSource.getRepository(Company).findOne({ where: { name: row.companyName } });
+      if (!author || !company) {
+        console.log(`Skipping activity seed with no author/company: ${row.title}`);
+        continue;
+      }
+      let activity = await dataSource.getRepository(Activity).findOne({ where: { title: row.title } });
+      if (!activity) {
+        const saved = await activitySvc.createActivity(
+          actorCtx({ id: author.id, username: author.username, roles: author.roles }),
+          {
+            title: row.title,
+            activityType: row.activityType,
+            targetAudience: row.targetAudience,
+            happenedAt: daysAgoToDate(row.daysAgo).toISOString().slice(0, 10),
+            ...(row.youthCount != null ? { youthCount: row.youthCount } : {}),
+            ...(row.trainedCount != null ? { trainedCount: row.trainedCount } : {}),
+            isInternational: row.isInternational,
+            notes: 'Demo seed data.',
+            companyId: company.id,
+          },
+        );
+        activity = { id: saved.id } as Activity;
+        createdActivities += 1;
+      }
+      await dataSource.getRepository(Activity).update(activity.id, {
+        status: row.status,
+        happenedAt: daysAgoToDate(row.daysAgo).toISOString().slice(0, 10),
+        createdAt: daysAgoToDate(row.daysAgo),
+      });
+    }
+    console.log(`Seeded ${createdActivities} new demo activities (converged by title).`);
   } finally {
     await app.close();
   }

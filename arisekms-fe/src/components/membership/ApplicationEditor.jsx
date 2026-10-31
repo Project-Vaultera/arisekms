@@ -30,7 +30,6 @@ export function ApplicationEditor({ companyId, profile, onProfile, editable, onS
         form={form}
         set={set}
         editable={editable}
-        companyName={profile?.name}
         proofs={proofs}
         onUploadProof={(f) => uploadDoc('registration_proof', f)}
         onDownload={downloadDoc}

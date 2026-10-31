@@ -77,21 +77,21 @@ export function SkillsBuild() {
         subtitleClassName="text-base text-white/80"
       >
         <div className="flex w-full max-w-full flex-row flex-wrap items-center justify-center gap-2">
-          <SendaiHoverButton asChild className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white">
+          <SendaiHoverButton asChild className="h-10 rounded-[10px] border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white">
             <a href={SKILLSBUILD_URL} target="_blank" rel="noreferrer">
               <HugeiconsIcon icon={ExternalLinkIcon} size={18} strokeWidth={2} />
               Access IBM SkillsBuild
             </a>
           </SendaiHoverButton>
-          <SendaiHoverButton className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => navigate('/leaderboards')}>
+          <SendaiHoverButton className="h-10 rounded-[10px] border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => navigate('/leaderboards')}>
             <HugeiconsIcon icon={TrophyIcon} size={18} strokeWidth={2} />
             Leaderboards
           </SendaiHoverButton>
-          <SendaiHoverButton className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => setCertOpen(true)}>
+          <SendaiHoverButton className="h-10 rounded-[10px] border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => setCertOpen(true)}>
             <HugeiconsIcon icon={Certificate01Icon} size={18} strokeWidth={2} />
             Add Certificate
           </SendaiHoverButton>
-          <SendaiHoverButton className="h-10 border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => setActivityOpen(true)}>
+          <SendaiHoverButton className="h-10 rounded-[10px] border border-white/60 bg-[#0B4484]/90 px-5 text-sm whitespace-nowrap text-white hover:bg-[#0B4484] hover:text-white" onClick={() => setActivityOpen(true)}>
             <HugeiconsIcon icon={Medal01Icon} size={18} strokeWidth={2} />
             Add Activity
           </SendaiHoverButton>

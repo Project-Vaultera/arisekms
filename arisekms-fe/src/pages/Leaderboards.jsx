@@ -66,14 +66,14 @@ function initials(name) {
 
 function Segmented({ options, value, onChange }) {
   return (
-    <div className="inline-flex max-w-full flex-wrap items-center gap-1 border border-border bg-muted/50 p-1">
+    <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-[10px] border border-border bg-muted/50 p-1">
       {options.map((o) => (
         <button
           key={o.id}
           type="button"
           onClick={() => onChange(o.id)}
           className={cn(
-            'px-3 py-1.5 text-xs font-medium whitespace-nowrap transition',
+            'rounded-[7px] px-3 py-1.5 text-xs font-medium whitespace-nowrap transition',
             value === o.id ? 'bg-[#0B4484] text-white shadow' : 'text-muted-foreground hover:text-foreground',
           )}
         >

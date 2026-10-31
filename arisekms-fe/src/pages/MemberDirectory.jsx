@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Cancel01Icon, PlusSignIcon, Search01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, Search01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
 import { api } from '@/api/client.js';
 import { SendaiFrame } from '@/components/SendaiFrame.jsx';
+import { COMPANY_SECTORS } from '@/lib/company-sectors.js';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
@@ -50,8 +51,11 @@ export function MemberDirectory() {
   // Companies state
   const [companies, setCompanies] = useState([]);
   const [companiesLoading, setCompaniesLoading] = useState(true);
-  const [name, setName] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [companyPage, setCompanyPage] = useState(0);
+  const [companyQ, setCompanyQ] = useState('');
+  const [companyIndustry, setCompanyIndustry] = useState('all');
+  const [companyStatus, setCompanyStatus] = useState('all');
+  const companyPageSize = 10;
   const [selectedId, setSelectedId] = useState(() => {
     const id = Number(params.get('company'));
     return Number.isInteger(id) && id > 0 ? id : null;
@@ -173,6 +177,28 @@ export function MemberDirectory() {
     [companies, selectedId],
   );
 
+  // Active = approved membership status; everything else reads as inactive.
+  // No extra endpoint: status + sector already ride on GET /companies rows.
+  const companyIndustries = useMemo(() => {
+    const present = new Set(companies.map((c) => String(c.sector ?? '').trim()).filter(Boolean));
+    return COMPANY_SECTORS.filter((s) => present.has(s));
+  }, [companies]);
+
+  const filteredCompanies = useMemo(() => {
+    const needle = companyQ.trim().toLowerCase();
+    return companies.filter((c) => {
+      if (needle && !(c.name ?? '').toLowerCase().includes(needle)) return false;
+      if (companyIndustry !== 'all' && String(c.sector ?? '').trim() !== companyIndustry) return false;
+      if (companyStatus === 'active' && c.status !== 'approved') return false;
+      if (companyStatus === 'inactive' && c.status === 'approved') return false;
+      return true;
+    });
+  }, [companies, companyQ, companyIndustry, companyStatus]);
+
+  const companyPageCount = Math.max(1, Math.ceil(filteredCompanies.length / companyPageSize));
+  const safeCompanyPage = Math.min(companyPage, companyPageCount - 1);
+  const visibleCompanies = filteredCompanies.slice(safeCompanyPage * companyPageSize, safeCompanyPage * companyPageSize + companyPageSize);
+
   const selectedMemberIds = useMemo(
     () => new Set((selectedCompany?.members ?? []).map((m) => m.id)),
     [selectedCompany],
@@ -274,26 +300,6 @@ export function MemberDirectory() {
         </div>
       </div>
     );
-  }
-
-  async function createCompany(e) {
-    e?.preventDefault();
-    if (!name.trim()) {
-      toast.error('Name is required');
-      return;
-    }
-    setCreating(true);
-    try {
-      const res = await api.post('/companies', { name: name.trim() });
-      setName('');
-      toast.success('Company created');
-      await refreshCompanies();
-      setSelectedId(res.data.data.id);
-    } catch {
-      toast.error('Could not create company');
-    } finally {
-      setCreating(false);
-    }
   }
 
   async function assignMember(e) {
@@ -525,30 +531,49 @@ export function MemberDirectory() {
                 </>
               ) : (
                 <>
-                  <form onSubmit={createCompany} className="mb-3 flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="New company name…"
-                      className="flex-1"
-                    />
-                    <Button type="submit" disabled={creating}>
-                      <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={2} />
-                      {creating ? 'Creating…' : 'Create company'}
-                    </Button>
-                  </form>
+                  <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-end">
+                    <div className="relative flex-1">
+                      <HugeiconsIcon
+                        icon={Search01Icon}
+                        size={14}
+                        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      />
+                      <Input
+                        value={companyQ}
+                        onChange={(e) => { setCompanyQ(e.target.value); setCompanyPage(0); }}
+                        placeholder="Search companies by name…"
+                        className="h-9 w-full pl-8"
+                      />
+                    </div>
+                    <FilterSelect
+                      label="Industry"
+                      value={companyIndustry}
+                      onValueChange={(v) => { setCompanyIndustry(v); setCompanyPage(0); }}
+                      className="lg:w-64"
+                      options={[{ value: 'all', label: 'All industries' }, ...companyIndustries]} />
+                    <FilterSelect
+                      label="Status"
+                      value={companyStatus}
+                      onValueChange={(v) => { setCompanyStatus(v); setCompanyPage(0); }}
+                      className="lg:w-44"
+                      options={[
+                        { value: 'all', label: 'All' },
+                        { value: 'active', label: 'Active' },
+                        { value: 'inactive', label: 'Inactive' },
+                      ]} />
+                  </div>
                   {companiesLoading ? (
                     <div className="space-y-2">
                       {[1, 2].map((i) => (
                         <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/60" />
                       ))}
                     </div>
-                  ) : companies.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-muted-foreground">No companies yet.</p>
+                  ) : filteredCompanies.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-muted-foreground">No companies match your filters.</p>
                   ) : (
                     <div className="grid gap-4 lg:grid-cols-3">
                       <div className="space-y-1">
-                        {companies.map((c) => (
+                        {visibleCompanies.map((c) => (
                           <button
                             key={c.id}
                             type="button"
@@ -570,6 +595,27 @@ export function MemberDirectory() {
                             </Badge>
                           </button>
                         ))}
+                        {filteredCompanies.length > companyPageSize && (
+                          <div className="flex items-center justify-between gap-2 pt-2 text-sm">
+                            <p className="text-xs text-muted-foreground">
+                              Showing {safeCompanyPage * companyPageSize + 1}–{Math.min(filteredCompanies.length, safeCompanyPage * companyPageSize + visibleCompanies.length)} of {filteredCompanies.length}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="sm" disabled={safeCompanyPage === 0} onClick={() => setCompanyPage(safeCompanyPage - 1)}>
+                                Previous
+                              </Button>
+                              <span className="px-1 text-xs text-muted-foreground">Page {safeCompanyPage + 1} of {companyPageCount}</span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={safeCompanyPage >= companyPageCount - 1}
+                                onClick={() => setCompanyPage(safeCompanyPage + 1)}
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="lg:col-span-2">
                         {selectedCompany ? (

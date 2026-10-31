@@ -6,7 +6,7 @@ import { validateUploadFile } from '@/lib/file-upload.js';
 import { filled, normalizeWebsite } from './validation.js';
 
 export const TAB_FIELDS = {
-  company: ['legalRepName', 'legalRepTitle', 'applicantCountry', 'registeredCountry',
+  company: ['name', 'legalRepName', 'legalRepTitle', 'applicantCountry', 'registeredCountry',
     'noAttachmentExplanation', 'sector', 'isTradeAssociation', 'isBusinessAssociation',
     'exchangeSymbol', 'parentCompanyDetails', 'street', 'city', 'province', 'zip',
     'country', 'phone', 'website', 'fax', 'staffCount', 'annualRevenue'],
@@ -32,7 +32,7 @@ export function useMembershipDraft(companyId, profile, onProfile, { onSubmitted 
   useEffect(() => {
     if (!profile) return;
     setForm({
-      legalRepName: profile.legalRepName ?? '', legalRepTitle: profile.legalRepTitle ?? '',
+      name: profile.name ?? '', legalRepName: profile.legalRepName ?? '', legalRepTitle: profile.legalRepTitle ?? '',
       applicantCountry: profile.applicantCountry ?? '', registeredCountry: profile.registeredCountry ?? '',
       noAttachmentExplanation: profile.noAttachmentExplanation ?? '', sector: profile.sector ?? '',
       isTradeAssociation: profile.isTradeAssociation, isBusinessAssociation: profile.isBusinessAssociation,
@@ -62,6 +62,10 @@ export function useMembershipDraft(companyId, profile, onProfile, { onSubmitted 
           toast.error('Staff count must be a whole number of 1 or more');
           return false;
         }
+      }
+      if (k === 'name' && !filled(v)) {
+        toast.error('Company name is required');
+        return false;
       }
       patch[k] = v === '' ? null : v;
       if (k === 'staffCount' && form[k] === '') patch[k] = null;

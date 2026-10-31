@@ -1,15 +1,22 @@
 import { CertificateStatus } from '../../certificate/entities/certificate.entity';
+import { ActivityStatus, ActivityType } from '../../activity/entities/activity.entity';
+import { TARGET_AUDIENCES } from '../../activity/dtos/activity-input.dto';
+import { COMPANY_SECTORS } from '../../company/dtos/membership-input.dto';
 import { KnowledgeCategory } from '../../knowledge/entities/knowledge-document.entity';
 import { ReportCategory, ReportStatus } from '../../report/entities/report.entity';
 import {
   daysAgoToDate,
+  DEMO_COMPANY_MEMBERS,
   DEMO_COURSES,
   DEMO_USERS,
   DEMO_WEEKS,
   mulberry32,
   planDemoCertificates,
+  planDemoCompanyDetails,
+  planDemoActivityDetails,
   planDemoKnowledge,
   planDemoReports,
+  planDemoUserDetails,
 } from './demo-content';
 
 describe('demo-content planner', () => {
@@ -70,5 +77,41 @@ describe('demo-content planner', () => {
     const now = new Date(2026, 9, 30, 12).getTime();
     expect(daysAgoToDate(0, now).getTime()).toBeLessThanOrEqual(now);
     expect(mulberry32(1)()).toBeGreaterThanOrEqual(0);
+  });
+
+  it('plans company details covering every sector with valid regions and dates', () => {
+    const details = planDemoCompanyDetails();
+    expect(details).toHaveLength(DEMO_COMPANY_MEMBERS.length);
+    expect(new Set(details.map((d) => d.sector))).toEqual(new Set([...COMPANY_SECTORS]));
+    expect(details.every((d) => d.region.length > 0 && d.daysAgo >= 0)).toBe(true);
+    expect(planDemoCompanyDetails()).toEqual(planDemoCompanyDetails());
+  });
+
+  it('plans activity details covering every type and status with valid authors', () => {
+    const rows = planDemoActivityDetails();
+    expect(rows).toHaveLength(42);
+    expect(new Set(rows.map((r) => r.activityType))).toEqual(new Set(Object.values(ActivityType)));
+    expect(new Set(rows.map((r) => r.status))).toEqual(
+      new Set([ActivityStatus.APPROVED, ActivityStatus.SUBMITTED, ActivityStatus.REJECTED]),
+    );
+    expect(rows.every((r) => (TARGET_AUDIENCES as readonly string[]).includes(r.targetAudience))).toBe(true);
+    expect(rows.every((r) => r.title.startsWith('Demo: ') && r.daysAgo >= 0)).toBe(true);
+    // Authors are first roster members of the every-3rd (approved) companies.
+    const approvedRoster = new Map();
+    DEMO_COMPANY_MEMBERS.forEach((e, i) => {
+      if (i % 3 === 0) approvedRoster.set(e.name, e.members[0]);
+    });
+    expect(rows.every((r) => approvedRoster.get(r.companyName) === r.authorUsername)).toBe(true);
+    expect(planDemoActivityDetails()).toEqual(planDemoActivityDetails());
+  });
+
+  it('plans user details for every demo user with spread join dates', () => {
+    const details = planDemoUserDetails();
+    expect(details).toHaveLength(DEMO_USERS.length);
+    expect(new Set(details.map((d) => d.username))).toEqual(new Set(DEMO_USERS.map((u) => u.username)));
+    expect(details.every((d, i) => d.disabled === DEMO_USERS[i].disabled)).toBe(true);
+    expect(details.every((d) => d.daysAgo >= 0)).toBe(true);
+    expect(details.filter((d) => d.disabled).length).toBeGreaterThan(0);
+    expect(planDemoUserDetails()).toEqual(planDemoUserDetails());
   });
 });

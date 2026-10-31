@@ -21,6 +21,7 @@ import { RequestContext } from '../../shared/request-context/request-context.dto
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
 import {
+  COMPANY_SECTORS,
   MembershipContactInput,
   ReviewMembershipInput,
   UpdateMembershipProfileInput,
@@ -141,6 +142,16 @@ export class MembershipService {
     const patch = Object.fromEntries(
       Object.entries(input).filter(([, v]) => v !== undefined),
     ) as Partial<Company>;
+    if (typeof patch.name === 'string') {
+      patch.name = patch.name.trim();
+      if (!patch.name) {
+        throw new BadRequestException('Company name is required');
+      }
+      const clash = await this.companyRepository.findOne({ where: { name: patch.name } });
+      if (clash && clash.id !== company.id) {
+        throw new BadRequestException('Company name already taken');
+      }
+    }
     Object.assign(company, patch);
 
     // Member edits to an approved profile reopen the review cycle.
@@ -165,7 +176,10 @@ export class MembershipService {
     need(company.legalRepTitle, 'Legal representative title');
     need(company.applicantCountry, 'Country of applicant');
     need(company.registeredCountry, 'Country of registration');
-    need(company.sector, 'Company sector');
+    need(company.sector, 'Industry sector');
+    if (required(company.sector) && !(COMPANY_SECTORS as readonly string[]).includes(String(company.sector))) {
+      errors.push('Industry sector (pick one of the listed sectors)');
+    }
     need(company.street, 'Registered street');
     need(company.zip, 'Post / ZIP code');
     need(company.website, 'Website');

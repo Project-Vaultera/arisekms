@@ -238,30 +238,40 @@ export function MembershipForm() {
                 </div>
               ) : (
                 <Tabs value={tab}>
-                  {/* Progress bar: display-only, navigation via buttons only. */}
-                  <div className="mx-auto flex w-full max-w-2xl items-start" aria-hidden="true">
+                  {/* Progress steps: completed steps are clickable backward-only;
+                      forward movement stays gated through Back / Continue. */}
+                  <div className="mx-auto flex w-full max-w-2xl items-start" role="navigation" aria-label="Application steps">
                     {TABS.map((t, i) => {
                       const done = !!stepDone[t.id];
                       const current = i === idx;
+                      const canGoBack = editable && i < idx;
+                      const circleClass = cn(
+                        'grid size-14 place-items-center rounded-full border-2',
+                        done
+                          ? 'border-transparent bg-[var(--sendai-teal)] text-white'
+                          : current
+                            ? 'border-[var(--sendai-teal)] bg-[var(--sendai-teal)] text-white ring-2 ring-[var(--sendai-teal)]/30'
+                            : 'border-border bg-muted text-muted-foreground',
+                        canGoBack && 'cursor-pointer transition-opacity hover:opacity-80',
+                      );
+                      const circleInner = done ? (
+                        <HugeiconsIcon icon={Tick01Icon} size={24} strokeWidth={2.5} />
+                      ) : (
+                        <HugeiconsIcon icon={t.icon} size={22} strokeWidth={2} />
+                      );
                       return (
                         <Fragment key={t.id}>
                           <div className="flex w-24 shrink-0 flex-col items-center gap-2">
-                            <span
-                              className={cn(
-                                'grid size-14 place-items-center rounded-full border-2',
-                                done
-                                  ? 'border-transparent bg-[var(--sendai-teal)] text-white'
-                                  : current
-                                    ? 'border-[var(--sendai-teal)] bg-[var(--sendai-teal)] text-white ring-2 ring-[var(--sendai-teal)]/30'
-                                    : 'border-border bg-muted text-muted-foreground',
-                              )}
-                            >
-                              {done ? (
-                                <HugeiconsIcon icon={Tick01Icon} size={24} strokeWidth={2.5} />
-                              ) : (
-                                <HugeiconsIcon icon={t.icon} size={22} strokeWidth={2} />
-                              )}
-                            </span>
+                            {canGoBack ? (
+                              <button type="button" aria-label={`Go back to ${t.label}`} className={circleClass}
+                                onClick={() => { setErrors({}); setTab(t.id); }}>
+                                {circleInner}
+                              </button>
+                            ) : (
+                              <span className={circleClass} aria-hidden={canGoBack ? undefined : true}>
+                                {circleInner}
+                              </span>
+                            )}
                             <span className={cn(
                               'text-center text-sm leading-tight',
                               current ? 'font-semibold text-[#1e3a5f]' : 'text-muted-foreground',
@@ -285,7 +295,6 @@ export function MembershipForm() {
                       form={form}
                       set={set}
                       editable={editable}
-                      companyName={profile.name}
                       proofs={proofs}
                       onUploadProof={(f) => uploadDoc('registration_proof', f)}
                       onDownload={downloadDoc}
@@ -346,6 +355,13 @@ export function MembershipForm() {
                     {saving ? 'Submitting…' : 'Submit for review'}
                   </Button>
                 )}
+              </div>
+            )}
+            {profile && !editable && (
+              <div className="flex items-center justify-start gap-2 border-t px-4 py-3">
+                <Button variant="outline" onClick={() => navigate('/profile')}>
+                  Back to profile
+                </Button>
               </div>
             )}
           </Card>

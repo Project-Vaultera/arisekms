@@ -1,6 +1,8 @@
 // Client-side prechecks for the membership flow. Mirrors the server submit
 // rules (the server remains the real enforcement); used to gate wizard steps
 // and to block letters in numeric fields at keystroke.
+import { COMPANY_SECTORS } from '@/lib/company-sectors.js';
+
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function filled(v) {
@@ -62,11 +64,15 @@ export function validateWizardTab(tabId, form, { proofs = [], primary = null, co
   const errors = {};
   switch (tabId) {
     case 'company': {
+      req(errors, form, 'name', 'Company name');
       req(errors, form, 'legalRepName', 'Legal representative name');
       req(errors, form, 'legalRepTitle', 'Legal representative title');
       req(errors, form, 'applicantCountry', 'Country of applicant');
       req(errors, form, 'registeredCountry', 'Country of registration');
-      req(errors, form, 'sector', 'Company sector');
+      req(errors, form, 'sector', 'Industry sector');
+      if (filled(form.sector) && !COMPANY_SECTORS.includes(form.sector)) {
+        errors.sector = 'Pick one of the listed industry sectors';
+      }
       req(errors, form, 'street', 'Street');
       if (!isValidZip(form.zip)) errors.zip = filled(form.zip) ? 'Post / ZIP code looks invalid' : 'Post / ZIP code is required';
       req(errors, form, 'website', 'Website');

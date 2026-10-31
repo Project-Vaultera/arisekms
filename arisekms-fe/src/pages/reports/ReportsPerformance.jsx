@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { api } from '@/api/client.js';
 import { PageHero } from '@/components/PageHero.jsx';
+import metricsBg from '/metrics-arise.webp';
 import { Bar } from '@/components/charts/bar';
 import { BarChart } from '@/components/charts/bar-chart';
 import { BarXAxis } from '@/components/charts/bar-x-axis';
@@ -122,6 +123,11 @@ export function ReportsPerformance() {
     return true;
   }), [activities, activity, audience, status, from, to]);
 
+  const filteredReports = useMemo(() => reports.filter((r) => {
+    if ((from || to) && !inRange(r.createdAt, from, to)) return false;
+    return true;
+  }), [reports, from, to]);
+
   const approvedOnly = useMemo(() => filteredActivities.filter((a) => (a.status ?? 'submitted') === 'approved'), [filteredActivities]);
 
   const kpis = useMemo(() => {
@@ -153,9 +159,33 @@ export function ReportsPerformance() {
     }));
   }, [filteredActivities]);
 
+  // Approved-activity momentum: what the KPI cards are built from, per month.
+  const approvedTrend = useMemo(() => {
+    const now = new Date();
+    const buckets = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString(undefined, { month: 'short' }), count: 0 };
+    });
+    const byKey = new Map(buckets.map((b) => [b.key, b]));
+    for (const a of approvedOnly) {
+      const d = new Date(effDate(a));
+      if (Number.isNaN(d.getTime())) continue;
+      const b = byKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (b) b.count += 1;
+    }
+    return buckets;
+  }, [approvedOnly]);
+
+  const approvedCount = approvedOnly.length;
+  const decidedCount = filteredActivities.filter((a) => (a.status ?? 'submitted') !== 'submitted').length;
+  const approvalShare = filteredActivities.length === 0 ? null
+    : Math.round((approvedCount / filteredActivities.length) * 100);
+
   const pageCount = Math.max(1, Math.ceil(filteredActivities.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
-  const visible = filteredActivities.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const visible = [...filteredActivities]
+    .sort((a, b) => new Date(effDate(b) ?? 0) - new Date(effDate(a) ?? 0))
+    .slice(safePage * pageSize, safePage * pageSize + pageSize);
 
   async function decide(id, nextStatus) {
     setActingId(id);
@@ -174,8 +204,8 @@ export function ReportsPerformance() {
 
   return (
     <div className="flex flex-col gap-2.5 py-1.5 md:gap-3 md:py-2">
-      {/* shortcut: pass bg={reportsPerformanceHero} once public/reports-performance.png lands */}
-      <PageHero title="Performance and Metrics" subtitle="Manual activity entries feed the KPI cards; reports stay as proxies" />
+      <PageHero title="Performance and Metrics" subtitle="Manual activity entries feed the KPI cards; reports stay as proxies"
+        bg={metricsBg} overlayClassName="bg-[var(--sendai-plum)]/70" />
       <div className="px-4 lg:px-6">
         <Card>
           <CardContent className="flex flex-col gap-2 pt-4 lg:flex-row lg:items-end">
@@ -188,20 +218,24 @@ export function ReportsPerformance() {
         </Card>
         <p className="mt-1 px-1 text-xs text-muted-foreground">KPI cards count approved activities only. Target audience is live from logged activities.</p>
       </div>
-      <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-4">
-        <StatCard label="Active members" value={val(activeMembers)} hint="Users · live" icon={UserGroupIcon} tint="text-[#00ada8]/10" loading={loading} />
-        <StatCard label="Enrolled in SkillsBuild" value={val(skillsbuild)} hint="Certificates · proxy" icon={Award01Icon} tint="text-[var(--sendai-orange)]/10" loading={loading} />
-        <StatCard label="Reports in filter" value={val(reports.length)} hint="Reports sample · live" icon={File02Icon} tint="text-[var(--sendai-teal)]/10" loading={loading} />
-        <StatCard label="Activities logged" value={val(filteredActivities.length)} hint="Matching date/type/audience/status" icon={Medal01Icon} tint="text-[var(--sendai-plum)]/10" loading={loading} />
+      <p className="px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase lg:px-6">Key outcomes · approved activities only</p>
+      <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-5">
         <StatCard label="International responses" value={val(kpis.international)} hint="Approved only" icon={Medal01Icon} tint="text-[var(--sendai-teal)]/10" loading={loading} />
         <StatCard label="Youth reached" value={val(kpis.youth)} hint="Sum of youth counts" icon={UserGroupIcon} tint="text-[#00ada8]/10" loading={loading} />
         <StatCard label="Technical assistance" value={val(kpis.technical)} hint="Approved only" icon={File02Icon} tint="text-[var(--sendai-orange)]/10" loading={loading} />
         <StatCard label="Trained via F2F" value={val(kpis.f2f)} hint="Sum of trained counts" icon={Award01Icon} tint="text-[var(--sendai-plum)]/10" loading={loading} />
         <StatCard label="Collaborations" value={val(kpis.collaborations)} hint="Approved only" icon={Medal01Icon} tint="text-[var(--sendai-teal)]/10" loading={loading} />
       </div>
-      <div className="px-4 lg:px-6">
+      <p className="px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase lg:px-6">Context · not KPIs</p>
+      <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-4">
+        <StatCard label="Active members" value={val(activeMembers)} hint="Users · live" icon={UserGroupIcon} tint="text-[#00ada8]/10" loading={loading} />
+        <StatCard label="SkillsBuild proxy" value={val(skillsbuild)} hint="Certificates issued · proxy, not enrollment" icon={Award01Icon} tint="text-[var(--sendai-orange)]/10" loading={loading} />
+        <StatCard label="Reports in date range" value={val(filteredReports.length)} hint="Reports matching dates" icon={File02Icon} tint="text-[var(--sendai-teal)]/10" loading={loading} />
+        <StatCard label="Activities logged" value={val(filteredActivities.length)} hint="Matching date/type/audience/status" icon={Medal01Icon} tint="text-[var(--sendai-plum)]/10" loading={loading} />
+      </div>
+      <div className="grid grid-cols-1 gap-3 px-4 lg:px-6 xl:grid-cols-2">
         <Card>
-          <CardHeader className="pb-0.5 pt-3"><CardTitle>Activities by status</CardTitle><CardDescription>Review pipeline in current filter</CardDescription></CardHeader>
+          <CardHeader className="pb-0.5 pt-3"><CardTitle>Review pipeline</CardTitle><CardDescription>{approvalShare === null ? 'No activities in filter' : `${approvalShare}% approved · ${decidedCount} decided of ${filteredActivities.length}`}</CardDescription></CardHeader>
           <CardContent>
             {loading ? <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p> : (
               <>
@@ -215,12 +249,27 @@ export function ReportsPerformance() {
             )}
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-0.5 pt-3"><CardTitle>Approved momentum</CardTitle><CardDescription>Approved activities per month · last 6 months · feeds the KPIs above</CardDescription></CardHeader>
+          <CardContent>
+            {loading ? <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p> : (
+              <>
+                <BarChart data={approvedTrend} xDataKey="label" aspectRatio="4 / 1" margin={{ top: 8, right: 16, bottom: 24, left: 16 }}>
+                  <Grid horizontal /><Bar dataKey="count" fill="var(--chart-1)" /><BarXAxis maxLabels={6} /><ChartTooltip />
+                </BarChart>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span aria-hidden className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: 'var(--chart-1)' }} />Approved activities</span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
       <div className="px-4 lg:px-6">
         <Card>
           <CardHeader className="pb-0.5 pt-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div><CardTitle>Activity log</CardTitle><CardDescription>{filteredActivities.length} rows · approved feed the KPIs</CardDescription></div>
+              <div><CardTitle>Activity log</CardTitle><CardDescription>{filteredActivities.length} rows · newest first · approved feed the KPIs</CardDescription></div>
               <Button size="sm" onClick={() => setFormOpen(true)}>Log activity</Button>
             </div>
           </CardHeader>
