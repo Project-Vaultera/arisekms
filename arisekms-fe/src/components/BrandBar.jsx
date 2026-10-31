@@ -1,50 +1,116 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { File02Icon, Home01Icon, Search01Icon } from '@hugeicons/core-free-icons';
+import { File02Icon, Home01Icon, InformationCircleIcon, Notification01Icon, Search01Icon, ZapIcon } from '@hugeicons/core-free-icons';
 
-import dashboardData from '@/app/dashboard/data.json';
+import { api } from '@/api/client.js';
+import { QuickstartPanel } from '@/components/QuickstartPanel.jsx';
+import { Button } from '@/components/ui/button.jsx';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { cn } from '@/lib/utils.js';
-
-import logoUrl from '../arise-ph_logo.png';
+import { QUICKSTART_STEPS } from '@/lib/quickstart-steps.js';
+import { quickstartSeenKey } from '@/lib/quickstart-done.js';
+import { effectiveRole, getTokenRoles, getTokenUserId } from '@/lib/rbac.js';
+import logoUrl from '/arise-ph_logo.png';
+import apcLogo from '/apc_logo.png';
+import jpcsApcLogo from '/jpcs-apc_logo.png';
+import smPrimeLogo from '/sm-prime_logo.png';
+import vaulteralabsLogo from '/vaulteralabs.png';
 
 const PAGES = [
   { group: 'Pages', title: 'Admin Desk', sub: 'Dashboard', to: '/', icon: Home01Icon },
   { group: 'Pages', title: 'Submit Reports', sub: 'Quarterly, annual, good practices', to: '/submit-reports', icon: File02Icon },
   { group: 'Pages', title: 'Membership Form', sub: 'Apply or update membership', to: '/membership-form', icon: File02Icon },
   { group: 'Pages', title: 'Knowledge Products', sub: 'Manuals and guides', to: '/knowledge-products', icon: File02Icon },
-  { group: 'Pages', title: 'SkillsBuild', sub: 'Training and certificates', to: '/skillsbuild', icon: File02Icon },
+  { group: 'Pages', title: 'SkillsBuild', sub: 'Training and certificates', to: '/activity', icon: File02Icon },
   { group: 'Pages', title: 'Privacy Policy', sub: 'Data protection', to: '/privacy-policy', icon: File02Icon },
-  { group: 'Pages', title: 'Benefits of Joining', sub: 'Why become a member', to: '/benefits', icon: File02Icon },
+  { group: 'Pages', title: 'User Manual', sub: 'How to use the platform', to: '/user-manual', icon: File02Icon },
   { group: 'Pages', title: 'Support', sub: 'Submit a ticket', to: '/support', icon: File02Icon },
 ];
 
-export function BrandBar({ onSelectDoc }) {
+export function BrandBar() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
-  const [activityOpen, setActivityOpen] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [notes, setNotes] = useState({ reports: [], activities: [], tickets: [] });
   const wrapRef = useRef(null);
+  const bellRef = useRef(null);
   const inputRef = useRef(null);
+  const role = effectiveRole(getTokenRoles());
+  const steps = QUICKSTART_STEPS[role] ?? QUICKSTART_STEPS.USER;
+  const bellTotal = notes.reports.length + notes.activities.length + notes.tickets.length;
+
+  // First visit replays the quickstart once per user; the Zap icon replays it after.
+  useEffect(() => {
+    try {
+      const key = quickstartSeenKey(getTokenUserId());
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1');
+        setQuickOpen(true);
+      }
+    } catch {
+      /* storage unavailable — no auto-open */
+    }
+  }, []);
+
+  // shortcut: notification queues read live (cap 100 each); no push channel yet.
+  useEffect(() => {
+    const uid = getTokenUserId();
+    const isAdmin = effectiveRole(getTokenRoles()) === 'ADMIN';
+    Promise.all([
+      api.get('/reports', { params: { limit: 100, offset: 0 } }).catch(() => ({ data: { data: [] } })),
+      api.get('/activities', { params: { limit: 100, offset: 0 } }).catch(() => ({ data: { data: [] } })),
+      api.get('/support-tickets').catch(() => ({ data: { data: [] } })),
+    ]).then(([r, a, t]) => {
+      const reports = (r.data.data ?? []).filter(
+        (x) => (x.status ?? 'submitted') === 'submitted' && (isAdmin || x.author?.id === uid),
+      );
+      const activities = (a.data.data ?? []).filter(
+        (x) => (x.status ?? 'submitted') === 'submitted' && (isAdmin || x.createdBy?.id === uid),
+      );
+      const tickets = (t.data.data ?? []).filter(
+        (x) => (x.status || 'Open') === 'Open' && (isAdmin || x.author?.id === uid),
+      );
+      setNotes({ reports, activities, tickets });
+    }).catch(() => {});
+  }, []);
+
+  // shortcut: knowledge list cached per session (cap 100); refreshes on reload.
+  useEffect(() => {
+    api
+      .get('/knowledge', { params: { limit: 100, offset: 0 } })
+      .then((res) => setDocs(res.data.data ?? []))
+      .catch(() => setDocs([]));
+  }, []);
 
   const hits = useMemo(() => {
     const query = q.trim().toLowerCase();
     const pages = PAGES.map((p) => ({ ...p, kind: 'page' }));
-    const docs = dashboardData.map((d) => ({
+    const items = docs.map((d) => ({
       kind: 'doc',
-      group: 'Documents',
-      title: d.header,
-      sub: `${d.type} · ${d.status}`,
-      to: '/',
+      group: 'Knowledge',
+      title: d.title,
+      sub: `${d.category} · ${d.mimeType ?? ''}`,
+      to: '/knowledge-products',
       icon: File02Icon,
     }));
-    if (!query) return [...pages, ...docs.slice(0, 5)];
-    return [...pages, ...docs].filter(
+    if (!query) return [...pages, ...items.slice(0, 5)];
+    return [...pages, ...items].filter(
       (h) => h.title.toLowerCase().includes(query) || h.sub.toLowerCase().includes(query),
     ).slice(0, 10);
-  }, [q]);
+  }, [q, docs]);
 
   useEffect(() => setHighlight(0), [hits.length]);
 
@@ -63,7 +129,9 @@ export function BrandBar({ onSelectDoc }) {
     function onClick(e) {
       if (!wrapRef.current?.contains(e.target)) {
         setOpen(false);
-        setActivityOpen(false);
+      }
+      if (!bellRef.current?.contains(e.target)) {
+        setBellOpen(false);
       }
     }
     document.addEventListener('mousedown', onClick);
@@ -73,7 +141,6 @@ export function BrandBar({ onSelectDoc }) {
   function go(hit) {
     setQ('');
     setOpen(false);
-    if (hit.kind === 'doc') onSelectDoc?.(hit.title);
     navigate(hit.to);
   }
 
@@ -91,13 +158,9 @@ export function BrandBar({ onSelectDoc }) {
     }
   }
 
-  const recent = [...dashboardData]
-    .sort((a, b) => b.id - a.id)
-    .slice(0, 3);
-
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-white px-4">
-      <img src={logoUrl} alt="ARISE Philippines" className="h-8 w-auto" />
+    <header className="sticky top-0 z-30 flex h-14 w-full shrink-0 items-center gap-2 border-b border-border bg-white pl-2 pr-4">
+      <img src={logoUrl} alt="ARISE Philippines" className="h-9 w-auto" />
       <div ref={wrapRef} className="relative mx-auto w-full max-w-xl">
         <HugeiconsIcon
           icon={Search01Icon}
@@ -127,7 +190,7 @@ export function BrandBar({ onSelectDoc }) {
                 onMouseEnter={() => setHighlight(i)}
                 className={cn(
                   'flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors',
-                  i === highlight ? 'bg-[#e9f7ef] text-[#15803d]' : 'text-foreground',
+                  i === highlight ? 'bg-[#e9eff5] text-[#0B4484]' : 'text-foreground',
                 )}
               >
                 <HugeiconsIcon icon={hit.icon} size={17} strokeWidth={1.8} />
@@ -142,44 +205,105 @@ export function BrandBar({ onSelectDoc }) {
           </div>
         )}
       </div>
-      <div className="relative ml-auto">
-        <button
-          aria-label="Recent activity"
-          title="Recent activity"
-          onClick={() => setActivityOpen((v) => !v)}
-          className="relative rounded-sm p-1.5 text-[#1e3a5f] transition-colors hover:bg-[#e9f7ef] hover:text-[#15803d]"
-        >
-          <span className="relative">
-            <HugeiconsIcon icon={File02Icon} size={19} strokeWidth={1.8} />
-            <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-[#15803d]" />
-          </span>
-        </button>
-        {activityOpen && (
-          <div className="absolute right-0 top-full z-30 mt-1 w-72 overflow-hidden rounded-sm border border-border bg-card shadow-lg">
-            <p className="editorial-eyebrow px-3 pb-1 pt-3 text-muted-foreground">Recent activity</p>
-            {recent.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => {
-                  setActivityOpen(false);
-                  onSelectDoc?.(d.header);
-                  navigate('/');
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-[#e9f7ef] hover:text-[#15803d]"
-              >
-                <HugeiconsIcon icon={File02Icon} size={16} strokeWidth={1.8} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{d.header}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{d.status}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        <Button variant="ghost" size="icon" onClick={() => setQuickOpen(true)} aria-label="Quickstart guide">
+          <HugeiconsIcon icon={ZapIcon} size={20} strokeWidth={1.8} />
+        </Button>
+        <div ref={bellRef} className="relative">
+          <Button variant="ghost" size="icon" onClick={() => setBellOpen((v) => !v)} aria-label="Notifications">
+            <HugeiconsIcon icon={Notification01Icon} size={20} strokeWidth={1.8} />
+          </Button>
+          {bellTotal > 0 && (
+            <span className="absolute top-0.5 right-0.5 grid min-w-4 place-items-center rounded-full bg-[var(--sendai-crimson)] px-1 text-[10px] leading-4 font-semibold text-white">
+              {bellTotal > 9 ? '9+' : bellTotal}
+            </span>
+          )}
+          {bellOpen && (
+            <div className="absolute top-full right-0 z-30 mt-2 max-h-96 w-80 overflow-y-auto rounded-xl border border-border bg-card shadow-lg">
+              <p className="border-b border-border px-3 py-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Notifications
+              </p>
+              <div className="py-1">
+                <BellSection title="Reports awaiting review" items={notes.reports} to="/submit-reports"
+                  label={(r) => r.originalName || `Report #${r.id}`} onGo={() => setBellOpen(false)} navigate={navigate} />
+                <BellSection title="Activities awaiting review" items={notes.activities} to="/reports-performance"
+                  label={(a) => a.title} onGo={() => setBellOpen(false)} navigate={navigate} />
+                <BellSection title="Open support tickets" items={notes.tickets} to="/support"
+                  label={(t) => t.title || `Ticket #${t.id}`} onGo={() => setBellOpen(false)} navigate={navigate} />
+                {bellTotal === 0 && (
+                  <p className="px-3 py-6 text-center text-sm text-muted-foreground">You&apos;re all caught up.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setInfoOpen(true)} aria-label="About this system">
+          <HugeiconsIcon icon={InformationCircleIcon} size={20} strokeWidth={1.8} />
+        </Button>
       </div>
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-[#15803d] text-xs font-semibold text-white">
-        IA
-      </span>
+      <QuickstartPanel open={quickOpen} onOpenChange={setQuickOpen} steps={steps} />
+      <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl font-normal">About ARISE KMS</DialogTitle>
+            <DialogDescription>Knowledge management for ARISE Philippines members.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>Submit reports, log performance activities, track certifications, and explore membership analytics from the sidebar.</p>
+            <p>Signed in as <span className="font-medium text-foreground">{role}</span>.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setInfoOpen(false); navigate('/user-manual'); }}>
+                User Manual
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => { setInfoOpen(false); navigate('/support'); }}>
+                Support
+              </Button>
+            </div>
+            <div className="border-t border-border pt-3">
+              <p className="text-xs font-semibold tracking-wide uppercase">Powered by</p>
+              <div className="mt-2 grid grid-cols-4 items-stretch gap-2">
+                {[
+                  { src: apcLogo, alt: 'APC' },
+                  { src: smPrimeLogo, alt: 'SM Prime' },
+                  { src: jpcsApcLogo, alt: 'JPCS APC' },
+                  { src: vaulteralabsLogo, alt: 'Vaultera Labs' },
+                ].map((logo) => (
+                  <div key={logo.alt} className="flex h-14 items-center justify-center rounded-md border border-border bg-white px-2">
+                    <img src={logo.src} alt={logo.alt} title={logo.alt} className="max-h-10 w-auto max-w-full object-contain" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
+  );
+}
+
+function BellSection({ title, items, to, label, onGo, navigate }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="border-b border-border last:border-0">
+      <button
+        type="button"
+        onClick={() => { onGo(); navigate(to); }}
+        className="flex w-full items-center justify-between px-3 pt-2 text-xs font-semibold text-[#0B4484] hover:underline"
+      >
+        {title} · {items.length}
+      </button>
+      <div className="pb-1">
+        {items.slice(0, 4).map((it) => (
+          <button
+            key={it.id}
+            type="button"
+            onClick={() => { onGo(); navigate(to); }}
+            className="block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-muted/60"
+          >
+            {label(it)}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

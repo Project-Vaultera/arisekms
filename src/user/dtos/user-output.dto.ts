@@ -3,6 +3,8 @@ import { Expose } from 'class-transformer';
 
 import { ROLE } from '../../auth/constants/role.constant';
 
+export const GENDER_OPTIONS = ['male', 'female', 'other', 'prefer-not-to-say'] as const;
+
 export class UserOutput {
   @Expose()
   @ApiProperty()
@@ -23,6 +25,10 @@ export class UserOutput {
   @Expose()
   @ApiProperty()
   email: string;
+
+  @Expose()
+  @ApiProperty({ enum: GENDER_OPTIONS, nullable: true })
+  gender?: string | null;
 
   @Expose()
   @ApiProperty()

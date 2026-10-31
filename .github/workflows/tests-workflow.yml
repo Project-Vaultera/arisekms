@@ -18,6 +18,9 @@ jobs:
       DB_NAME: example_db
       DB_USER: root
       DB_PASS: example
+      # test/test-utils.ts connects to TEST_DB_HOST:5432 with root/example,
+      # so the compose DB must be published on host port 5432 (default is 5436).
+      PGSQL_HOST_PORT: 5432
       JWT_ACCESS_TOKEN_EXP_IN_SEC: 3600
       JWT_REFRESH_TOKEN_EXP_IN_SEC: 7200
       JWT_PUBLIC_KEY_BASE64: ${{ secrets.JWT_PUBLIC_KEY_BASE64 }}
@@ -34,8 +37,8 @@ jobs:
       - name: Run unit tests
         run: npm test
       - name: Build the docker compose stack
-        run: docker compose -f docker-compose.yml up -d pgsqldb
+        run: docker compose -f docker-compose.yml up -d --wait pgsqldb
       - name: Check running containers
         run: docker ps -a
       - name: Run e2e tests
-        run: sleep 5 && npm run test:e2e
+        run: npm run test:e2e

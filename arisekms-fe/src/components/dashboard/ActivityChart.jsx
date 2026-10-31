@@ -1,101 +1,48 @@
-import { useMemo, useState } from 'react';
-
-import { Area } from '@/components/charts/area';
-import { AreaChart } from '@/components/charts/area-chart';
+import { Bar } from '@/components/charts/bar';
+import { BarChart } from '@/components/charts/bar-chart';
+import { BarXAxis } from '@/components/charts/bar-x-axis';
 import { Grid } from '@/components/charts/grid';
 import { ChartTooltip } from '@/components/charts/tooltip';
-import { XAxis } from '@/components/charts/x-axis';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
-import { cn } from '@/lib/utils.js';
 
-// Placeholder series (no backend aggregate yet).
-// TODO: replace with workspace-scoped GET /api/v1/... once KMS domain lands.
-function weeks(count, endISO, fn) {
-  const end = new Date(`${endISO}T00:00:00Z`);
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date(end);
-    d.setUTCDate(d.getUTCDate() - (count - 1 - i) * 7);
-    return { date: d, ...fn(i) };
-  });
-}
-
-const docs = [38, 44, 41, 52, 47, 58, 55, 63, 61, 74, 70, 82, 89];
-const readers = [280, 310, 295, 350, 390, 420, 405, 470, 540, 520, 610, 660, 720];
-
-const ACTIVITY = weeks(13, '2026-10-26', (i) => ({
-  documents: docs[i],
-  readers: readers[i],
-}));
-
-const RANGES = [
-  { id: '3m', label: 'Last 3 months', days: 90 },
-  { id: '30d', label: 'Last 30 days', days: 30 },
-  { id: '7d', label: 'Last 7 days', days: 7 },
+const SERIES = [
+  { key: 'quarterly', fill: 'var(--chart-1)' },
+  { key: 'annual', fill: 'var(--chart-2)' },
+  { key: 'goodPractices', fill: 'var(--chart-4)' },
+  { key: 'successStories', fill: 'var(--chart-3)' },
 ];
 
-const VIEWS = [
-  { id: 'both', label: 'Both' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'readers', label: 'Readers' },
-];
-
-export function ActivityChart() {
-  const [range, setRange] = useState('3m');
-  const [view, setView] = useState('both');
-
-  const data = useMemo(() => {
-    const cutoff = new Date(ACTIVITY[ACTIVITY.length - 1].date);
-    cutoff.setUTCDate(cutoff.getUTCDate() - RANGES.find((r) => r.id === range).days);
-    return ACTIVITY.filter((d) => d.date >= cutoff);
-  }, [range]);
-
-  const showDocs = view === 'both' || view === 'documents';
-  const showReaders = view === 'both' || view === 'readers';
+// Weekly stacked bars of live report submissions, split by category.
+export function ActivityChart({ weeks = [], loading = false }) {
+  const hasData = weeks.some((w) => SERIES.some((s) => (w[s.key] ?? 0) > 0));
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle>Total activity</CardTitle>
-          <CardDescription>Documents published vs. active readers</CardDescription>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-md border bg-muted/40 p-0.5 text-xs font-medium">
-            {RANGES.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setRange(r.id)}
-                className={cn(
-                  'rounded px-2.5 py-1 text-muted-foreground transition-colors hover:text-foreground',
-                  range === r.id && 'bg-card text-foreground shadow-sm',
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-          <select
-            value={view}
-            onChange={(e) => setView(e.target.value)}
-            aria-label="View"
-            className="h-8 rounded-md border border-input bg-card px-2 text-xs font-medium"
-          >
-            {VIEWS.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.label}
-              </option>
-            ))}
-          </select>
+      <CardHeader className="pb-0.5 pt-3">
+        <div className="space-y-0.5">
+          <CardTitle>Submitted Reports</CardTitle>
+          <CardDescription>Weekly Submissions By Category · Last 26 Weeks</CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
-        <AreaChart data={data} aspectRatio="3 / 1">
-          <Grid horizontal />
-          {showDocs && <Area dataKey="documents" fill="var(--chart-1)" fillOpacity={0.35} />}
-          {showReaders && <Area dataKey="readers" fill="var(--chart-4)" fillOpacity={0.25} />}
-          <XAxis />
-          <ChartTooltip />
-        </AreaChart>
+      <CardContent className="pt-0 pb-3">
+        {loading ? (
+          <p className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+            Loading submissions…
+          </p>
+        ) : !hasData ? (
+          <p className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+            No submissions yet.
+          </p>
+        ) : (
+          <BarChart data={weeks} xDataKey="label" aspectRatio="3 / 1" stacked margin={{ top: 8, right: 16, bottom: 24, left: 16 }}>
+            <Grid horizontal />
+            {SERIES.map((s) => (
+              <Bar key={s.key} dataKey={s.key} fill={s.fill} />
+            ))}
+            <BarXAxis maxLabels={8} />
+            <ChartTooltip />
+          </BarChart>
+        )}
       </CardContent>
     </Card>
   );

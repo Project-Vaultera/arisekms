@@ -35,7 +35,7 @@ import {
 /** Skeleton bars to show when `status="loading"` and `data` is empty. */
 const FALLBACK_LOADING_BARS = 12;
 
-const DEFAULT_MARGIN = { top: 40, right: 40, bottom: 40, left: 40 };
+const DEFAULT_MARGIN = { top: 8, right: 20, bottom: 28, left: 20 };
 
 function isSeriesOverlayComponent(child) {
   const childType = child.type;

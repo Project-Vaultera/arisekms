@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import defaultLogoUrl from '../arise-ph_logo.png';
+import defaultLogoUrl from '/arise-ph_logo.png';
 
 const STORAGE_KEY = 'kms-company-logo';
 
@@ -51,7 +51,7 @@ export function CompanyLogo({ size = 40 }) {
         onClick={() => fileRef.current?.click()}
         onDoubleClick={reset}
         title="Click to upload your company logo, double-click to reset"
-        className="grid shrink-0 place-items-center overflow-hidden rounded-sm bg-white transition-colors hover:bg-[#e9f7ef]"
+        className="grid shrink-0 place-items-center overflow-hidden rounded-sm bg-white transition-colors"
         style={{ width: size, height: size }}
       >
         <img

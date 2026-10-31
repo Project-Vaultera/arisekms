@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { compare, hash } from 'bcrypt';
 import { plainToClass } from 'class-transformer';
 
@@ -7,6 +7,7 @@ import { RequestContext } from '../../shared/request-context/request-context.dto
 import { CreateUserInput } from '../dtos/user-create-input.dto';
 import { UserOutput } from '../dtos/user-output.dto';
 import { UpdateUserInput } from '../dtos/user-update-input.dto';
+import { UpdateMyProfileInput } from '../dtos/user-update-me-input.dto';
 import { User } from '../entities/user.entity';
 import { UserRepository } from '../repositories/user.repository';
 
@@ -112,6 +113,39 @@ export class UserService {
     });
   }
 
+  async updateMyProfile(
+    ctx: RequestContext,
+    userId: number,
+    input: UpdateMyProfileInput,
+  ): Promise<UserOutput> {
+    this.logger.log(ctx, `${this.updateMyProfile.name} was called`);
+
+    const user = await this.repository.getById(userId);
+
+    // Email change must stay unique across accounts.
+    if (input.email && input.email !== user.email) {
+      const taken = await this.repository.findOne({ where: { email: input.email } });
+      if (taken && taken.id !== user.id) {
+        throw new ConflictException('Email is already in use.');
+      }
+    }
+
+    // Whitelist merge: only name + email + gender are self-editable.
+    const updatedUser: User = {
+      ...user,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.email !== undefined ? { email: input.email } : {}),
+      ...(input.gender !== undefined ? { gender: input.gender } : {}),
+    };
+
+    this.logger.log(ctx, `calling ${UserRepository.name}.save`);
+    await this.repository.save(updatedUser);
+
+    return plainToClass(UserOutput, updatedUser, {
+      excludeExtraneousValues: true,
+    });
+  }
+
   async updateUser(
     ctx: RequestContext,
     userId: number,
@@ -121,6 +155,11 @@ export class UserService {
 
     this.logger.log(ctx, `calling ${UserRepository.name}.getById`);
     const user = await this.repository.getById(userId);
+
+    // Admins cannot disable their own account (route params arrive as strings).
+    if (input.isAccountDisabled === true && Number(ctx.user?.id) === Number(userId)) {
+      throw new ForbiddenException('You cannot disable your own account.');
+    }
 
     // Hash the password if it exists in the input payload.
     if (input.password) {

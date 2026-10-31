@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { getAccessToken } from '@/api/client.js';
-import { allowedRoute, effectiveRole } from '@/lib/rbac.js';
+import { api, getAccessToken } from '@/api/client.js';
+import { allowedRoute, approvalLocked, effectiveRole } from '@/lib/rbac.js';
 import { Dashboard } from '@/pages/Dashboard.jsx';
 import { Login } from '@/pages/Login.jsx';
+import { Signup } from '@/pages/Signup.jsx';
 
 function decodeRoles() {
   try {
@@ -22,13 +23,51 @@ function decodeRoles() {
 function Shell() {
   const { pathname } = useLocation();
   const [roles] = useState(decodeRoles);
-  if (!getAccessToken()) return <Navigate to="/login" replace />;
+  const [approval, setApproval] = useState({ loading: true, hasApproved: false, hasCompany: false });
+  const hasToken = !!getAccessToken();
   const role = effectiveRole(roles);
+  const isAdmin = role === 'ADMIN';
+
+  useEffect(() => {
+    if (!hasToken || isAdmin) {
+      setApproval({ loading: false, hasApproved: isAdmin, hasCompany: false });
+      return;
+    }
+    let cancelled = false;
+    // Refetch on navigation so an approval granted while the form is open
+    // unlocks the portal without a manual refresh.
+    api
+      .get('/companies')
+      .then((res) => {
+        if (cancelled) return;
+        const rows = res.data.data ?? [];
+        setApproval({
+          loading: false,
+          hasApproved: rows.some((c) => c.status === 'approved'),
+          hasCompany: rows.length > 0,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setApproval({ loading: false, hasApproved: false, hasCompany: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, isAdmin, hasToken]);
+
+  if (!hasToken) return <Navigate to="/login" replace />;
   // Display-only gate; the API independently enforces every permission.
   if (!allowedRoute(role, pathname)) return <Navigate to="/" replace />;
+
+  const locked = !approval.loading && approvalLocked(pathname, { isAdmin, hasApproved: approval.hasApproved });
+  // Locked members work through the form wizard; without a company they land
+  // on the form start card (which forwards once applied).
+  if (locked) {
+    return <Navigate to="/membership-form" replace />;
+  }
   return (
     <TooltipProvider>
-      <Dashboard />
+      <Dashboard locked={!approval.loading && !isAdmin && !approval.hasApproved} />
     </TooltipProvider>
   );
 }
@@ -38,6 +77,7 @@ export default function App() {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/*" element={<Shell />} />
       </Routes>
     </ThemeProvider>

@@ -32,6 +32,7 @@ import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { UserOutput } from '../dtos/user-output.dto';
 import { UpdateUserInput } from '../dtos/user-update-input.dto';
+import { UpdateMyProfileInput } from '../dtos/user-update-me-input.dto';
 import { UserService } from '../services/user.service';
 
 @ApiTags('users')
@@ -68,6 +69,32 @@ export class UserController {
     return { data: user, meta: {} };
   }
 
+  // Declared before ':id' routes so 'me' is never swallowed as a param.
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(ClassSerializerInterceptor)
+  @Patch('me')
+  @ApiOperation({
+    summary: 'Update own profile API (name + email only)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: SwaggerBaseApiResponse(UserOutput),
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    type: BaseApiErrorResponse,
+  })
+  async updateMyProfile(
+    @ReqContext() ctx: RequestContext,
+    @Body() input: UpdateMyProfileInput,
+  ): Promise<BaseApiResponse<UserOutput>> {
+    this.logger.log(ctx, `${this.updateMyProfile.name} was called`);
+
+    const user = await this.userService.updateMyProfile(ctx, ctx.user!.id, input);
+    return { data: user, meta: {} };
+  }
+
   @UseInterceptors(ClassSerializerInterceptor)
   @Get()
   @ApiOperation({
@@ -99,8 +126,7 @@ export class UserController {
     return { data: users, meta: { count } };
   }
 
-  // TODO: ADD RoleGuard
-  // NOTE : This can be made a admin only endpoint. For normal users they can use GET /me
+  // Admin-only: members use GET /me and PATCH /me.
   @UseInterceptors(ClassSerializerInterceptor)
   @Get(':id')
   @ApiOperation({
@@ -114,6 +140,9 @@ export class UserController {
     status: HttpStatus.NOT_FOUND,
     type: BaseApiErrorResponse,
   })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLE.ADMIN)
+  @ApiBearerAuth()
   async getUser(
     @ReqContext() ctx: RequestContext,
     @Param('id') id: number,
@@ -124,8 +153,7 @@ export class UserController {
     return { data: user, meta: {} };
   }
 
-  // TODO: ADD RoleGuard
-  // NOTE : This can be made a admin only endpoint. For normal users they can use PATCH /me
+  // Admin-only full update. Members self-serve via PATCH /me.
   @Patch(':id')
   @ApiOperation({
     summary: 'Update user API',
@@ -138,6 +166,9 @@ export class UserController {
     status: HttpStatus.NOT_FOUND,
     type: BaseApiErrorResponse,
   })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLE.ADMIN)
+  @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async updateUser(
     @ReqContext() ctx: RequestContext,

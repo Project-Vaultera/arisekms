@@ -67,11 +67,12 @@ describe('UserController (e2e)', () => {
   });
 
   describe('get a user by Id', () => {
-    it('should get a user by Id', async () => {
+    it('admin gets a user by Id', async () => {
       const expectedOutput = adminUser;
 
       return request(app.getHttpServer())
         .get('/users/1')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .expect(HttpStatus.OK)
         .expect({ data: expectedOutput, meta: {} });
     });
@@ -79,7 +80,14 @@ describe('UserController (e2e)', () => {
     it('throws NOT_FOUND when user doesnt exist', () => {
       return request(app.getHttpServer())
         .get('/users/99')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .expect(HttpStatus.NOT_FOUND);
+    });
+
+    it('Unauthorized error when BearerToken is not provided', () => {
+      return request(app.getHttpServer())
+        .get('/users/1')
+        .expect(HttpStatus.UNAUTHORIZED);
     });
   });
 
@@ -89,7 +97,7 @@ describe('UserController (e2e)', () => {
   };
 
   describe('update a user', () => {
-    it('successfully updates a user', async () => {
+    it('admin successfully updates a user', async () => {
       const expectedOutput: UserOutput = {
         ...adminUser,
         ...{ name: 'New e2etestername' },
@@ -97,6 +105,7 @@ describe('UserController (e2e)', () => {
 
       return request(app.getHttpServer())
         .patch('/users/1')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .send(updateUserInput)
         .expect(HttpStatus.OK)
         .expect((res) => {
@@ -109,13 +118,23 @@ describe('UserController (e2e)', () => {
     it('throws NOT_FOUND when user doesnt exist', () => {
       return request(app.getHttpServer())
         .patch('/users/99')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
+        .send(updateUserInput)
         .expect(HttpStatus.NOT_FOUND);
+    });
+
+    it('Unauthorized error when BearerToken is not provided', () => {
+      return request(app.getHttpServer())
+        .patch('/users/1')
+        .send(updateUserInput)
+        .expect(HttpStatus.UNAUTHORIZED);
     });
 
     it('update fails when incorrect password type', () => {
       updateUserInput.password = 12345 as any;
       return request(app.getHttpServer())
         .patch('/users/1')
+        .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .expect(HttpStatus.BAD_REQUEST)
         .send(updateUserInput)
         .expect((res) => {
@@ -125,6 +144,58 @@ describe('UserController (e2e)', () => {
             'password must be a string',
           );
         });
+    });
+  });
+
+  describe('update own profile', () => {
+    it('member updates own name and email', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ name: 'Self Editor', username: 'self-editor', password: 'member-pass-1', email: 'self-editor@example.com' })
+        .expect(HttpStatus.CREATED);
+
+      const login = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ username: 'self-editor', password: 'member-pass-1' })
+        .expect(HttpStatus.OK);
+      const token = login.body.data.accessToken;
+
+      const res = await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Edited Name', email: 'edited@example.com' })
+        .expect(HttpStatus.OK);
+      expect(res.body.data.name).toEqual('Edited Name');
+      expect(res.body.data.email).toEqual('edited@example.com');
+      expect(res.body.data.username).toEqual('self-editor');
+
+      // Role smuggling is ignored: only name + email are self-editable.
+      const smuggle = await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Edited Name', roles: ['ADMIN'] })
+        .expect(HttpStatus.OK);
+      expect(smuggle.body.data.roles).toEqual(['USER']);
+    });
+
+    it('duplicate email is rejected', async () => {
+      const login = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ username: 'self-editor', password: 'member-pass-1' })
+        .expect(HttpStatus.OK);
+
+      await request(app.getHttpServer())
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${login.body.data.accessToken}`)
+        .send({ email: 'default-admin@example.com' })
+        .expect(HttpStatus.CONFLICT);
+    });
+
+    it('unauthenticated PATCH /me is rejected', async () => {
+      await request(app.getHttpServer())
+        .patch('/users/me')
+        .send({ name: 'Nope' })
+        .expect(HttpStatus.UNAUTHORIZED);
     });
   });
 

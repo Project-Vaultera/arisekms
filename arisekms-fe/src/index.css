@@ -8,7 +8,7 @@
 :root {
   --radius: 0.625rem;
   --font-sans: 'Poppins', system-ui, sans-serif;
-  --font-heading: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Poppins', system-ui, sans-serif;
   --spacing: 0.25rem;
   --sidebar-width: 16rem;
   --sidebar-width-mobile: 18rem;
@@ -23,7 +23,9 @@
   --foreground: oklch(0.21 0.034 264.665);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.21 0.034 264.665);
-  --primary: #15803d;
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.034 264.665);
+  --primary: #0B4484;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.967 0.003 264.542);
   --secondary-foreground: oklch(0.21 0.034 264.665);
@@ -33,7 +35,7 @@
   --accent-foreground: oklch(0.21 0.034 264.665);
   --border: oklch(0.928 0.006 264.531);
   --input: oklch(0.928 0.006 264.531);
-  --ring: #15803d;
+  --ring: #0B4484;
   --chart-1: var(--sendai-crimson);
   --chart-2: var(--sendai-plum);
   --chart-3: var(--sendai-orange);
@@ -41,12 +43,12 @@
   --chart-5: var(--sendai-navy);
   --sidebar: #ffffff;
   --sidebar-foreground: #1e3a5f;
-  --sidebar-primary: #15803d;
+  --sidebar-primary: #0B4484;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e9f7ef;
-  --sidebar-accent-foreground: #15803d;
+  --sidebar-accent: #e9eff5;
+  --sidebar-accent-foreground: #00ada8;
   --sidebar-border: #e5e7eb;
-  --sidebar-ring: #15803d;
+  --sidebar-ring: #0B4484;
   --chart-positive: oklch(0.696 0.17 162.48);
   --chart-negative: oklch(0.637 0.237 25.331);
   --chart-background: oklch(1 0 0);
@@ -77,6 +79,11 @@
   --chart-marker-badge-foreground: oklch(0.84 0 0);
   --chart-segment-background: oklch(0.756 0 0 / 0.06);
   --chart-segment-line: oklch(0.5 0 0 / 0.25);
+  --legend: oklch(1 0 0);
+  --legend-foreground: oklch(0.141 0.005 285.823);
+  --legend-muted: oklch(0.967 0.001 286.375);
+  --legend-muted-foreground: oklch(0.552 0.016 285.938);
+  --legend-track: oklch(0.92 0.004 286.32);
 }
 
 .dark {
@@ -84,7 +91,9 @@
   --foreground: oklch(0.985 0.002 247.839);
   --card: oklch(0.278 0.033 256.848);
   --card-foreground: oklch(0.985 0.002 247.839);
-  --primary: #16a34a;
+  --popover: oklch(0.278 0.033 256.848);
+  --popover-foreground: oklch(0.985 0.002 247.839);
+  --primary: #4a90d9;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.278 0.033 256.848);
   --secondary-foreground: oklch(0.985 0.002 247.839);
@@ -131,7 +140,12 @@
   --sidebar-accent: hsl(240 3.7% 15.9%);
   --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
   --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: #15803d;
+  --sidebar-ring: #0B4484;
+  --legend: oklch(0.21 0.006 285.885);
+  --legend-foreground: oklch(0.985 0 0);
+  --legend-muted: oklch(0.274 0.006 286.033);
+  --legend-muted-foreground: oklch(0.705 0.015 286.067);
+  --legend-track: oklch(0.274 0.006 286.033);
 }
 
 @theme inline {
@@ -139,6 +153,8 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -147,6 +163,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-heading);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -206,11 +224,20 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
+  --color-legend-track: var(--legend-track);
+  --color-legend-muted-foreground: var(--legend-muted-foreground);
+  --color-legend-muted: var(--legend-muted);
+  --color-legend-foreground: var(--legend-foreground);
+  --color-legend: var(--legend);
 }
 
 @layer base {
   * {
     @apply border-border;
+  }
+  *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
   }
   body {
     @apply bg-background font-sans font-light text-foreground antialiased;
@@ -237,7 +264,7 @@
 @utility editorial-kpi {
   font-family: var(--font-heading);
   font-size: 2.25rem;
-  font-weight: 900;
+  font-weight: 400;
   line-height: 1.1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;

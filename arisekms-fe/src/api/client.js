@@ -17,6 +17,21 @@ export const clearTokens = () => {
   localStorage.removeItem(REFRESH_KEY);
 };
 
+// Download an authenticated file (reports, knowledge docs). Streams a blob
+// and triggers a save-as with the server-provided filename.
+export async function downloadFile(url, fallbackName = 'download') {
+  const res = await api.get(url, { responseType: 'blob' });
+  const disposition = res.headers?.['content-disposition'] ?? '';
+  const match = /filename="([^"]+)"/.exec(disposition);
+  const name = match?.[1] ?? fallbackName;
+  const objectUrl = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+}
+
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;

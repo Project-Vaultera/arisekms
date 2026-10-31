@@ -389,6 +389,7 @@ Temporary Items
 # Local
 .env
 dist
+uploads/
 local/
 documentation
 test-report.xml

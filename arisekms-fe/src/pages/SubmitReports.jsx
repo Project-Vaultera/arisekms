@@ -1,15 +1,29 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Cancel01Icon, CloudUploadIcon, Tick01Icon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, Download01Icon, EyeIcon, File02Icon, GridViewIcon, LeftToRightListDashIcon, Search01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
-import { PageHero } from '@/components/PageHero.jsx';
+import { api, downloadFile } from '@/api/client.js';
+import { FileDropzone } from '@/components/FileDropzone.jsx';
+import { SendaiFrame } from '@/components/SendaiFrame.jsx';
+import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
-import { Card, CardContent } from '@/components/ui/card.jsx';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card.jsx';
+import { SectionTitle } from '@/components/ui/section-title.jsx';
+import { FilterSelect } from '@/components/ui/filter-select.jsx';
+import { Input } from '@/components/ui/input.jsx';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.jsx';
+import { formatBytes, validateUploadFile } from '@/lib/file-upload.js';
 import { cn } from '@/lib/utils.js';
 
-const ACCEPTED = ['pdf', 'jpg', 'jpeg', 'png'];
+function checkFile(f) {
+  const problem = validateUploadFile(f);
+  if (!problem) return true;
+  const suffix = problem.title === 'Unsupported file type' ? ' One file per category.' : '';
+  toast.error(problem.title, { description: `${problem.description}${suffix}` });
+  return false;
+}
 const CATEGORIES = [
   { id: 'quarterly', label: 'Quarterly Accomplishment Reports' },
   { id: 'good-practices', label: 'Good Practices' },
@@ -17,141 +31,543 @@ const CATEGORIES = [
   { id: 'success-stories', label: 'Success Stories' },
 ];
 
-function Tile({ category, file, onPick, onRemove }) {
-  const inputRef = useRef(null);
-  const [dragging, setDragging] = useState(false);
+function UploadCard({ files, latestByCat, selectedCat, onSelectCat, submittingCat, busy, onPick, onRemove, onDiscard, onSubmit, onSubmitOne }) {
+  const entries = Object.entries(files);
+  const current = latestByCat[selectedCat] || null;
 
   function handleFiles(list) {
     const f = list?.[0];
-    if (!f) return;
-    const ext = f.name.split('.').pop().toLowerCase();
-    if (!ACCEPTED.includes(ext)) {
-      toast.error('Unsupported file type', { description: `Supports ${ACCEPTED.join(', ')}. One file per category.` });
-      return;
-    }
-    onPick(category.id, f);
+    if (!f || !checkFile(f)) return;
+    onPick(selectedCat, f);
   }
 
   return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragging(false);
-        handleFiles(e.dataTransfer.files);
-      }}
-      className={cn(
-        'flex flex-col items-center gap-3 rounded-lg border border-dashed border-[var(--sendai-teal)]/60 p-6 text-center transition-colors',
-        dragging && 'border-solid bg-[#e9f7ef]',
-      )}
-    >
-      <p className="text-sm font-semibold text-[#1e3a5f]">{category.label}</p>
-      {file ? (
-        <span className="flex max-w-full items-center gap-2 rounded-sm bg-[#e9f7ef] px-3 py-1.5 text-xs font-medium text-[#15803d]">
-          <HugeiconsIcon icon={Tick01Icon} size={15} strokeWidth={2} />
-          <span className="truncate">{file.name}</span>
-          <button
-            type="button"
-            aria-label={`Remove ${file.name}`}
-            onClick={() => onRemove(category.id)}
-            className="rounded-sm p-0.5 hover:bg-white"
-          >
-            <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} />
-          </button>
-        </span>
-      ) : (
-        <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
-          <HugeiconsIcon icon={CloudUploadIcon} size={16} strokeWidth={1.8} />
-          Attach file
-        </Button>
-      )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
-        className="hidden"
-        onChange={(e) => {
-          handleFiles(e.target.files);
-          e.target.value = '';
-        }}
-      />
-    </div>
+      <Card className="relative z-10 rounded-2xl bg-white">
+      <CardHeader className="pb-0.5 pt-3">
+        <SectionTitle>Submit Reports</SectionTitle>
+        <CardDescription>Upload and track your quarterly, annual, good practices, and success story reports</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2 px-4 pt-2 pb-3">
+        <div className="mx-auto w-full max-w-xs">
+          <FilterSelect
+            value={selectedCat}
+            onValueChange={onSelectCat}
+            placeholder="Report type"
+            triggerClassName="h-8"
+            options={CATEGORIES.map((c) => ({ value: c.id, label: c.label }))}
+          />
+          <p className="mt-1 truncate text-center text-[11px] text-muted-foreground" title={current ? `${current.originalName || current.filename || ''} (${current.status || ''})` : ''}>
+            {current
+              ? `Current: ${current.originalName || current.filename || 'Report'} (${current.status || 'submitted'})`
+              : 'Not submitted yet'}
+          </p>
+        </div>
+        <FileDropzone onPick={(f) => handleFiles([f])} />
+        {entries.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {entries.map(([catId, f]) => (
+              <span key={catId} className="flex max-w-full items-center gap-1.5 rounded-sm bg-[#e9eff5] px-2 py-1 text-xs font-medium text-[#0B4484]">
+                <HugeiconsIcon icon={Tick01Icon} size={13} strokeWidth={2} />
+                <span className="font-semibold">{CATEGORY_SHORT[catId] || catId}:</span>
+                <span className="max-w-40 truncate">{f.name}</span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${f.name}`}
+                  onClick={() => onRemove(catId)}
+                  className="rounded-sm p-0.5"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
+          <p className="text-[11px] text-muted-foreground" title="Your data is handled securely — Privacy Policy">
+            {entries.length} of 4 attached · handled securely
+          </p>
+          <div className="flex items-center gap-1.5">
+            <Button variant="outline" size="sm" className="h-8" onClick={onDiscard} disabled={busy || entries.length === 0}>
+              Discard
+            </Button>
+            <Button size="sm" className="h-8" disabled={!files[selectedCat] || submittingCat === selectedCat} onClick={() => onSubmitOne(selectedCat)}>
+              {submittingCat === selectedCat ? 'Submitting…' : 'Submit'}
+            </Button>
+            <Button size="sm" className="h-8" onClick={onSubmit} disabled={busy || entries.length === 0}>
+              {busy ? 'Submitting…' : 'Submit all'}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+      </Card>
   );
+}
+
+const CATEGORY_LABEL = {
+  quarterly: 'Quarterly Accomplishment Reports',
+  annual: 'Annual Accomplishment Reports',
+  'good-practices': 'Good Practices',
+  'success-stories': 'Success Stories',
+};
+
+const CATEGORY_SHORT = {
+  quarterly: 'Quarterly',
+  annual: 'Annual',
+  'good-practices': 'Good Practices',
+  'success-stories': 'Success Stories',
+};
+
+function statusStyle(status) {
+  if (status === 'approved') return 'bg-[var(--sendai-teal)]/10 text-[var(--sendai-teal)]';
+  if (status === 'rejected') return 'bg-[var(--sendai-crimson)]/10 text-[var(--sendai-crimson)]';
+  if (status === 'submitted') return 'bg-[var(--sendai-orange)]/10 text-[var(--sendai-orange)]';
+  return 'bg-[var(--sendai-plum)]/10 text-[var(--sendai-plum)]';
 }
 
 export function SubmitReports() {
   const [files, setFiles] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [viewMode, setViewMode] = useState('list');
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [filterCat, setFilterCat] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [q, setQ] = useState('');
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(0);
+  const [selectedCat, setSelectedCat] = useState('quarterly');
+  const [submittingCat, setSubmittingCat] = useState(null);
+  const [preview, setPreview] = useState(null);
+
+  function refreshReports() {
+    setLoading(true);
+    setLoadError(false);
+    return api
+      .get('/reports', { params: { limit: 100, offset: 0 } })
+      .then((res) => setReports(res.data.data ?? []))
+      .catch(() => {
+        setLoadError(true);
+        toast.error('Could not load submitted reports');
+      })
+      .finally(() => setLoading(false));
+  }
+
+  const [companyNames, setCompanyNames] = useState({});
+
+  useEffect(() => {
+    refreshReports();
+    api
+      .get('/companies')
+      .then((res) => {
+        const map = {};
+        for (const company of res.data.data ?? []) {
+          for (const member of company.members ?? []) {
+            map[member.id] = company.name;
+          }
+        }
+        setCompanyNames(map);
+      })
+      .catch(() => {});
+  }, []);
 
   function discard() {
     setFiles({});
     toast.info('Attachments discarded');
   }
 
-  function submit() {
-    const count = Object.keys(files).length;
-    if (count === 0) {
+  async function submitOne(category) {
+    const file = files[category];
+    if (!file) {
+      toast.error('Nothing to submit', { description: 'Attach a file first.' });
+      return;
+    }
+    setSubmittingCat(category);
+    try {
+      const form = new FormData();
+      form.append('category', category);
+      form.append('file', file);
+      await api.post('/reports', form);
+      toast.success('Report submitted', { description: `${CATEGORY_SHORT[category] || category} queued for review.` });
+      setFiles((prev) => {
+        const next = { ...prev };
+        delete next[category];
+        return next;
+      });
+      await refreshReports();
+    } catch (err) {
+      const message = err?.response?.data?.error?.message;
+      if (err?.response?.status === 403) {
+        toast.error('Membership approval required', { description: message });
+      } else {
+        toast.error('Submission failed', { description: 'Check the file type and try again.' });
+      }
+    } finally {
+      setSubmittingCat(null);
+    }
+  }
+
+  async function submit() {
+    const entries = Object.entries(files);
+    if (entries.length === 0) {
       toast.error('Nothing to submit', { description: 'Attach at least one file first.' });
       return;
     }
-    // TODO: POST /api/v1/reports (multipart, one file per category).
-    toast.success('Reports submitted', { description: `${count} file(s) queued for review.` });
-    setFiles({});
+    setBusy(true);
+    try {
+      for (const [category, file] of entries) {
+        const form = new FormData();
+        form.append('category', category);
+        form.append('file', file);
+        await api.post('/reports', form);
+      }
+      toast.success('Reports submitted', { description: `${entries.length} file(s) queued for review.` });
+      setFiles({});
+      await refreshReports();
+    } catch (err) {
+      const message = err?.response?.data?.error?.message;
+      if (err?.response?.status === 403) {
+        toast.error('Membership approval required', { description: message });
+      } else {
+        toast.error('Submission failed', { description: 'Check the file type and try again.' });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const uploaded = useMemo(() => {
+    return reports.slice().sort((a, b) => {
+      const da = new Date(b.createdAt || b.created_at || 0).getTime();
+      const db = new Date(a.createdAt || a.created_at || 0).getTime();
+      return da - db;
+    });
+  }, [reports]);
+
+  const stats = useMemo(() => {
+    const total = uploaded.length;
+    let submitted = 0;
+    let approved = 0;
+    let rejected = 0;
+    for (const r of uploaded) {
+      const s = r.status || '';
+      if (s === 'submitted') submitted += 1;
+      else if (s === 'approved') approved += 1;
+      else if (s === 'rejected') rejected += 1;
+    }
+    return { total, submitted, approved, rejected };
+  }, [uploaded]);
+
+  const latestByCat = useMemo(() => {
+    const byCat = {};
+    for (const r of uploaded) {
+      const c = r.category || r.type;
+      if (!c) continue;
+      if (!byCat[c] || new Date(r.createdAt || r.created_at || 0) > new Date(byCat[c].createdAt || byCat[c].created_at || 0)) {
+        byCat[c] = r;
+      }
+    }
+    return byCat;
+  }, [uploaded]);
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return uploaded.filter((r) => {
+      const cat = r.category || r.type;
+      if (filterCat !== 'all' && cat !== filterCat) return false;
+      if (statusFilter === 'awaiting' && r.status !== 'submitted') return false;
+      if (statusFilter === 'approved' && r.status !== 'approved') return false;
+      if (statusFilter === 'rejected' && r.status !== 'rejected') return false;
+      if (!needle) return true;
+      const name = (r.originalName || r.filename || r.title || '').toLowerCase();
+      return name.includes(needle);
+    });
+  }, [uploaded, filterCat, statusFilter, q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const visible = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
+
+  function updateFilter(setter, value) {
+    setter(value);
+    setPage(0);
+  }
+
+  function downloadReport(report) {
+    if (!report?.id) return;
+    downloadFile(`/reports/${report.id}/file`, report.originalName || report.filename || 'report').catch(() => toast.error('Download failed'));
+  }
+
+  async function previewReport(report) {
+    if (!report?.id) return;
+    try {
+      const res = await api.get(`/reports/${report.id}/file`, { responseType: 'blob' });
+      const mime = res.data?.type || report.mimeType || '';
+      const url = URL.createObjectURL(res.data);
+      setPreview({ url, mime, name: report.originalName || report.filename || 'Report' });
+    } catch {
+      toast.error('Preview failed', { description: 'Try downloading instead.' });
+    }
+  }
+
+  function closePreview() {
+    if (preview?.url) URL.revokeObjectURL(preview.url);
+    setPreview(null);
   }
 
   return (
-    <div className="bg-[#0a1931]">
-      <PageHero
-        title="Submit Reports"
-        subtitle="You can drag your file to start uploading"
-      />
-      <div className="mx-auto max-w-4xl px-4 pb-16">
-        {/* Sendai corner blocks */}
-        <div className="relative">
-          <span aria-hidden className="absolute -top-5 -left-5 -z-0 h-24 w-40 rounded-tl-2xl bg-[var(--sendai-crimson)]" />
-          <span aria-hidden className="absolute -top-5 -right-5 -z-0 h-24 w-40 rounded-tr-2xl bg-[var(--sendai-plum)]" />
-          <span aria-hidden className="absolute -bottom-5 -left-5 -z-0 h-24 w-40 rounded-bl-2xl bg-[var(--sendai-teal)]" />
-          <span aria-hidden className="absolute -right-5 -bottom-5 -z-0 h-24 w-40 rounded-br-2xl bg-[var(--sendai-orange)]" />
-          <Card className="relative rounded-2xl">
-            <CardContent className="space-y-6 p-6 sm:p-10">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {CATEGORIES.map((c) => (
-                  <Tile
-                    key={c.id}
-                    category={c}
-                    file={files[c.id]}
-                    onPick={(id, f) => setFiles((prev) => ({ ...prev, [id]: f }))}
-                    onRemove={(id) =>
-                      setFiles((prev) => {
-                        const next = { ...prev };
-                        delete next[id];
-                        return next;
-                      })
-                    }
-                  />
+    <div className="flex flex-col gap-2.5 overflow-x-clip py-1.5 md:gap-3 md:py-2">
+      <div className="px-4 lg:px-6">
+        <SendaiFrame>
+          <div className="relative z-10 flex flex-col gap-3">
+            <UploadCard
+          files={files}
+          latestByCat={latestByCat}
+          selectedCat={selectedCat}
+          onSelectCat={setSelectedCat}
+          submittingCat={submittingCat}
+          onPick={(id, f) => setFiles((prev) => ({ ...prev, [id]: f }))}
+          onRemove={(id) =>
+            setFiles((prev) => {
+              const next = { ...prev };
+              delete next[id];
+              return next;
+            })
+          }
+          busy={busy}
+          onDiscard={discard}
+          onSubmit={submit}
+          onSubmitOne={submitOne}
+            />
+            <Card className="relative z-10 h-full">
+          <CardHeader className="pb-0.5 pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <SectionTitle>My Submissions</SectionTitle>
+                <CardDescription>
+                  {stats.total} total · {stats.submitted} awaiting · {stats.approved} approved · {stats.rejected} rejected
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border p-1">
+                <Button size="sm" variant={viewMode === 'gallery' ? 'default' : 'ghost'} onClick={() => setViewMode('gallery')}>
+                  <HugeiconsIcon icon={GridViewIcon} size={16} strokeWidth={1.8} />
+                  Gallery
+                </Button>
+                <Button size="sm" variant={viewMode === 'list' ? 'default' : 'ghost'} onClick={() => setViewMode('list')}>
+                  <HugeiconsIcon icon={LeftToRightListDashIcon} size={16} strokeWidth={1.8} />
+                  List
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-2 pb-3">
+            <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-end">
+              <div className="relative flex-1">
+                <HugeiconsIcon icon={Search01Icon} size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Search file name..." className="h-9 w-full pl-8" />
+              </div>
+              <FilterSelect
+                label="Report type"
+                value={filterCat}
+                onValueChange={(v) => updateFilter(setFilterCat, v)}
+                className="lg:w-52"
+                options={[
+                  { value: 'all', label: 'All' },
+                  ...CATEGORIES.map((c) => ({ value: c.id, label: CATEGORY_SHORT[c.id] })),
+                ]}
+              />
+              <FilterSelect
+                label="Status"
+                value={statusFilter}
+                onValueChange={(v) => updateFilter(setStatusFilter, v)}
+                className="lg:w-44"
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'awaiting', label: 'Awaiting' },
+                  { value: 'approved', label: 'Approved' },
+                  { value: 'rejected', label: 'Rejected' },
+                ]}
+              />
+              <FilterSelect
+                label="Show"
+                value={String(pageSize)}
+                onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                placeholder="10"
+                className="lg:w-32"
+                options={['10', '25', '50', '100']}
+              />
+            </div>
+
+            {loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/60" />
                 ))}
               </div>
-              <p className="text-center text-xs text-muted-foreground">
-                Supports .pdf, .jpg, and .png. One file per category.
+            ) : loadError ? (
+              <div className="flex flex-col items-center gap-2 py-6 text-center">
+                <p className="text-sm text-muted-foreground">Failed to load submissions</p>
+                <Button size="sm" variant="outline" onClick={refreshReports}>Retry</Button>
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {uploaded.length === 0 ? 'No reports submitted yet. Attach files above and submit all.' : 'No reports match your filters.'}
               </p>
-              <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+            ) : viewMode === 'gallery' ? (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {visible.map((report) => {
+                  const cat = report.category || report.type || '';
+                  const status = report.status || 'submitted';
+                  return (
+                    <Card key={report.id} className="h-full">
+                      <CardContent className="flex h-full flex-col gap-1.5 p-3 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-muted">
+                            <HugeiconsIcon icon={File02Icon} size={16} strokeWidth={1.8} className="text-muted-foreground" />
+                          </span>
+                          <p className="line-clamp-1 min-w-0 flex-1 text-sm font-medium">{report.originalName || report.filename || report.title || 'Report'}</p>
+                          <Badge className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase', statusStyle(status))}>
+                            {status}
+                          </Badge>
+                        </div>
+                        <Badge variant="secondary" className="w-fit rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase">
+                          {CATEGORY_SHORT[cat] || cat || 'Report'}
+                        </Badge>
+                        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+                          <span>
+                            {report.createdAt || report.created_at
+                              ? new Date(report.createdAt || report.created_at).toLocaleDateString()
+                              : '—'}
+                          </span>
+                          <span>{formatBytes(report.size)}</span>
+                        </div>
+                        <div className="min-h-4 flex-1" />
+                        <div className="mt-auto flex gap-2 border-t pt-2.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 flex-1"
+                            onClick={() => previewReport(report)}
+                          >
+                            <HugeiconsIcon icon={EyeIcon} size={15} strokeWidth={2} />
+                            Preview
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 flex-1"
+                            onClick={() => downloadReport(report)}
+                          >
+                            <HugeiconsIcon icon={Download01Icon} size={15} strokeWidth={2} />
+                            Download
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Size</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visible.map((report) => {
+                      const cat = report.category || report.type || '';
+                      const status = report.status || 'submitted';
+                      return (
+                        <TableRow key={report.id}>
+                          <TableCell>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-muted">
+                                <HugeiconsIcon icon={File02Icon} size={16} strokeWidth={1.8} className="text-muted-foreground" />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block max-w-56 truncate font-medium">{report.originalName || report.filename || report.title || 'Report'}</span>
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {report.author?.name ?? 'Report'}{companyNames[report.author?.id] ? ` · ${companyNames[report.author.id]}` : ''}
+                                </span>
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase', statusStyle(status))}>
+                              {status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{CATEGORY_LABEL[cat] || cat || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {report.createdAt || report.created_at
+                              ? new Date(report.createdAt || report.created_at).toLocaleDateString()
+                              : '—'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{formatBytes(report.size)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="size-8" onClick={() => previewReport(report)} aria-label="Preview">
+                                <HugeiconsIcon icon={EyeIcon} size={16} strokeWidth={1.8} />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="size-8" onClick={() => downloadReport(report)} aria-label="Download">
+                                <HugeiconsIcon icon={Download01Icon} size={16} strokeWidth={1.8} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            {filtered.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
                 <p className="text-xs text-muted-foreground">
-                  Your data is handled securely — <Link to="/privacy-policy" className="underline">Privacy Policy</Link>
+                  Showing {safePage * pageSize + 1}–{Math.min(filtered.length, safePage * pageSize + visible.length)} of {filtered.length}
                 </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={discard}>
-                    Discard
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+                    Previous
                   </Button>
-                  <Button onClick={submit}>Submit</Button>
+                  <span className="px-1 text-xs text-muted-foreground">Page {safePage + 1} of {pageCount}</span>
+                  <Button variant="outline" size="sm" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>
+                    Next
+                  </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
+          </div>
+        </SendaiFrame>
       </div>
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={closePreview}>
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 border-b p-4">
+              <p className="truncate text-sm font-medium">{preview.name}</p>
+              <Button variant="outline" size="sm" onClick={closePreview}>Close</Button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-4">
+              {preview.mime?.startsWith('image/') ? (
+                <img src={preview.url} alt={preview.name} className="mx-auto max-h-[70vh] object-contain" />
+              ) : preview.mime === 'application/pdf' ? (
+                <iframe src={preview.url} title={preview.name} className="h-[70vh] w-full" />
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">Preview not available for this file type — use Download instead.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
