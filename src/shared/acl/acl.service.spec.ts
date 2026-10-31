@@ -41,10 +41,10 @@ describe('AclService', () => {
 
   describe('canDo', () => {
     it('should add acl rule', () => {
-      service.canDo(ROLE.USER, [Action.Read]);
+      service.canDo(ROLE.ARISE_MEMBER, [Action.Read]);
       const aclRules = service.getAclRules();
       expect(aclRules).toContainEqual({
-        role: ROLE.USER,
+        role: ROLE.ARISE_MEMBER,
         actions: [Action.Read],
       });
     });
@@ -52,12 +52,12 @@ describe('AclService', () => {
     it('should add acl rule with custom rule', () => {
       const ruleCallback = jest.fn();
 
-      service.canDo(ROLE.USER, [Action.Read], ruleCallback);
+      service.canDo(ROLE.ARISE_MEMBER, [Action.Read], ruleCallback);
 
       const aclRules = service.getAclRules();
 
       expect(aclRules).toContainEqual({
-        role: ROLE.USER,
+        role: ROLE.ARISE_MEMBER,
         actions: [Action.Read],
         ruleCallback,
       });
@@ -68,13 +68,13 @@ describe('AclService', () => {
     const user = {
       id: 6,
       username: 'foo',
-      roles: [ROLE.USER],
+      roles: [ROLE.ARISE_MEMBER],
     };
 
     const admin = {
       id: 7,
       username: 'admin',
-      roles: [ROLE.ADMIN],
+      roles: [ROLE.ARISE_IT_ADMIN],
     };
 
     it('should return canDoAction method', () => {
@@ -83,19 +83,19 @@ describe('AclService', () => {
     });
 
     it('should return false when no role sepcific rules found', () => {
-      service.canDo(ROLE.USER, [Action.Read]);
+      service.canDo(ROLE.ARISE_MEMBER, [Action.Read]);
       const userAcl = service.forActor(admin);
       expect(userAcl.canDoAction(Action.Read)).toBeFalsy();
     });
 
     it('should return false when no action sepcific rules found', () => {
-      service.canDo(ROLE.USER, [Action.Read]);
+      service.canDo(ROLE.ARISE_MEMBER, [Action.Read]);
       const userAcl = service.forActor(user);
       expect(userAcl.canDoAction(Action.Create)).toBeFalsy();
     });
 
     it('should return true when role has action permission', () => {
-      service.canDo(ROLE.USER, [Action.Read]);
+      service.canDo(ROLE.ARISE_MEMBER, [Action.Read]);
       const userAcl = service.forActor(user);
       expect(userAcl.canDoAction(Action.Read)).toBeTruthy();
     });
@@ -103,7 +103,7 @@ describe('AclService', () => {
     it('should return true when ruleCallback is true', () => {
       const customOwnerRule = jest.fn();
       customOwnerRule.mockReturnValue(true);
-      service.canDo(ROLE.USER, [Action.Manage], customOwnerRule);
+      service.canDo(ROLE.ARISE_MEMBER, [Action.Manage], customOwnerRule);
       const userAcl = service.forActor(user);
       expect(userAcl.canDoAction(Action.Read, new Article())).toBeTruthy();
     });
@@ -111,7 +111,7 @@ describe('AclService', () => {
     it('should return false when ruleCallback is false', () => {
       const customOwnerRule = jest.fn();
       customOwnerRule.mockReturnValue(false);
-      service.canDo(ROLE.USER, [Action.Manage], customOwnerRule);
+      service.canDo(ROLE.ARISE_MEMBER, [Action.Manage], customOwnerRule);
       const userAcl = service.forActor(user);
       expect(userAcl.canDoAction(Action.Read, new Article())).toBeFalsy();
     });

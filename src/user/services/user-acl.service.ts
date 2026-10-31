@@ -10,12 +10,13 @@ import { Actor } from './../../shared/acl/actor.constant';
 export class UserAclService extends BaseAclService<User> {
   constructor() {
     super();
-    // Admin can do all action
-    this.canDo(ROLE.ADMIN, [Action.Manage]);
+    // IT admin can do all actions; secretariat can list for member vetting.
+    this.canDo(ROLE.ARISE_IT_ADMIN, [Action.Manage]);
+    this.canDo(ROLE.ARISE_SECRETARIAT, [Action.Read]);
     //user can read himself or any other user
-    this.canDo(ROLE.USER, [Action.Read]);
+    this.canDo(ROLE.ARISE_MEMBER, [Action.Read]);
     // user can only update himself
-    this.canDo(ROLE.USER, [Action.Update], this.isUserItself);
+    this.canDo(ROLE.ARISE_MEMBER, [Action.Update], this.isUserItself);
   }
 
   isUserItself(resource: User, actor: Actor): boolean {

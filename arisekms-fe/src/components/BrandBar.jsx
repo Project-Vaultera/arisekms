@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input.jsx';
 import { cn } from '@/lib/utils.js';
 import { QUICKSTART_STEPS } from '@/lib/quickstart-steps.js';
 import { quickstartSeenKey } from '@/lib/quickstart-done.js';
-import { effectiveRole, getTokenRoles, getTokenUserId } from '@/lib/rbac.js';
+import { effectiveRole, getTokenRoles, getTokenUserId, ROLE } from '@/lib/rbac.js';
 import logoUrl from '/arise-ph_logo.png';
 import apcLogo from '/apc_logo.png';
 import jpcsApcLogo from '/jpcs-apc_logo.png';
@@ -49,7 +49,7 @@ export function BrandBar() {
   const bellRef = useRef(null);
   const inputRef = useRef(null);
   const role = effectiveRole(getTokenRoles());
-  const steps = QUICKSTART_STEPS[role] ?? QUICKSTART_STEPS.USER;
+  const steps = QUICKSTART_STEPS[role] ?? QUICKSTART_STEPS[ROLE.MEMBER];
   const bellTotal = notes.reports.length + notes.activities.length + notes.tickets.length;
 
   // First visit replays the quickstart once per user; the Zap icon replays it after.
@@ -68,7 +68,7 @@ export function BrandBar() {
   // shortcut: notification queues read live (cap 100 each); no push channel yet.
   useEffect(() => {
     const uid = getTokenUserId();
-    const isAdmin = effectiveRole(getTokenRoles()) === 'ADMIN';
+    const isAdmin = effectiveRole(getTokenRoles()) === ROLE.IT_ADMIN;
     Promise.all([
       api.get('/reports', { params: { limit: 100, offset: 0 } }).catch(() => ({ data: { data: [] } })),
       api.get('/activities', { params: { limit: 100, offset: 0 } }).catch(() => ({ data: { data: [] } })),

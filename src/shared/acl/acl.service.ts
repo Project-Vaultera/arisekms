@@ -1,4 +1,4 @@
-import { ROLE } from './../../auth/constants/role.constant';
+import { normalizeRole,ROLE } from './../../auth/constants/role.constant';
 import { AclRule, RuleCallback } from './acl-rule.constant';
 import { Action } from './action.constant';
 import { Actor } from './actor.constant';
@@ -34,9 +34,10 @@ export class BaseAclService<Resource> {
           //If already has access, return
           if (canDoAction) return true;
 
-          //find all rules for given user role
+          //find all rules for given user role (legacy ADMIN/USER normalize)
+          const normalized = normalizeRole(actorRole);
           const aclRules = this.aclRules.filter(
-            (rule) => rule.role === actorRole,
+            (rule) => rule.role === normalized,
           );
 
           //for each rule, check action permission

@@ -48,7 +48,7 @@ describe('TicketService', () => {
 
   describe('updateTicket status rules', () => {
     it('should let the author close their own ticket', async () => {
-      ctx.user = { id: 1, roles: [ROLE.USER], username: 'member' };
+      ctx.user = { id: 1, roles: [ROLE.ARISE_MEMBER], username: 'member' };
       const input: UpdateTicketInput = { status: TicketStatus.RESOLVED };
       mockedRepository.getById.mockResolvedValue(ownTicket());
       mockedRepository.save.mockImplementation(async (t: SupportTicket) => t);
@@ -60,7 +60,7 @@ describe('TicketService', () => {
     });
 
     it('should let the author reopen their own ticket', async () => {
-      ctx.user = { id: 1, roles: [ROLE.USER], username: 'member' };
+      ctx.user = { id: 1, roles: [ROLE.ARISE_MEMBER], username: 'member' };
       const input: UpdateTicketInput = { status: TicketStatus.OPEN };
       mockedRepository.getById.mockResolvedValue({
         ...ownTicket(),
@@ -75,7 +75,7 @@ describe('TicketService', () => {
     });
 
     it('should drop other statuses set by the author', async () => {
-      ctx.user = { id: 1, roles: [ROLE.USER], username: 'member' };
+      ctx.user = { id: 1, roles: [ROLE.ARISE_MEMBER], username: 'member' };
       const input: UpdateTicketInput = { status: TicketStatus.IN_PROGRESS };
       mockedRepository.getById.mockResolvedValue(ownTicket());
       mockedRepository.save.mockImplementation(async (t: SupportTicket) => t);
@@ -87,7 +87,7 @@ describe('TicketService', () => {
     });
 
     it('should let admins set any status', async () => {
-      ctx.user = { id: 9, roles: [ROLE.ADMIN], username: 'admin' };
+      ctx.user = { id: 9, roles: [ROLE.ARISE_IT_ADMIN], username: 'admin' };
       const input: UpdateTicketInput = { status: TicketStatus.IN_PROGRESS };
       mockedRepository.getById.mockResolvedValue(ownTicket());
       mockedRepository.save.mockImplementation(async (t: SupportTicket) => t);
@@ -99,7 +99,7 @@ describe('TicketService', () => {
     });
 
     it('should reject updates by non-authors', async () => {
-      ctx.user = { id: 2, roles: [ROLE.USER], username: 'other' };
+      ctx.user = { id: 2, roles: [ROLE.ARISE_MEMBER], username: 'other' };
       mockedRepository.getById.mockResolvedValue(ownTicket());
 
       await expect(

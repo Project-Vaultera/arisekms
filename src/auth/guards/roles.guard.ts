@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { ROLE } from '../constants/role.constant';
+import { normalizeRoles,ROLE } from '../constants/role.constant';
 import { ROLES_KEY } from '../decorators/role.decorator';
 
 @Injectable()
@@ -23,8 +23,9 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const { user } = context.switchToHttp().getRequest();
+    const userRoles = normalizeRoles(user.roles ?? []);
 
-    if (requiredRoles.some((role) => user.roles?.includes(role))) {
+    if (requiredRoles.map(String).some((role) => userRoles.includes(role))) {
       return true;
     }
 

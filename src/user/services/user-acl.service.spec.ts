@@ -25,7 +25,7 @@ describe('UserAclService', () => {
       const user = {
         id: 6,
         username: 'admin',
-        roles: [ROLE.ADMIN],
+        roles: [ROLE.ARISE_IT_ADMIN],
       };
       userAcl = service.forActor(user);
     });
@@ -56,7 +56,7 @@ describe('UserAclService', () => {
       user = {
         id: 11,
         username: 'jeo',
-        roles: [ROLE.USER],
+        roles: [ROLE.ARISE_MEMBER],
       };
       userAcl = service.forActor(user);
     });

@@ -3,12 +3,12 @@ import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
 
 import { Activity } from './activity/entities/activity.entity';
-import { MembershipStatus } from './company/entities/company.entity';
+import { ActivityService } from './activity/services/activity.service';
 import { AppModule } from './app.module';
 import { ROLE } from './auth/constants/role.constant';
-import { ActivityService } from './activity/services/activity.service';
 import { Certificate } from './certificate/entities/certificate.entity';
 import { CertificateService } from './certificate/services/certificate.service';
+import { MembershipStatus } from './company/entities/company.entity';
 import { Company } from './company/entities/company.entity';
 import { CompanyService } from './company/services/company.service';
 import { KnowledgeDocument } from './knowledge/entities/knowledge-document.entity';
@@ -22,9 +22,9 @@ import {
   DEMO_COURSES,
   DEMO_PASSWORD,
   DEMO_USERS,
+  planDemoActivityDetails,
   planDemoCertificates,
   planDemoCompanyDetails,
-  planDemoActivityDetails,
   planDemoKnowledge,
   planDemoReports,
   planDemoUserDetails,
@@ -95,7 +95,7 @@ async function bootstrap() {
         name: 'IT Admin User',
         username: 'it-admin',
         password: fallback,
-        roles: [ROLE.ADMIN],
+        roles: [ROLE.ARISE_IT_ADMIN],
         isAccountDisabled: false,
         email: 'it-admin@example.com',
       });
@@ -117,7 +117,7 @@ async function bootstrap() {
           name: m.name,
           username: m.username,
           password: DEMO_PASSWORD,
-          roles: [ROLE.USER],
+          roles: [ROLE.ARISE_MEMBER],
           isAccountDisabled: userDetails.get(m.username)?.disabled ?? m.disabled,
           email: `${m.username}@example.com`,
         });

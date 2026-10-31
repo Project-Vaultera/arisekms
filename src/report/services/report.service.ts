@@ -4,7 +4,7 @@ import { createReadStream } from 'fs';
 import { basename, join } from 'path';
 import { In } from 'typeorm';
 
-import { ROLE } from '../../auth/constants/role.constant';
+import { isPrivileged } from '../../auth/constants/role.constant';
 import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
@@ -135,8 +135,8 @@ export class ReportService {
       throw new UnauthorizedException();
     }
 
-    // Only admins decide approval; members' status input is dropped.
-    const patch = actor.roles?.includes(ROLE.ADMIN) ? input : {};
+    // Only staff decide approval; members' status input is dropped.
+    const patch = isPrivileged(actor.roles) ? input : {};
     const updated: Report = { ...report, ...patch };
 
     this.logger.log(ctx, `calling ${ReportRepository.name}.save`);

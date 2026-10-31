@@ -47,7 +47,7 @@ describe('AuthController (e2e)', () => {
       name: 'e2etester',
       username: 'e2etester',
       password: '12345678',
-      roles: [ROLE.USER],
+      roles: [ROLE.ARISE_MEMBER],
       isAccountDisabled: false,
       email: 'e2etester@random.com',
     };
@@ -56,7 +56,7 @@ describe('AuthController (e2e)', () => {
       id: 2,
       name: 'e2etester',
       username: 'e2etester',
-      roles: [ROLE.USER],
+      roles: [ROLE.ARISE_MEMBER],
       isAccountDisabled: false,
       email: 'e2etester@random.com',
     };

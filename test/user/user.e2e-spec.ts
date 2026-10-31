@@ -173,9 +173,9 @@ describe('UserController (e2e)', () => {
       const smuggle = await request(app.getHttpServer())
         .patch('/users/me')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: 'Edited Name', roles: ['ADMIN'] })
+        .send({ name: 'Edited Name', roles: ['ARISE_IT_ADMIN'] })
         .expect(HttpStatus.OK);
-      expect(smuggle.body.data.roles).toEqual(['USER']);
+      expect(smuggle.body.data.roles).toEqual(['ARISE_MEMBER']);
     });
 
     it('duplicate email is rejected', async () => {

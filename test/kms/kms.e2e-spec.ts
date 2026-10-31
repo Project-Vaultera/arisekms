@@ -95,9 +95,9 @@ describe('KMS modules (e2e)', () => {
   describe('Auth hardening', () => {
     it('registration strips a smuggled ADMIN role', async () => {
       const { user } = await registerAndLogin(app.getHttpServer(), 'sneaky', {
-        roles: [ROLE.ADMIN],
+        roles: [ROLE.ARISE_IT_ADMIN],
       });
-      expect(user.roles).toEqual([ROLE.USER]);
+      expect(user.roles).toEqual([ROLE.ARISE_MEMBER]);
     });
 
     it('member GET /users/:id is forbidden (401 unauthenticated)', async () => {

@@ -4,6 +4,7 @@ import { ActivityModule } from './activity/activity.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ArticleModule } from './article/article.module';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CertificateModule } from './certificate/certificate.module';
 import { CompanyModule } from './company/company.module';
@@ -18,6 +19,7 @@ import { UserModule } from './user/user.module';
     SharedModule,
     UserModule,
     AuthModule,
+    AuditModule,
     ArticleModule,
     ReportModule,
     KnowledgeModule,

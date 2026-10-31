@@ -1,6 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
+  IsEnum,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -9,6 +12,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
+import { ROLE } from '../../auth/constants/role.constant';
 import { GENDER_OPTIONS } from './user-output.dto';
 
 export class UpdateUserInput {
@@ -30,6 +34,13 @@ export class UpdateUserInput {
   @IsOptional()
   @IsBoolean()
   isAccountDisabled?: boolean;
+
+  @ApiPropertyOptional({ enum: ROLE, description: 'Exactly one role per user.' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1)
+  @IsEnum(ROLE, { each: true })
+  roles?: ROLE[];
 
   @ApiPropertyOptional({ enum: GENDER_OPTIONS })
   @IsOptional()

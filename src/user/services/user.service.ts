@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, UnauthorizedExceptio
 import { compare, hash } from 'bcrypt';
 import { plainToClass } from 'class-transformer';
 
+import { AuditService } from '../../audit/services/audit.service';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { CreateUserInput } from '../dtos/user-create-input.dto';
@@ -15,6 +16,7 @@ import { UserRepository } from '../repositories/user.repository';
 export class UserService {
   constructor(
     private repository: UserRepository,
+    private auditService: AuditService,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(UserService.name);
@@ -161,6 +163,11 @@ export class UserService {
       throw new ForbiddenException('You cannot disable your own account.');
     }
 
+    // Admins cannot change their own role (prevents accidental lockout).
+    if (input.roles !== undefined && Number(ctx.user?.id) === Number(userId)) {
+      throw new ForbiddenException('You cannot change your own role.');
+    }
+
     // Hash the password if it exists in the input payload.
     if (input.password) {
       input.password = await hash(input.password, 10);
@@ -174,6 +181,27 @@ export class UserService {
 
     this.logger.log(ctx, `calling ${UserRepository.name}.save`);
     await this.repository.save(updatedUser);
+
+    if (input.roles !== undefined) {
+      this.auditService.record({
+        actorId: ctx.user?.id ?? null,
+        action: 'USER_ROLE_CHANGED',
+        entityType: 'users',
+        entityId: String(userId),
+        metadata: { roles: input.roles },
+        outcome: 'success',
+      });
+    }
+    if (input.isAccountDisabled !== undefined) {
+      this.auditService.record({
+        actorId: ctx.user?.id ?? null,
+        action: 'USER_ACCESS_TOGGLED',
+        entityType: 'users',
+        entityId: String(userId),
+        metadata: { isAccountDisabled: input.isAccountDisabled },
+        outcome: 'success',
+      });
+    }
 
     return plainToClass(UserOutput, updatedUser, {
       excludeExtraneousValues: true,

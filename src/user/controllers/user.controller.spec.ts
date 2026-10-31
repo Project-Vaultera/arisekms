@@ -55,7 +55,7 @@ describe('UserController', () => {
     id: 1,
     username: 'default-user',
     name: 'default-name',
-    roles: [ROLE.USER],
+    roles: [ROLE.ARISE_MEMBER],
     isAccountDisabled: false,
     email: 'e2etester@random.com',
     createdAt: currentDate,

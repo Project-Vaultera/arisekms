@@ -1,16 +1,39 @@
 // Central role model for the KMS frontend (reestly-fnb RBAC language).
-// Backend roles come from the JWT (`roles: ["USER" | "ADMIN"]`).
-// TODO: extend with workspace-scoped roles (owner/editor/viewer) when the
-// workspace entity lands. FE gating is display-only; the API enforces everything.
+// Backend roles come from the JWT (`roles: ["ARISE_*"]`, legacy "USER"/"ADMIN"
+// normalized below). FE gating is display-only; the API enforces everything.
+
+export const ROLE = {
+  IT_ADMIN: 'ARISE_IT_ADMIN',
+  SECRETARIAT: 'ARISE_SECRETARIAT',
+  MEMBER: 'ARISE_MEMBER',
+  DATA_ANALYST: 'ARISE_DATA_ANALYST',
+};
+
+// Pre-adaptation values still present in old rows / unexpired JWTs.
+const LEGACY_ROLE_MAP = {
+  ADMIN: ROLE.IT_ADMIN,
+  USER: ROLE.MEMBER,
+};
+
+export function normalizeRole(role) {
+  return LEGACY_ROLE_MAP[role] ?? role;
+}
 
 export const ROLE_MODULES = {
-  ADMIN: new Set(['dashboard', 'admin-center', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
-  USER: new Set(['dashboard', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support']),
+  [ROLE.IT_ADMIN]: new Set(['dashboard', 'secretariat-overview', 'governance', 'reports', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
+  [ROLE.SECRETARIAT]: new Set(['dashboard', 'secretariat-overview', 'reports', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
+  [ROLE.MEMBER]: new Set(['dashboard', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support']),
+  [ROLE.DATA_ANALYST]: new Set(['dashboard', 'knowledge', 'skillsbuild', 'reports', 'help', 'support']),
 };
 
 export function effectiveRole(roles) {
-  if (Array.isArray(roles) && roles.includes('ADMIN')) return 'ADMIN';
-  return 'USER';
+  if (Array.isArray(roles) && roles.length > 0) return normalizeRole(roles[0]);
+  return ROLE.MEMBER;
+}
+
+export function isStaffRole(role) {
+  const r = normalizeRole(role);
+  return r === ROLE.IT_ADMIN || r === ROLE.SECRETARIAT || r === ROLE.DATA_ANALYST;
 }
 
 export function getTokenUserId() {
@@ -35,12 +58,16 @@ export function getTokenRoles() {
 
 const ROUTE_MODULE = {
   '/': 'dashboard',
-  '/member-directory': 'admin-center',
-  '/admin-overview': 'admin-center',
-  '/admin-approvals': 'admin-center',
-  '/reports-membership': 'admin-center',
-  '/reports-summary': 'admin-center',
-  '/reports-performance': 'admin-center',
+  '/member-directory': 'secretariat-overview',
+  '/secretariat-overview': 'secretariat-overview',
+  '/admin-overview': 'secretariat-overview',
+  '/admin-approvals': 'secretariat-overview',
+  '/governance-users': 'governance',
+  '/governance-audit': 'governance',
+  '/governance-support': 'governance',
+  '/reports-membership': 'reports',
+  '/reports-summary': 'reports',
+  '/reports-performance': 'reports',
   '/submit-reports': 'submit',
   '/membership-form': 'membership',
   '/profile': 'membership',
@@ -55,6 +82,7 @@ const ROUTE_MODULE = {
 
 // Routes a member without an approved company may still visit.
 // Everything else redirects to /membership-form until approval.
+// Staff roles bypass the lock (see approvalLocked).
 const PENDING_ALLOWLIST = new Set([
   '/membership-form',
   '/profile',
@@ -71,9 +99,9 @@ export function approvalLocked(pathname, { isAdmin, hasApproved }) {
 export function allowedRoute(role, pathname) {
   const module = ROUTE_MODULE[pathname];
   if (!module) return true;
-  return (ROLE_MODULES[role] ?? ROLE_MODULES.USER).has(module);
+  return (ROLE_MODULES[normalizeRole(role)] ?? ROLE_MODULES[ROLE.MEMBER]).has(module);
 }
 
 export function canUpload(role) {
-  return (ROLE_MODULES[role] ?? ROLE_MODULES.USER).has('upload');
+  return (ROLE_MODULES[normalizeRole(role)] ?? ROLE_MODULES[ROLE.MEMBER]).has('upload');
 }

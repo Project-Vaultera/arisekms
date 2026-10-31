@@ -11,7 +11,10 @@ import { Toaster } from '@/components/ui/sonner';
 import { useDashboardData } from '@/hooks/use-dashboard-data.js';
 import { ADD_ACTIONS } from '@/lib/add-actions.js';
 import { Approvals } from '@/pages/Approvals.jsx';
-import { AdminOverview } from '@/pages/AdminOverview.jsx';
+import { AuditLogs } from '@/pages/AuditLogs.jsx';
+import { SecretariatOverview } from '@/pages/SecretariatOverview.jsx';
+import { SupportMonitoring } from '@/pages/SupportMonitoring.jsx';
+import { GovernanceUsers } from '@/pages/GovernanceUsers.jsx';
 import { KnowledgeProducts } from '@/pages/KnowledgeProducts.jsx';
 import { Leaderboards } from '@/pages/Leaderboards.jsx';
 import { MemberDirectory } from '@/pages/MemberDirectory.jsx';
@@ -108,8 +111,12 @@ export function Dashboard({ locked = false }) {
                 <Routes>
                   <Route index element={<DashboardHome />} />
                   <Route path="member-directory" element={<MemberDirectory />} />
-                  <Route path="admin-overview" element={<AdminOverview />} />
+                  <Route path="secretariat-overview" element={<SecretariatOverview />} />
+                  <Route path="admin-overview" element={<Navigate to="/secretariat-overview" replace />} />
                   <Route path="admin-approvals" element={<Approvals />} />
+                  <Route path="governance-users" element={<GovernanceUsers />} />
+                  <Route path="governance-audit" element={<AuditLogs />} />
+                  <Route path="governance-support" element={<SupportMonitoring />} />
                   <Route path="reports-membership" element={<ReportsMembership />} />
                   <Route path="reports-summary" element={<ReportsSummary />} />
                   <Route path="reports-performance" element={<ReportsPerformance />} />

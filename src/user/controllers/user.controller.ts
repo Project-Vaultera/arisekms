@@ -109,7 +109,7 @@ export class UserController {
     type: BaseApiErrorResponse,
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN, ROLE.USER)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
   @ApiBearerAuth()
   async getUsers(
     @ReqContext() ctx: RequestContext,
@@ -141,7 +141,7 @@ export class UserController {
     type: BaseApiErrorResponse,
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN)
   @ApiBearerAuth()
   async getUser(
     @ReqContext() ctx: RequestContext,
@@ -167,7 +167,7 @@ export class UserController {
     type: BaseApiErrorResponse,
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ADMIN)
+  @Roles(ROLE.ARISE_IT_ADMIN)
   @ApiBearerAuth()
   @UseInterceptors(ClassSerializerInterceptor)
   async updateUser(

@@ -28,7 +28,7 @@ function authorIdOf(row) {
   return row.author?.id ?? row.submittedBy?.id ?? null;
 }
 
-export function AdminOverview() {
+export function SecretariatOverview() {
   const dashboard = useDashboardData();
   const [reports, setReports] = useState([]);
   const [certificates, setCertificates] = useState([]);
@@ -141,7 +141,7 @@ export function AdminOverview() {
               <p className="py-6 text-center text-sm text-muted-foreground">Loading companies…</p>
             ) : companyRows.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                No companies yet — <Link to="/admin-companies" className="underline">create one</Link>.
+                No companies yet — <Link to="/member-directory" className="underline">open the directory</Link>.
               </p>
             ) : (
               <div className="overflow-hidden rounded-lg border">

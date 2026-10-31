@@ -147,13 +147,37 @@ docker compose exec app npm run cli:dev   # creates it-admin if missing
 
 `cli:dev` runs `src/cli.ts` and is idempotent. Default login: `it-admin` / value of `DEFAULT_ADMIN_USER_PASSWORD` (`Arise@2026` unless changed).
 
+### 3b. Roles + POV check accounts (dev only)
+
+Single role per user (`CreateUserInput.roles` / `UpdateUserInput.roles` accept exactly one):
+
+| Role | Powers |
+|---|---|
+| `ARISE_IT_ADMIN` | Manage everything; Governance → User Directory (accounts, role assignment, disable) + Support Monitoring + Audit Logs |
+| `ARISE_SECRETARIAT` | Member approvals + full Manage on content; Member Directory stays here |
+| `ARISE_MEMBER` | Author-scoped CRUD on content; apply for membership |
+| `ARISE_DATA_ANALYST` | List/Read on content (knowledge, articles, report summary, performance, activities, certificates, tickets); no users/companies/membership-analytics, no writes |
+
+```bash
+docker compose exec app npm run seed:roles   # idempotent, resets password + role
+```
+
+| Username | Role | Password |
+|---|---|---|
+| `ariseitadmin` | Arise IT Admin | `Arise@2026` |
+| `arisesecretariat` | Arise Secretariat | `Arise@2026` |
+| `arisemember` | Arise Member | `Arise@2026` |
+| `ariseanalyst` | Arise Data Analyst | `Arise@2026` |
+
+Demo content accounts (from `seed:demo`, §4): `demo.member.1`–`71`, password `DemoPass123!` (eleven inactive). Default admin: `it-admin` / `DEFAULT_ADMIN_USER_PASSWORD`.
+
 ### 4. Seed demo dashboard data (optional, dev only)
 
 ```bash
 docker compose exec app npm run seed:demo
 ```
 
-Creates 8 demo members (`demo.member.1`–`8`, password `DemoPass123!`, two inactive), 20 demo companies (4 primary companies with exclusive member pairs, 16 with a single member), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Admins see everything; members only see their own company's submissions (server-enforced). Refuses to run with `APP_ENV=production`. Re-running is a no-op for users/reports, while company membership converges by name. To wipe (orphan files under `./uploads` are harmless in dev):
+Creates 71 demo members (`demo.member.1`–`71`, password `DemoPass123!`, eleven inactive), 20 demo companies (4 primary companies with exclusive member pairs, 16 with a single member), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Staff see everything; members only see their own company's submissions (server-enforced). Refuses to run with `APP_ENV=production`. Re-running is a no-op for users/reports, while company membership converges by name. To wipe (orphan files under `./uploads` are harmless in dev):
 
 ```sql
 DELETE FROM users WHERE username LIKE 'demo.member.%';  -- cascades their reports + certificates

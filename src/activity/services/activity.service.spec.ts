@@ -48,7 +48,7 @@ describe('ActivityService', () => {
 
   describe('updateActivity status rules', () => {
     it('should drop status changes by the author', async () => {
-      ctx.user = { id: 1, roles: [ROLE.USER], username: 'member' };
+      ctx.user = { id: 1, roles: [ROLE.ARISE_MEMBER], username: 'member' };
       const input: UpdateActivityInput = { status: ActivityStatus.APPROVED };
       mockedRepository.getById.mockResolvedValue(ownActivity());
       mockedRepository.save.mockImplementation(async (a: Activity) => a);
@@ -60,7 +60,7 @@ describe('ActivityService', () => {
     });
 
     it('should let admins set any status', async () => {
-      ctx.user = { id: 9, roles: [ROLE.ADMIN], username: 'admin' };
+      ctx.user = { id: 9, roles: [ROLE.ARISE_IT_ADMIN], username: 'admin' };
       const input: UpdateActivityInput = { status: ActivityStatus.APPROVED };
       mockedRepository.getById.mockResolvedValue(ownActivity());
       mockedRepository.save.mockImplementation(async (a: Activity) => a);
@@ -72,7 +72,7 @@ describe('ActivityService', () => {
     });
 
     it('should reject updates by non-authors', async () => {
-      ctx.user = { id: 2, roles: [ROLE.USER], username: 'other' };
+      ctx.user = { id: 2, roles: [ROLE.ARISE_MEMBER], username: 'other' };
       mockedRepository.getById.mockResolvedValue(ownActivity());
 
       await expect(

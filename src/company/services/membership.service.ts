@@ -9,7 +9,8 @@ import { plainToClass } from 'class-transformer';
 import { createReadStream } from 'fs';
 import { basename, join } from 'path';
 
-import { ROLE } from '../../auth/constants/role.constant';
+import { AuditService } from '../../audit/services/audit.service';
+import { isPrivileged } from '../../auth/constants/role.constant';
 import { Actor } from '../../shared/acl/actor.constant';
 import {
   persistUpload,
@@ -52,13 +53,14 @@ export class MembershipService {
     private documentRepository: MembershipDocumentRepository,
     private userService: UserService,
     private aclService: CompanyAclService,
+    private auditService: AuditService,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(MembershipService.name);
   }
 
   private isAdmin(actor: Actor): boolean {
-    return actor.roles?.includes(ROLE.ADMIN) ?? false;
+    return isPrivileged(actor.roles);
   }
 
   private toOutput(company: Company): MembershipProfileOutput {
@@ -312,6 +314,14 @@ export class MembershipService {
       company.rejectReason = null;
     }
     const saved = await this.companyRepository.save(company);
+    this.auditService.record({
+      actorId: actor.id ?? null,
+      action: `MEMBERSHIP_${company.status}`,
+      entityType: 'companies',
+      entityId: String(companyId),
+      metadata: { status: company.status },
+      outcome: 'success',
+    });
     return this.toOutput(await this.loadCompany(saved.id));
   }
 

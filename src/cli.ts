@@ -21,7 +21,7 @@ async function bootstrap() {
     name: 'IT Admin User',
     username: 'it-admin',
     password: defaultAdminUserPassword,
-    roles: [ROLE.ADMIN],
+    roles: [ROLE.ARISE_IT_ADMIN],
     isAccountDisabled: false,
     email: 'it-admin@example.com',
   };
