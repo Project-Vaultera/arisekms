@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "manual:shots": "node ./scripts/capture-manual-shots.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -47,6 +48,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "@vitejs/plugin-react": "^6.1.1",
+    "playwright": "^1.64.1",
     "tailwindcss": "^4.1.12",
     "vite": "^8.3.0"
   }

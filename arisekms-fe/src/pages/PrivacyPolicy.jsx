@@ -3,6 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Agreement01Icon,
   Alert01Icon,
+  BookOpen01Icon,
   CookieIcon,
   Database01Icon,
   EyeIcon,
@@ -173,31 +174,30 @@ export function PrivacyPolicy() {
         overlayClassName="bg-[var(--sendai-crimson)]/50"
       />
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 lg:flex-row lg:px-6">
-        <aside className="w-full shrink-0 lg:w-60">
-          <Card className="lg:sticky lg:top-20">
-            <CardContent className="p-4">
-              <p className="editorial-label mb-3 text-[#1e3a5f]">Contents</p>
-              <ol className="space-y-1">
-                {SECTIONS.map((s) => (
-                  <li key={s.id}>
-                    <a
-                      href={`#${s.id}`}
-                      aria-current={activeId === s.id ? 'true' : undefined}
-                      onClick={() => setActiveId(s.id)}
-                      className={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors ${
-                        activeId === s.id
-                          ? 'bg-[var(--sendai-teal)] font-semibold text-white'
-                          : 'text-muted-foreground hover:text-[#0B4484]'
-                      }`}
-                    >
-                      <HugeiconsIcon icon={s.icon} size={14} strokeWidth={1.8} className="shrink-0" />
-                      <span className="truncate">{s.title}</span>
-                    </a>
-                  </li>
-                ))}
-              </ol>
-            </CardContent>
-          </Card>
+        <aside className="sticky top-16 hidden w-60 shrink-0 self-start border-r pr-4 md:block">
+          <div className="mb-4 flex items-center gap-2 px-2 text-sm font-medium">
+            <HugeiconsIcon icon={BookOpen01Icon} size={16} strokeWidth={1.8} />
+            Table of contents
+          </div>
+          <ol className="space-y-1">
+            {SECTIONS.map((s) => (
+              <li key={s.id}>
+                <a
+                  href={`#${s.id}`}
+                  aria-current={activeId === s.id ? 'true' : undefined}
+                  onClick={() => setActiveId(s.id)}
+                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                    activeId === s.id
+                      ? 'bg-[var(--sendai-teal)] font-semibold text-white'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <HugeiconsIcon icon={s.icon} size={16} strokeWidth={1.8} className="shrink-0" />
+                  <span className="truncate">{s.title}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
         </aside>
         <Card className="min-w-0 flex-1">
           <CardContent className="divide-y divide-border p-0">
