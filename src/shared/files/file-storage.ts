@@ -48,7 +48,12 @@ export function uploadFilePipe(allowedTypes: string = ALLOWED_UPLOAD_MIMETYPES):
     fileIsRequired: true,
     validators: [
       new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
-      new FileTypeValidator({ fileType: allowedTypes, fallbackToMimetype: false }),
+        // Magic-byte check first; fall back to the client mimetype when
+        // file-type cannot detect a signature (tiny/fake buffers, or Jest
+        // failing to load the ESM-only file-type package). A detected
+        // signature must still match — e.g. an .exe renamed to .pdf is
+        // detected as x-msdos-program and rejected.
+        new FileTypeValidator({ fileType: allowedTypes, fallbackToMimetype: true }),
     ],
   });
 }
