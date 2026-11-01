@@ -74,7 +74,6 @@ const GOVERNANCE = [
 
 const MAIN = [
   { id: 'home', label: 'Home', icon: Home01Icon, to: '/' },
-  { id: 'members-list', label: 'Members List', icon: UserGroupIcon, to: '/members-list' },
   { id: 'submit-reports', label: 'Submit Reports', icon: Upload01Icon, to: '/submit-reports' },
   { id: 'membership-form', label: 'Membership Form', icon: UserAdd01Icon, to: '/membership-form' },
   { id: 'knowledge-products', label: 'Knowledge Products', icon: BookOpen01Icon, to: '/knowledge-products' },
@@ -190,11 +189,8 @@ export function AriseSidebar({ locked = false }) {
   const isAnalyst = role === ROLE.DATA_ANALYST;
   const isMember = role === ROLE.MEMBER;
   // Only members answer the membership application; staff get a simple profile.
-  // Members List is visible to members + secretariat/admins, not analysts.
   const main = (locked ? MAIN.filter((item) => item.id === 'membership-form') : MAIN).filter(
-    (item) =>
-      (item.id !== 'membership-form' || isMember) &&
-      (item.id !== 'members-list' || !isAnalyst),
+    (item) => item.id !== 'membership-form' || isMember,
   );
 
   function logout() {

@@ -20,9 +20,9 @@ export function normalizeRole(role) {
 }
 
 export const ROLE_MODULES = {
-  [ROLE.IT_ADMIN]: new Set(['dashboard', 'secretariat-overview', 'members-list', 'governance', 'reports', 'submit', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
-  [ROLE.SECRETARIAT]: new Set(['dashboard', 'secretariat-overview', 'members-list', 'reports', 'submit', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
-  [ROLE.MEMBER]: new Set(['dashboard', 'members-list', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
+  [ROLE.IT_ADMIN]: new Set(['dashboard', 'secretariat-overview', 'governance', 'reports', 'submit', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
+  [ROLE.SECRETARIAT]: new Set(['dashboard', 'secretariat-overview', 'reports', 'submit', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
+  [ROLE.MEMBER]: new Set(['dashboard', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
   [ROLE.DATA_ANALYST]: new Set(['dashboard', 'knowledge', 'skillsbuild', 'reports', 'help', 'support']),
 };
 
@@ -68,7 +68,6 @@ export function getTokenRoles() {
 const ROUTE_MODULE = {
   '/': 'dashboard',
   '/member-directory': 'secretariat-overview',
-  '/members-list': 'members-list',
   '/secretariat-overview': 'secretariat-overview',
   '/admin-overview': 'secretariat-overview',
   '/admin-approvals': 'secretariat-overview',

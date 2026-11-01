@@ -42,14 +42,6 @@ export class CompanyService {
     });
   }
 
-  private toDirectoryOutput(company: Company): CompanyOutput {
-    // Members-list view: never leak disabled accounts to non-privileged actors.
-    return this.toOutput({
-      ...company,
-      members: (company.members ?? []).filter((m) => !m.isAccountDisabled),
-    });
-  }
-
   async createCompany(
     @ReqContext() ctx: RequestContext,
     input: CreateCompanyInput,
@@ -136,32 +128,14 @@ export class CompanyService {
     }
     const { take, skip } = clampPagination(limit, offset);
 
-    // Admins see every company; approved members see every approved company
-    // (directory). Pending members with no approved company keep today's
-    // empty view so the pre-approval lock stays meaningful.
+    // Admins see every company; members only see their own.
     // Two-step load: filtering on the members relation would also filter the
     // loaded members, so resolve ids first, then load full rows.
-    if (this.isAdmin(actor)) {
-      const companies = await this.repository.find({
-        relations: { members: true },
-        order: { name: 'ASC' },
-        take,
-        skip,
-      });
-      return companies.map((c) => this.toOutput(c));
-    }
-    if (!(await this.hasApprovedCompany(actor))) {
-      return [];
-    }
-    const companies = await this.repository.find({
-      where: { status: MembershipStatus.APPROVED },
-      relations: { members: true },
-      order: { name: 'ASC' },
-      take,
-      skip,
-    });
+    const companies = this.isAdmin(actor)
+      ? await this.repository.find({ relations: { members: true }, order: { name: 'ASC' }, take, skip })
+      : await this.findCompaniesWithMembers(await this.findOwnCompanyIds(actor.id), take, skip);
 
-    return companies.map((c) => this.toDirectoryOutput(c));
+    return companies.map((c) => this.toOutput(c));
   }
 
   private async findOwnCompanyIds(userId: number): Promise<number[]> {
@@ -193,25 +167,11 @@ export class CompanyService {
     const company = await this.repository.getById(id);
 
     const isAllowed = this.aclService.forActor(actor).canDoAction(Action.Read, company);
-    if (!isAllowed) {
+    if (!isAllowed || (!this.isAdmin(actor) && !company.members.some((m) => m.id === actor.id))) {
       throw new UnauthorizedException();
     }
-    // Approved directory companies are readable by any approved member;
-    // non-approved companies still require own membership (or admin).
-    if (!this.isAdmin(actor) && company.status !== MembershipStatus.APPROVED) {
-      if (!company.members.some((m) => m.id === actor.id)) {
-        throw new UnauthorizedException();
-      }
-      return this.toOutput(company);
-    }
-    if (!this.isAdmin(actor) && !(await this.hasApprovedCompany(actor))) {
-      if (!company.members.some((m) => m.id === actor.id)) {
-        throw new UnauthorizedException();
-      }
-      return this.toOutput(company);
-    }
 
-    return this.isAdmin(actor) ? this.toOutput(company) : this.toDirectoryOutput(company);
+    return this.toOutput(company);
   }
 
   async updateCompany(

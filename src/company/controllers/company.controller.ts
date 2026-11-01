@@ -104,7 +104,7 @@ export class CompanyController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get companies API (all for admins, approved for approved members)' })
+  @ApiOperation({ summary: 'Get companies API (all for admins, own for members)' })
   @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse([CompanyOutput]) })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -136,7 +136,7 @@ export class CompanyController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get company by id API (member of the company, approved directory company, or admin)' })
+  @ApiOperation({ summary: 'Get company by id API (member of the company, or admin)' })
   @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse(CompanyOutput) })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, type: BaseApiErrorResponse })
   @UseGuards(JwtAuthGuard)
