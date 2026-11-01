@@ -11,6 +11,7 @@ import { BarXAxis } from '@/components/charts/bar-x-axis';
 import { Grid } from '@/components/charts/grid';
 import { ChartTooltip } from '@/components/charts/tooltip';
 import { PageHeader } from '@/components/PageHeader.jsx';
+import { TablePager } from '@/components/reports/TablePager.jsx';
 import { StatCard } from '@/components/reports/StatCard.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
@@ -36,6 +37,8 @@ function ageDays(raw) {
 export function SupportMonitoring() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setLoading(true);
@@ -84,6 +87,10 @@ export function SupportMonitoring() {
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
     [tickets],
   );
+
+  const pageCount = Math.max(1, Math.ceil(backlog.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleBacklog = backlog.slice(safePage * pageSize, safePage * pageSize + pageSize);
 
   return (
     <div className="flex flex-col gap-3 py-1.5">
@@ -178,7 +185,7 @@ export function SupportMonitoring() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {backlog.map((t) => (
+              {visibleBacklog.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">{t.subject}</TableCell>
                   <TableCell>{t.category}</TableCell>
@@ -201,6 +208,18 @@ export function SupportMonitoring() {
               )}
             </TableBody>
           </Table>
+          {backlog.length > 0 && (
+            <TablePager
+              page={safePage}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              onPageSize={setPageSize}
+              total={backlog.length}
+              fromIdx={safePage * pageSize + 1}
+              toIdx={Math.min(backlog.length, safePage * pageSize + visibleBacklog.length)}
+              onPage={setPage}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

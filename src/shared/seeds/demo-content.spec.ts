@@ -4,6 +4,7 @@ import { CertificateStatus } from '../../certificate/entities/certificate.entity
 import { COMPANY_SECTORS } from '../../company/dtos/membership-input.dto';
 import { KnowledgeCategory } from '../../knowledge/entities/knowledge-document.entity';
 import { ReportCategory, ReportStatus } from '../../report/entities/report.entity';
+import { TicketStatus } from '../../ticket/entities/support-ticket.entity';
 import {
   daysAgoToDate,
   DEMO_COMPANY_MEMBERS,
@@ -16,6 +17,7 @@ import {
   planDemoCompanyDetails,
   planDemoKnowledge,
   planDemoReports,
+  planDemoTickets,
   planDemoUserDetails,
 } from './demo-content';
 
@@ -113,5 +115,40 @@ describe('demo-content planner', () => {
     expect(details.every((d) => d.daysAgo >= 0)).toBe(true);
     expect(details.filter((d) => d.disabled).length).toBeGreaterThan(0);
     expect(planDemoUserDetails()).toEqual(planDemoUserDetails());
+  });
+
+  it('plans 35 tickets covering every category, priority and status', () => {
+    const rows = planDemoTickets();
+    expect(rows).toHaveLength(35);
+    expect(new Set(rows.map((r) => r.category))).toEqual(
+      new Set([
+        'Report submission',
+        'Knowledge Products',
+        'Membership',
+        'SkillsBuild',
+        'Account access',
+        'Other',
+      ]),
+    );
+    expect(new Set(rows.map((r) => r.priority))).toEqual(new Set(['Low', 'Medium', 'High']));
+    expect(new Set(rows.map((r) => r.status))).toEqual(
+      new Set([TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED]),
+    );
+    // Enough resolved rows to activate the avg-resolution card (needs >= 5).
+    expect(rows.filter((r) => r.status === TicketStatus.RESOLVED).length).toBeGreaterThanOrEqual(5);
+    expect(rows.every((r) => r.subject.startsWith('Demo: ') && r.daysAgo >= 0 && r.daysAgo <= 120)).toBe(true);
+    expect(new Set(rows.map((r) => r.subject)).size).toBe(35);
+    // Resolved tickets close after they open; open tickets are untouched.
+    expect(
+      rows.every((r) =>
+        r.status === TicketStatus.RESOLVED ? r.updatedLagDays >= 1 : r.updatedLagDays >= 0,
+      ),
+    ).toBe(true);
+    // Authors come from approved-company rosters so the membership gate passes.
+    const approvedPool = new Set(
+      DEMO_COMPANY_MEMBERS.flatMap((e, i) => (i % 3 === 0 ? e.members : [])),
+    );
+    expect(rows.every((r) => approvedPool.has(r.authorUsername))).toBe(true);
+    expect(planDemoTickets()).toEqual(planDemoTickets());
   });
 });

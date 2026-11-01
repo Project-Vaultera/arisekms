@@ -1,8 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { createReadStream } from 'fs';
 import { basename, join } from 'path';
 
+import { AuditTimelineEntry } from '../../audit/dtos/audit-timeline-output.dto';
+import { AuditService } from '../../audit/services/audit.service';
+import { isPrivileged } from '../../auth/constants/role.constant';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
 import { clampPagination } from '../../shared/dtos/pagination-params.dto';
@@ -11,9 +14,9 @@ import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
-import { CreateKnowledgeInput, UpdateKnowledgeInput } from '../dtos/knowledge-input.dto';
+import { CreateKnowledgeInput, ReviewKnowledgeInput, UpdateKnowledgeInput } from '../dtos/knowledge-input.dto';
 import { KnowledgeOutput } from '../dtos/knowledge-output.dto';
-import { KnowledgeDocument } from '../entities/knowledge-document.entity';
+import { KnowledgeDocument, KnowledgeStatus } from '../entities/knowledge-document.entity';
 import { KnowledgeRepository } from '../repositories/knowledge.repository';
 import { KnowledgeAclService } from './knowledge-acl.service';
 
@@ -37,6 +40,7 @@ export class KnowledgeService {
     private repository: KnowledgeRepository,
     private userService: UserService,
     private aclService: KnowledgeAclService,
+    private auditService: AuditService,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(KnowledgeService.name);
@@ -51,6 +55,8 @@ export class KnowledgeService {
 
     const actor: Actor = ctx.user!;
     const storedName = persistUpload(file);
+    // Staff uploads skip the queue; member uploads land as submitted.
+    const autoApproved = isPrivileged(actor.roles ?? []);
     const doc = plainToClass(KnowledgeDocument, {
       title: input.title,
       description: input.description,
@@ -60,6 +66,8 @@ export class KnowledgeService {
       storedName,
       mimeType: file.mimetype,
       size: file.size,
+      status: autoApproved ? KnowledgeStatus.APPROVED : KnowledgeStatus.SUBMITTED,
+      rejectReason: null,
     });
 
     const isAllowed = this.aclService
@@ -74,6 +82,12 @@ export class KnowledgeService {
 
     this.logger.log(ctx, `calling ${KnowledgeRepository.name}.save`);
     const saved = await this.repository.save(doc);
+
+    await this.auditService.record(ctx, 'KNOWLEDGE_UPLOADED', 'knowledge', String(saved.id), {
+      title: saved.title,
+      category: saved.category,
+      status: saved.status,
+    });
 
     return plainToClass(KnowledgeOutput, saved, { excludeExtraneousValues: true });
   }
@@ -91,12 +105,32 @@ export class KnowledgeService {
       throw new UnauthorizedException();
     }
 
-    this.logger.log(ctx, `calling ${KnowledgeRepository.name}.findAndCount`);
-    const [documents, count] = await this.repository.findAndCount({
-      take: clampPagination(limit, offset).take,
-      skip: clampPagination(limit, offset).skip,
-      order: { createdAt: 'DESC' },
-    });
+    const { take, skip } = clampPagination(limit, offset);
+
+    // Reviewers see everything; everyone else sees approved docs plus their own.
+    if (isPrivileged(actor.roles ?? [])) {
+      this.logger.log(ctx, `calling ${KnowledgeRepository.name}.findAndCount`);
+      const [documents, count] = await this.repository.findAndCount({
+        take,
+        skip,
+        order: { createdAt: 'DESC' },
+      });
+
+      return {
+        documents: plainToClass(KnowledgeOutput, documents, { excludeExtraneousValues: true }),
+        count,
+      };
+    }
+
+    const [documents, count] = await this.repository
+      .createQueryBuilder('doc')
+      .leftJoin('doc.author', 'author')
+      .where('doc.status = :approved', { approved: KnowledgeStatus.APPROVED })
+      .orWhere('author.id = :uid', { uid: actor.id })
+      .orderBy('doc.createdAt', 'DESC')
+      .take(take)
+      .skip(skip)
+      .getManyAndCount();
 
     return {
       documents: plainToClass(KnowledgeOutput, documents, { excludeExtraneousValues: true }),
@@ -124,6 +158,7 @@ export class KnowledgeService {
     ctx: RequestContext,
     documentId: number,
     input: UpdateKnowledgeInput,
+    file?: Express.Multer.File,
   ): Promise<KnowledgeOutput> {
     this.logger.log(ctx, `${this.updateDocument.name} was called`);
 
@@ -137,10 +172,40 @@ export class KnowledgeService {
       throw new UnauthorizedException();
     }
 
-    const updated: KnowledgeDocument = { ...doc, ...input };
+    // Whitelist merge (never spread raw input: absent keys arrive undefined).
+    const updated: KnowledgeDocument = {
+      ...doc,
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.category !== undefined ? { category: input.category } : {}),
+    };
+
+    if (file) {
+      removeUploadFile(doc.storedName);
+      updated.storedName = persistUpload(file);
+      updated.originalName = file.originalname;
+      updated.mimeType = file.mimetype;
+      updated.size = file.size;
+      updated.kind = kindFor(file);
+    }
+
+    // Editing a rejected doc resubmits it; the decision stays in the audit trail.
+    const resubmitted = doc.status === KnowledgeStatus.REJECTED;
+    if (resubmitted) {
+      updated.status = KnowledgeStatus.SUBMITTED;
+      updated.rejectReason = null;
+    }
 
     this.logger.log(ctx, `calling ${KnowledgeRepository.name}.save`);
     const saved = await this.repository.save(updated);
+
+    await this.auditService.record(
+      ctx,
+      resubmitted ? 'KNOWLEDGE_RESUBMITTED' : 'KNOWLEDGE_EDITED',
+      'knowledge',
+      String(saved.id),
+      { title: saved.title, replacedFile: !!file },
+    );
 
     return plainToClass(KnowledgeOutput, saved, { excludeExtraneousValues: true });
   }
@@ -161,6 +226,66 @@ export class KnowledgeService {
     this.logger.log(ctx, `calling ${KnowledgeRepository.name}.remove`);
     await this.repository.remove(doc);
     removeUploadFile(doc.storedName);
+
+    await this.auditService.record(ctx, 'KNOWLEDGE_DELETED', 'knowledge', String(id), {
+      title: doc.title,
+    });
+  }
+
+  async reviewDocument(
+    ctx: RequestContext,
+    id: number,
+    input: ReviewKnowledgeInput,
+  ): Promise<KnowledgeOutput> {
+    this.logger.log(ctx, `${this.reviewDocument.name} was called`);
+
+    const doc = await this.repository.getById(id);
+    if (doc.status !== KnowledgeStatus.SUBMITTED) {
+      throw new ConflictException('Document has already been decided.');
+    }
+    if (input.status === KnowledgeStatus.REJECTED && !input.reason?.trim()) {
+      throw new BadRequestException('A reason is required to reject.');
+    }
+
+    const approved = input.status === KnowledgeStatus.APPROVED;
+    const updated: KnowledgeDocument = {
+      ...doc,
+      status: input.status,
+      rejectReason: approved ? null : (input.reason as string).trim(),
+    };
+
+    this.logger.log(ctx, `calling ${KnowledgeRepository.name}.save`);
+    const saved = await this.repository.save(updated);
+
+    await this.auditService.record(
+      ctx,
+      approved ? 'KNOWLEDGE_APPROVED' : 'KNOWLEDGE_REJECTED',
+      'knowledge',
+      String(saved.id),
+      approved ? { title: saved.title } : { title: saved.title, reason: saved.rejectReason },
+    );
+
+    return plainToClass(KnowledgeOutput, saved, { excludeExtraneousValues: true });
+  }
+
+  async getHistory(ctx: RequestContext, id: number): Promise<AuditTimelineEntry[]> {
+    this.logger.log(ctx, `${this.getHistory.name} was called`);
+
+    // History follows the same visibility as the document itself: authors see
+    // their own trail, reviewers see everything, nobody else sees anything.
+    const doc = await this.repository.getById(id);
+    const actor: Actor = ctx.user!;
+    if (!this.aclService.forActor(actor).canDoAction(Action.Read, doc)) {
+      throw new UnauthorizedException();
+    }
+
+    return this.auditService.timeline('knowledge', String(id), [
+      'KNOWLEDGE_UPLOADED',
+      'KNOWLEDGE_EDITED',
+      'KNOWLEDGE_RESUBMITTED',
+      'KNOWLEDGE_APPROVED',
+      'KNOWLEDGE_REJECTED',
+    ]);
   }
 
   async getDocumentFile(

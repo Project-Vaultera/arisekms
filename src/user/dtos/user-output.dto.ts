@@ -31,6 +31,10 @@ export class UserOutput {
   gender?: string | null;
 
   @Expose()
+  @ApiProperty({ description: 'Original avatar filename; null when no photo is set.', nullable: true })
+  avatarOriginalName?: string | null;
+
+  @Expose()
   @ApiProperty()
   isAccountDisabled: boolean;
 

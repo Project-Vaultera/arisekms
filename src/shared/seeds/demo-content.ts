@@ -4,6 +4,8 @@ import { CertificateStatus } from '../../certificate/entities/certificate.entity
 import { COMPANY_SECTORS } from '../../company/dtos/membership-input.dto';
 import { KnowledgeCategory } from '../../knowledge/entities/knowledge-document.entity';
 import { ReportCategory, ReportStatus } from '../../report/entities/report.entity';
+import { TICKET_PRIORITIES } from '../../ticket/dtos/ticket-input.dto';
+import { TicketStatus } from '../../ticket/entities/support-ticket.entity';
 
 // Deterministic demo-data planner (pure, unit-tested). The seed script
 // consumes these rows; nothing here touches the database.
@@ -397,6 +399,69 @@ export function planDemoKnowledge(seed = 13): DemoKnowledgeRow[] {
     title: t.title,
     daysAgo: Math.floor(rand() * 180),
   }));
+}
+
+export interface DemoTicketRow {
+  authorUsername: string;
+  subject: string;
+  category: string;
+  priority: string;
+  status: TicketStatus;
+  /** Whole days before `now` the row was created. */
+  daysAgo: number;
+  /** Whole days after creation the row was last updated (resolutions > 0). */
+  updatedLagDays: number;
+}
+
+const TICKET_SUBJECTS: Array<{ category: string; topic: string }> = [
+  { category: 'Report submission', topic: 'Quarterly upload fails validation' },
+  { category: 'Report submission', topic: 'Annual report template question' },
+  { category: 'Knowledge Products', topic: 'Cannot preview uploaded manual' },
+  { category: 'Knowledge Products', topic: 'Wrong category on published guide' },
+  { category: 'Membership', topic: 'Application stuck in review' },
+  { category: 'Membership', topic: 'Update company address' },
+  { category: 'SkillsBuild', topic: 'Certificate not showing on leaderboard' },
+  { category: 'SkillsBuild', topic: 'Add certificate help' },
+  { category: 'Account access', topic: 'Password reset not arriving' },
+  { category: 'Account access', topic: 'New member invite help' },
+  { category: 'Other', topic: 'Dashboard numbers look off' },
+  { category: 'Other', topic: 'Feature suggestion' },
+];
+
+// 35 tickets: open + in-progress backlog plus enough resolved rows to make the
+// average-resolution card meaningful. Authors cycle through members of the
+// every-3rd (approved) companies so the membership gate passes.
+export function planDemoTickets(total = 35, seed = 53): DemoTicketRow[] {
+  const rand = mulberry32(seed);
+  const approvedPool = [
+    ...new Set(
+      DEMO_COMPANY_MEMBERS.flatMap((e, i) => (i % 3 === 0 ? e.members : [])),
+    ),
+  ];
+  const priorities = [...TICKET_PRIORITIES];
+  const rows: DemoTicketRow[] = [];
+  for (let n = 0; n < total; n++) {
+    const s = rand();
+    const status =
+      s < 0.4 ? TicketStatus.OPEN : s < 0.65 ? TicketStatus.IN_PROGRESS : TicketStatus.RESOLVED;
+    const daysAgo = Math.floor(rand() * 120);
+    const topic = TICKET_SUBJECTS[n % TICKET_SUBJECTS.length];
+    rows.push({
+      authorUsername: approvedPool[n % approvedPool.length],
+      subject: `Demo: ${topic.topic} #${n + 1}`,
+      category: topic.category,
+      priority: priorities[Math.floor(rand() * priorities.length)],
+      status,
+      daysAgo,
+      updatedLagDays:
+        status === TicketStatus.RESOLVED
+          ? 1 + Math.floor(rand() * 8)
+          : status === TicketStatus.IN_PROGRESS
+            ? Math.floor(rand() * 3)
+            : 0,
+    });
+  }
+  return rows;
 }
 
 export function daysAgoToDate(daysAgo: number, now = Date.now()): Date {

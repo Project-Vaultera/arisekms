@@ -20,9 +20,9 @@ export function normalizeRole(role) {
 }
 
 export const ROLE_MODULES = {
-  [ROLE.IT_ADMIN]: new Set(['dashboard', 'secretariat-overview', 'governance', 'reports', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
-  [ROLE.SECRETARIAT]: new Set(['dashboard', 'secretariat-overview', 'reports', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
-  [ROLE.MEMBER]: new Set(['dashboard', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support']),
+  [ROLE.IT_ADMIN]: new Set(['dashboard', 'secretariat-overview', 'governance', 'reports', 'submit', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
+  [ROLE.SECRETARIAT]: new Set(['dashboard', 'secretariat-overview', 'reports', 'submit', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
+  [ROLE.MEMBER]: new Set(['dashboard', 'submit', 'membership', 'knowledge', 'skillsbuild', 'help', 'support', 'upload']),
   [ROLE.DATA_ANALYST]: new Set(['dashboard', 'knowledge', 'skillsbuild', 'reports', 'help', 'support']),
 };
 
@@ -79,7 +79,7 @@ const ROUTE_MODULE = {
   '/reports-performance': 'reports',
   '/submit-reports': 'submit',
   '/membership-form': 'membership',
-  '/profile': 'membership',
+  '/profile': 'dashboard',
   '/knowledge-products': 'knowledge',
   '/activity': 'skillsbuild',
   '/skillsbuild': 'skillsbuild',

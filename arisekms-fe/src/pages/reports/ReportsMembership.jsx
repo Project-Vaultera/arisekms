@@ -183,19 +183,17 @@ export function ReportsMembership() {
   const resultSummary = loading ? '' : `${filtered.length} of ${profiles.length} companies`;
 
   return (
-    <div className="flex flex-col gap-2.5 py-1.5 md:gap-3 md:py-2">
+    <div className="flex flex-col gap-2.5 pb-2 md:gap-3 md:pb-3">
       <PageHero title="Membership Reports" subtitle="Totals, growth, and breakdowns linked to live company profiles"
-        bg={membershipBg} overlayClassName="bg-[var(--sendai-orange)]/70" />
+        bg={membershipBg} overlayClassName="bg-[var(--sendai-orange)]/70" className="rounded-none" />
       <div className="px-4 lg:px-6">
-        <Card>
-          <CardContent className="flex flex-col gap-2 pt-4 lg:flex-row lg:items-end">
-            <FilterSelect label="Industry Sector" value={sector} onValueChange={(v) => { setSector(v); setPage(0); }} className="lg:w-64"
-              options={sectorOptions} />
-            <FilterSelect label="Region" value={region} onValueChange={(v) => { setRegion(v); setPage(0); }} className="lg:w-56"
-              options={[{ value: 'all', label: 'All regions' }, ...regions]} />
-            <DateRangeFilter preset={preset} onPreset={onPreset} from={from} to={to} onFrom={(v) => { setFrom(v); setPage(0); }} onTo={(v) => { setTo(v); setPage(0); }} />
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+          <FilterSelect label="Industry Sector" value={sector} onValueChange={(v) => { setSector(v); setPage(0); }} className="lg:w-64" hideLabel
+            options={sectorOptions} />
+          <FilterSelect label="Region" value={region} onValueChange={(v) => { setRegion(v); setPage(0); }} className="lg:w-56" hideLabel
+            options={[{ value: 'all', label: 'All regions' }, ...regions]} />
+          <DateRangeFilter preset={preset} onPreset={onPreset} from={from} to={to} onFrom={(v) => { setFrom(v); setPage(0); }} onTo={(v) => { setTo(v); setPage(0); }} hideLabel />
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-3">
         <StatCard label="Total members" value={filteredUsers.length.toLocaleString()} hint="User accounts in the selected dates" icon={UserGroupIcon} tint="text-[#00ada8]/10" to="/member-directory" linkLabel="View Members" loading={loading} />

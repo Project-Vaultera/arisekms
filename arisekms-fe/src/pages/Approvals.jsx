@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CheckmarkCircle01Icon, Download01Icon, EyeIcon } from '@hugeicons/core-free-icons';
+import { CheckmarkCircle01Icon, Download01Icon, EyeIcon, HistoryIcon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
 import { api, downloadFile } from '@/api/client.js';
+import { HistoryDialog } from '@/components/knowledge/HistoryDialog.jsx';
 import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
@@ -48,8 +49,12 @@ export function Approvals() {
   const [reports, setReports] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [memberships, setMemberships] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [rejectId, setRejectId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [docRejectId, setDocRejectId] = useState(null);
+  const [docRejectReason, setDocRejectReason] = useState('');
+  const [histDoc, setHistDoc] = useState(null);
   const [companyNames, setCompanyNames] = useState({});
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
@@ -78,6 +83,8 @@ export function Approvals() {
       for (const id of ids) {
         if (kind === 'report') {
           await api.patch(`/reports/${id}`, { status });
+        } else if (kind === 'document') {
+          await api.post(`/knowledge/${id}/review`, { status });
         } else {
           await api.patch(`/certificates/${id}`, { status });
         }
@@ -99,6 +106,7 @@ export function Approvals() {
     return Promise.all([
       api.get('/reports', { params: { limit: 100, offset: 0 } }).then((res) => setReports(res.data.data ?? [])),
       api.get('/certificates', { params: { limit: 100, offset: 0 } }).then((res) => setCertificates(res.data.data ?? [])),
+      api.get('/knowledge', { params: { limit: 100, offset: 0 } }).then((res) => setDocuments(res.data.data ?? [])).catch(() => setDocuments([])),
       api.get('/companies/membership/submissions').then((res) => setMemberships(res.data.data ?? [])).catch(() => setMemberships([])),
       api
         .get('/companies')
@@ -128,6 +136,10 @@ export function Approvals() {
     () => certificates.filter((c) => (c.status || 'pending') === 'pending'),
     [certificates],
   );
+  const pendingDocuments = useMemo(
+    () => documents.filter((d) => (d.status || 'submitted') === 'submitted'),
+    [documents],
+  );
   function authorOf(row) {
     const author = row.author ?? row.submittedBy;
     return {
@@ -149,6 +161,23 @@ export function Approvals() {
       await refresh();
     } catch {
       toast.error('Action failed', { description: 'Please try again.' });
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function decideDocument(id, status, label, reason) {
+    const key = `document-${id}`;
+    setActing(key);
+    try {
+      await api.post(`/knowledge/${id}/review`, { status, ...(reason ? { reason } : {}) });
+      toast.success(label);
+      setDocRejectId(null);
+      setDocRejectReason('');
+      await refresh();
+    } catch (err) {
+      const message = err?.response?.data?.error?.message ?? err?.response?.data?.message;
+      toast.error('Action failed', { description: typeof message === 'string' ? message : 'Please try again.' });
     } finally {
       setActing(null);
     }
@@ -188,6 +217,25 @@ export function Approvals() {
     }
   }
 
+  async function previewDocument(doc) {
+    if (!doc?.id) return;
+    try {
+      const res = await api.get(`/knowledge/${doc.id}/file`, { responseType: 'blob' });
+      const mime = res.data?.type || doc.mimeType || '';
+      const url = URL.createObjectURL(res.data);
+      setPreview({ url, mime, name: doc.originalName || doc.title || 'Document' });
+    } catch {
+      toast.error('Preview failed', { description: 'Try downloading instead.' });
+    }
+  }
+
+  function downloadDocument(doc) {
+    if (!doc?.id) return;
+    downloadFile(`/knowledge/${doc.id}/file`, doc.originalName || doc.title || 'document').catch(() =>
+      toast.error('Download failed'),
+    );
+  }
+
   function closePreview() {
     if (preview?.url) URL.revokeObjectURL(preview.url);
     setPreview(null);
@@ -196,6 +244,7 @@ export function Approvals() {
   const tabs = [
     { id: 'reports', label: 'Reports', count: pendingReports.length },
     { id: 'certificates', label: 'Certificates', count: pendingCertificates.length },
+    { id: 'documents', label: 'Documents', count: pendingDocuments.length },
     { id: 'membership', label: 'Membership', count: memberships.length },
   ];
 
@@ -442,6 +491,138 @@ export function Approvals() {
                   )}
 
 
+                  {tab === 'documents' && (
+                    pendingDocuments.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">All caught up — no pending documents.</p>
+                    ) : (
+                      <div className="overflow-hidden rounded-lg border">
+                        {selectedIds('document').length > 0 && (
+                          <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+                            <span className="text-muted-foreground">
+                              {selectedIds('document').length} selected
+                            </span>
+                            <Button
+                              size="sm"
+                              disabled={acting !== null}
+                              onClick={() => decideMany('document', selectedIds('document'), 'approved', 'Documents approved')}
+                            >
+                              Approve selected
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-[var(--sendai-crimson)] text-white hover:bg-[var(--sendai-crimson)]/90 hover:text-white"
+                              disabled={acting !== null}
+                              onClick={() => decideMany('document', selectedIds('document'), 'rejected', 'Documents rejected')}
+                            >
+                              Reject selected
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setSelected((prev) => prev.filter((k) => !k.startsWith('document-')))}>
+                              Clear
+                            </Button>
+                          </div>
+                        )}
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-10">
+                                <Checkbox
+                                  checked={pendingDocuments.length > 0 && pendingDocuments.every((d) => selected.includes(`document-${d.id}`))}
+                                  onCheckedChange={() => toggleAll('document', pendingDocuments)}
+                                  aria-label="Select all"
+                                />
+                              </TableHead>
+                              <TableHead>Item</TableHead>
+                              <TableHead>Category</TableHead>
+                              <TableHead>Submitted by</TableHead>
+                              <TableHead>Company</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {pendingDocuments.map((doc) => {
+                              const author = authorOf(doc);
+                              const busy = acting === `document-${doc.id}` || acting === 'bulk';
+                              return (
+                                <TableRow key={doc.id}>
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={selected.includes(`document-${doc.id}`)}
+                                      onCheckedChange={() => toggleOne('document', doc.id)}
+                                      aria-label={`Select document ${doc.id}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="block max-w-56 truncate font-medium">
+                                      {doc.title || `Document #${doc.id}`}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground">
+                                    {doc.category || '—'}
+                                  </TableCell>
+                                  <TableCell className="font-medium">{author.name}</TableCell>
+                                  <TableCell className="text-muted-foreground">{author.company || '—'}</TableCell>
+                                  <TableCell className="text-muted-foreground">{fmtDate(doc.createdAt)}</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button
+                                        size="sm"
+                                        disabled={busy}
+                                        onClick={() => decideDocument(doc.id, 'approved', 'Document approved')}
+                                      >
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        className="bg-[var(--sendai-crimson)] text-white hover:bg-[var(--sendai-crimson)]/90 hover:text-white"
+                                        disabled={busy}
+                                        onClick={() => { setDocRejectId(doc.id); setDocRejectReason(''); }}
+                                      >
+                                        Reject
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="size-8" onClick={() => previewDocument(doc)} aria-label="Preview">
+                                        <HugeiconsIcon icon={EyeIcon} size={16} strokeWidth={1.8} />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="size-8" onClick={() => downloadDocument(doc)} aria-label="Download">
+                                        <HugeiconsIcon icon={Download01Icon} size={16} strokeWidth={1.8} />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="size-8" onClick={() => setHistDoc({ id: doc.id, title: doc.title })} aria-label="Activity">
+                                        <HugeiconsIcon icon={HistoryIcon} size={16} strokeWidth={1.8} />
+                                      </Button>
+                                    </div>
+                                    {docRejectId === doc.id && (
+                                      <div className="mt-2 flex flex-col gap-2">
+                                        <input
+                                          value={docRejectReason}
+                                          onChange={(e) => setDocRejectReason(e.target.value)}
+                                          placeholder="Reject reason (required)…"
+                                          className="h-9 w-64 flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-sm outline-none placeholder:text-muted-foreground"
+                                        />
+                                        <div className="flex justify-end gap-1">
+                                          <Button
+                                            size="sm"
+                                            className="bg-[var(--sendai-crimson)] text-white hover:bg-[var(--sendai-crimson)]/90 hover:text-white"
+                                            disabled={busy || !docRejectReason.trim()}
+                                            onClick={() => decideDocument(doc.id, 'rejected', 'Document rejected', docRejectReason.trim())}
+                                          >
+                                            Confirm reject
+                                          </Button>
+                                          <Button size="sm" variant="ghost" onClick={() => setDocRejectId(null)}>
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )
+                  )}
+
                   {tab === 'membership' && (
                     memberships.length === 0 ? (
                       <p className="py-6 text-center text-sm text-muted-foreground">All caught up — no pending membership applications.</p>
@@ -556,6 +737,12 @@ export function Approvals() {
           </div>
         </div>
       )}
+      <HistoryDialog
+        open={!!histDoc}
+        onClose={() => setHistDoc(null)}
+        docId={histDoc?.id}
+        title={histDoc?.title}
+      />
     </div>
   );
 }

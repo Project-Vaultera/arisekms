@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
 import { AuthorOutput } from '../../article/dtos/author-output.dto';
+import { KnowledgeStatus } from '../entities/knowledge-document.entity';
 
 export class KnowledgeOutput {
   @Expose()
@@ -35,6 +36,14 @@ export class KnowledgeOutput {
   @Expose()
   @ApiProperty()
   size: number;
+
+  @Expose()
+  @ApiProperty({ enum: KnowledgeStatus })
+  status: KnowledgeStatus;
+
+  @Expose()
+  @ApiProperty({ nullable: true })
+  rejectReason: string | null;
 
   @Expose()
   @ApiProperty()

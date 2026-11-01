@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowDown01Icon, SentIcon } from '@hugeicons/core-free-icons';
+import { ArrowDown01Icon, CheckmarkCircle01Icon, SentIcon } from '@hugeicons/core-free-icons';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { FilterSelect } from '@/components/ui/filter-select.jsx';
+import { TablePager } from '@/components/reports/TablePager.jsx';
 import { effectiveRole, getTokenRoles, getTokenUserId, isPrivilegedRoles, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
@@ -39,9 +40,13 @@ const CHIP_STYLE = {
 
 export function Support() {
   const isAdmin = isPrivilegedRoles(getTokenRoles());
+  const role = effectiveRole(getTokenRoles());
   const userId = getTokenUserId();
   const [tickets, setTickets] = useState([]);
-  const [filter, setFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [expandedId, setExpandedId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ subject: '', category: CATEGORIES[0], priority: 'Medium', description: '' });
@@ -101,7 +106,22 @@ export function Support() {
   }
 
   const counts = STATUSES.reduce((acc, s) => ({ ...acc, [s]: tickets.filter((t) => t.status === s).length }), {});
-  const visible = tickets.filter((t) => filter === 'All' || t.status === filter);
+  const visible = tickets.filter(
+    (t) => (statusFilter === 'All' || t.status === statusFilter) && (categoryFilter === 'All' || t.category === categoryFilter),
+  );
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const paged = visible.slice(safePage * pageSize, safePage * pageSize + pageSize);
+
+  function selectStatusFilter(s) {
+    setStatusFilter(s);
+    setPage(0);
+  }
+
+  function selectCategoryFilter(c) {
+    setCategoryFilter(c);
+    setPage(0);
+  }
 
   return (
     <div>
@@ -112,18 +132,11 @@ export function Support() {
         overlayClassName="bg-[var(--sendai-plum)]/50"
       />
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-2 lg:px-6">
-        <Card className="h-fit">
+        <Card>
           <CardHeader>
             <CardTitle className="font-heading text-xl font-normal">Open a Ticket</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-xs text-muted-foreground">
-              Looking for how-tos? Check the{' '}
-              <Link to="/user-manual" className="font-semibold text-[#0B4484] hover:text-[var(--sendai-teal)]">
-                User Manual
-              </Link>{' '}
-              first — it may already answer your question.
-            </p>
             <form onSubmit={submit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="editorial-label" htmlFor="ticket-subject">Subject</label>
@@ -155,33 +168,106 @@ export function Support() {
                 />
               </div>
               <Button type="submit" disabled={submitting}>
-                <HugeiconsIcon icon={SentIcon} size={16} strokeWidth={1.8} />
                 {submitting ? 'Submitting…' : 'Submit ticket'}
+                <HugeiconsIcon icon={SentIcon} size={16} strokeWidth={1.8} />
               </Button>
             </form>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-heading text-xl font-normal">How support works</CardTitle>
+          </CardHeader>
+          <CardContent className="flex h-full flex-col">
+            <ol className="space-y-4">
+              {[
+                { title: 'Submit a ticket', desc: 'Fill in a clear subject, pick the right category and priority, and describe what happened. It opens as Open and appears in your list below.' },
+                { title: 'We triage it', desc: 'The secretariat picks it up and sets it to In progress while investigating. Watch this page for updates.' },
+                { title: 'Resolved — or reopen', desc: 'Resolved tickets stay in your list with the resolution date. Not fixed? Reopen it anytime and we\u2019ll take another look.' },
+              ].map((step, i) => (
+                <li key={step.title} className="flex gap-3">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--sendai-teal)] text-xs font-bold text-white">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">{step.title}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{step.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-sm font-semibold">What to include</p>
+              <ul className="mt-2 space-y-1.5">
+                {[
+                  'A clear subject line — one issue per ticket',
+                  'Steps to reproduce and what you expected',
+                  'The right category so it reaches the right queue',
+                  'Screenshots or file names when relevant',
+                ].map((tip) => (
+                  <li key={tip} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--sendai-teal)]" />
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="mt-auto border-t border-border pt-4 text-xs text-muted-foreground">
+              <p>
+                Looking for how-tos? Check the{' '}
+                <Link to="/user-manual" className="font-semibold text-[#0B4484] hover:text-[var(--sendai-teal)]">
+                  User Manual
+                </Link>{' '}
+                first — it may already answer your question.
+              </p>
+              {isAdmin && (
+                <p className="mt-2">
+                  Triaging for the team?{' '}
+                  {role === ROLE.IT_ADMIN ? (
+                    <>
+                      Open{' '}
+                      <Link to="/governance-support" className="font-semibold text-[#0B4484] hover:text-[var(--sendai-teal)]">
+                        Support Monitoring
+                      </Link>{' '}
+                      or{' '}
+                    </>
+                  ) : (
+                    <>Open </>
+                  )}
+                  <Link to="/admin-approvals" className="font-semibold text-[#0B4484] hover:text-[var(--sendai-teal)]">
+                    Approvals
+                  </Link>
+                  .
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="mx-auto max-w-6xl px-4 pb-8 lg:px-6">
         <Card className="h-fit">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle className="font-heading text-xl font-normal">
               {isAdmin ? 'All Tickets' : 'Company Tickets'}
             </CardTitle>
-            <div className="flex gap-1 text-xs">
-              {['All', ...STATUSES].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setFilter(s)}
-                  className={cn(
-                    'rounded-sm px-2 py-1 font-medium transition-colors',
-                    filter === s ? 'bg-[#e9eff5] text-[#0B4484]' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
           </CardHeader>
           <CardContent className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <FilterSelect
+                label="Status"
+                value={statusFilter}
+                onValueChange={selectStatusFilter}
+                options={['All', ...STATUSES]}
+                className="w-44"
+              />
+              <FilterSelect
+                label="Category"
+                value={categoryFilter}
+                onValueChange={selectCategoryFilter}
+                options={['All', ...CATEGORIES]}
+                className="w-56"
+              />
+            </div>
             <div className="flex gap-2 pb-1">
               {STATUSES.map((s) => (
                 <span
@@ -192,7 +278,7 @@ export function Support() {
                 </span>
               ))}
             </div>
-            {visible.map((t) => {
+            {paged.map((t) => {
               const expanded = expandedId === t.id;
               const isOwn = t.author?.id === userId;
               return (
@@ -262,6 +348,18 @@ export function Support() {
             })}
             {visible.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">No tickets here yet.</p>
+            )}
+            {visible.length > 0 && (
+              <TablePager
+                page={safePage}
+                pageCount={pageCount}
+                pageSize={pageSize}
+                onPageSize={setPageSize}
+                total={visible.length}
+                fromIdx={safePage * pageSize + 1}
+                toIdx={Math.min(visible.length, safePage * pageSize + paged.length)}
+                onPage={setPage}
+              />
             )}
           </CardContent>
         </Card>

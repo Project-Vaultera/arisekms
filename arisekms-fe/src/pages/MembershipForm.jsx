@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input.jsx';
 import { SectionTitle } from '@/components/ui/section-title.jsx';
 import { Tabs, TabsContent } from '@/components/ui/tabs.jsx';
 import { cn } from '@/lib/utils.js';
+import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
 
 const TABS = [
   { id: 'company', label: 'Company', icon: Agreement01Icon },
@@ -37,6 +38,11 @@ function statusStyle(status) {
 // membership components — the same code the profile Overview tab uses.
 export function MembershipForm() {
   const navigate = useNavigate();
+  // Only members answer the membership application; staff use the simple profile.
+  const viewerRole = effectiveRole(getTokenRoles());
+  useEffect(() => {
+    if (viewerRole !== ROLE.MEMBER) navigate('/profile', { replace: true });
+  }, [viewerRole, navigate]);
   const [companies, setCompanies] = useState(null);
   const [companyId, setCompanyId] = useState(null);
   const [profile, setProfile] = useState(null);

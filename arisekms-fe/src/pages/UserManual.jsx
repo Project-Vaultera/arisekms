@@ -18,7 +18,6 @@ import {
 } from '@hugeicons/core-free-icons';
 
 import { PageHero } from '@/components/PageHero.jsx';
-import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
 import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
@@ -113,6 +112,18 @@ const MANUAL = {
       links: [{ to: '/activity', label: 'Activity', hint: 'Certificates and performance entries.' }],
     },
     {
+      id: 'u-knowledge',
+      title: 'Share knowledge documents',
+      icon: File02Icon,
+      body: [
+        'Knowledge Products is the shared library. Search by title, description, or ID, filter by category in the sidebar, and open any approved document with Preview or Download.',
+        'Members upload through the Upload Document button: pick a category (or add a new one), add a title and description, and attach the file. Your upload lands as Submitted and stays visible to you with its status badge while the secretariat reviews it — it appears for everyone else only after approval.',
+        'Own pending documents can be edited or deleted from their cards: editing details or replacing the file keeps them in review, and a rejection shows the reviewer reason with an Edit-and-resubmit path. The Activity button on any of your documents opens its timeline — uploaded, edited, approved or rejected, with actor and time.',
+      ],
+      shots: [],
+      links: [{ to: '/knowledge-products', label: 'Knowledge Products', hint: 'Browse and share documents.' }],
+    },
+    {
       id: 'u-leaderboards',
       title: 'Check the leaderboards',
       icon: TrophyIcon,
@@ -131,7 +142,7 @@ const MANUAL = {
       icon: HelpCircleIcon,
       body: [
         'Open a support ticket from the Support page: give it a title, pick the category (Report submission, Knowledge Products, Membership, SkillsBuild, Account access, or Other), and set a priority. Tickets move from Open to In progress to Resolved, and the full thread stays on the ticket.',
-        'The topbar bell lists everything currently waiting on you — submitted reports, submitted activities, and open tickets — each linking straight to its review screen, with a count badge so you notice at a glance.',
+        'The topbar bell lists everything currently waiting on you — submitted reports, submitted activities, your pending documents, and open tickets — each linking straight to its screen, with a count badge so you notice at a glance.',
         'The lightning icon replays the quickstart checklist anytime: work through the per-role steps, ticking Mark done as you finish each outcome, or Reset progress to start over. Progress is stored per user in this browser.',
         'The info icon opens the About box with your current role, links to this manual and Support, and the Powered-by row naming the platform partners.',
       ],
@@ -161,9 +172,9 @@ const MANUAL = {
       title: 'Decide membership applications',
       icon: CheckmarkCircle01Icon,
       body: [
-        'The Approvals page holds three tabs with live counts: Reports, Certificates, and Membership. Switch tabs to work each queue; the counts tell you where the backlog sits.',
-        'Each row shows the item, its category or course, who submitted it and from which company, and when. The eye icon previews a report without downloading; the download icon fetches the file for closer reading.',
-        'Decide per row with Approve or Reject. Approving is one click; rejecting asks for a reason, and for membership applications that reason is shown to the member with the application returned to draft so they know exactly what to fix.',
+        'The Approvals page holds four tabs with live counts: Reports, Certificates, Documents, and Membership. Switch tabs to work each queue; the counts tell you where the backlog sits.',
+        'Each row shows the item, its category or course, who submitted it and from which company, and when. The eye icon previews a file without downloading; the download icon fetches it for closer reading; the history icon opens the document activity timeline.',
+        'Decide per row with Approve or Reject. Approving is one click; rejecting asks for a reason, and for membership applications that reason is shown to the member with the application returned to draft so they know exactly what to fix. Rejected knowledge documents stay visible to their author with the reason and an edit-to-resubmit path.',
         'Checkboxes select multiple rows for bulk approve or reject in one pass — useful after events when dozens of certificates land together. The acting indicator and toasts confirm every decision; the row leaves the pending queue immediately.',
       ],
       shots: [{ src: 'admin-approvals.png', caption: 'Approvals queue' }],
@@ -244,7 +255,7 @@ MANUAL[ROLE.DATA_ANALYST] = [
     title: 'Read, don’t submit',
     icon: File02Icon,
     body: [
-      'Analysts have read-only access to content: knowledge products, reports, report summary, performance metrics, activities, certificates, and support tickets. Submission pages, uploads, membership actions, membership analytics, and the Secretariat Overview are hidden.',
+      'Analysts have read-only access to approved content: knowledge products (approved only), reports, report summary, performance metrics, activities, certificates, and support tickets. Submission pages, uploads, membership actions, membership analytics, and the Secretariat Overview are hidden.',
       'Use Knowledge Products (search + category filter), Report Summary (type/gender/date filters), Membership analytics, and Performance (approved-only KPIs) as the reading list. The Support page is available for filing and tracking your own tickets.',
     ],
     shots: [],
@@ -255,16 +266,10 @@ MANUAL[ROLE.DATA_ANALYST] = [
   },
 ];
 
-const GUIDE_TABS = [
-  { value: ROLE.MEMBER, label: 'Member guide' },
-  { value: ROLE.SECRETARIAT, label: 'Secretariat guide' },
-  { value: ROLE.DATA_ANALYST, label: 'Analyst guide' },
-  { value: ROLE.IT_ADMIN, label: 'IT Admin guide' },
-];
-
 export function UserManual() {
   const viewerRole = effectiveRole(getTokenRoles());
-  const [role, setRole] = useState(MANUAL[viewerRole] ? viewerRole : ROLE.MEMBER);
+  // Strict per-role manual: no tab switching, viewer sees only their own guide.
+  const role = MANUAL[viewerRole] ? viewerRole : ROLE.MEMBER;
   const sections = MANUAL[role];
   const [activeId, setActiveId] = useState(sections[0].id);
 
@@ -287,25 +292,15 @@ export function UserManual() {
   }, [role]);
 
   return (
-    <div>
+    <div className="flex flex-col gap-0 pb-8">
       <PageHero
         title="User Manual"
         subtitle="How to use the ARISE Philippines knowledge platform, step by step."
+        bg="/manual.jpg"
+        overlayClassName="bg-[#0a1931]/60"
+        className="rounded-none"
       />
-      <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
-        <div className="mb-4 flex items-center gap-1 rounded-lg border border-border bg-card p-1">
-          {GUIDE_TABS.map((r) => (
-            <Button
-              key={r.value}
-              size="sm"
-              variant={role === r.value ? 'default' : 'ghost'}
-              onClick={() => setRole(r.value)}
-              className="flex-1"
-            >
-              {r.label}
-            </Button>
-          ))}
-        </div>
+      <div className="mx-auto w-full max-w-7xl px-4 pt-8 lg:px-6">
         <div className="flex flex-col gap-6 lg:flex-row">
           <aside className="sticky top-16 hidden w-60 shrink-0 self-start border-r pr-4 md:block">
             <div className="mb-4 flex items-center gap-2 px-2 text-sm font-medium">
