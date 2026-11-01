@@ -5,8 +5,6 @@ import { Cancel01Icon, Search01Icon, Tick01Icon } from '@hugeicons/core-free-ico
 import { toast } from 'sonner';
 
 import { api } from '@/api/client.js';
-import { PageHero } from '@/components/PageHero.jsx';
-import helpBg from '/help-bg.jpg';
 import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { COMPANY_SECTORS } from '@/lib/company-sectors.js';
 import { Badge } from '@/components/ui/badge.jsx';
@@ -39,7 +37,7 @@ function statusStyle(status) {
 
 export function MemberDirectory() {
   const [params] = useSearchParams();
-  const [tab, setTab] = useState(params.get('tab') === 'members' ? 'members' : 'companies');
+  const [tab, setTab] = useState(params.get('tab') === 'companies' ? 'companies' : 'members');
 
   // Members state
   const [members, setMembers] = useState([]);
@@ -185,33 +183,6 @@ export function MemberDirectory() {
     const present = new Set(companies.map((c) => String(c.sector ?? '').trim()).filter(Boolean));
     return COMPANY_SECTORS.filter((s) => present.has(s));
   }, [companies]);
-
-  // Industry tiles: per-sector company + member counts for the help-center grid.
-  const industryStats = useMemo(() => companyIndustries.map((sector) => {
-    const rows = companies.filter((c) => String(c.sector ?? '').trim() === sector);
-    return {
-      sector,
-      companies: rows.length,
-      members: rows.reduce((n, c) => n + (c.members ?? []).length, 0),
-    };
-  }), [companies, companyIndustries]);
-
-  // Unified hero search drives the active tab (help-center pattern).
-  const heroQ = tab === 'members' ? q : companyQ;
-  function onHeroSearch(value) {
-    if (tab === 'members') {
-      setQ(value);
-      setPage(0);
-    } else {
-      setCompanyQ(value);
-      setCompanyPage(0);
-    }
-  }
-  function selectIndustry(sector) {
-    setTab('companies');
-    setCompanyIndustry((prev) => (prev === sector ? 'all' : sector));
-    setCompanyPage(0);
-  }
 
   const filteredCompanies = useMemo(() => {
     const needle = companyQ.trim().toLowerCase();
@@ -390,63 +361,7 @@ export function MemberDirectory() {
   ];
 
   return (
-    <div>
-      <PageHero
-        title="Member Directory"
-        subtitle={`Browse ${total.toLocaleString()} registered members and ${companies.length.toLocaleString()} companies by industry.`}
-        bg={helpBg}
-        overlayClassName="bg-[#0a1931]/60"
-      >
-        <div className="flex flex-col gap-2 rounded-lg bg-white p-3 shadow-lg sm:flex-row">
-          <div className="relative flex-1">
-            <HugeiconsIcon icon={Search01Icon} size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={heroQ}
-              onChange={(e) => onHeroSearch(e.target.value)}
-              placeholder={tab === 'members' ? 'Search by name, email, or username' : 'Search companies by name…'}
-              className="h-12 pl-10 text-base"
-            />
-          </div>
-        </div>
-      </PageHero>
-      <div className="mx-auto max-w-6xl px-4 pt-6 lg:px-6">
-        <p className="editorial-label mb-3 text-[#1e3a5f]">Browse by industry</p>
-        {companiesLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-20 animate-pulse rounded-lg bg-muted/60" />
-            ))}
-          </div>
-        ) : industryStats.length === 0 ? (
-          <p className="py-2 text-sm text-muted-foreground">No industries yet.</p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {industryStats.map((s) => {
-              const active = companyIndustry === s.sector;
-              return (
-                <button
-                  key={s.sector}
-                  type="button"
-                  onClick={() => selectIndustry(s.sector)}
-                  aria-pressed={active}
-                  className={cn(
-                    'rounded-lg border p-3 text-left transition-colors',
-                    active
-                      ? 'border-[#0B4484] bg-[#0a1931] text-white'
-                      : 'border-border bg-card text-[#1e3a5f] hover:border-[#0B4484]/40',
-                  )}
-                >
-                  <span className="line-clamp-2 min-h-10 text-sm font-semibold">{s.sector}</span>
-                  <span className={cn('mt-1 block text-xs', active ? 'text-white/70' : 'text-muted-foreground')}>
-                    {s.companies.toLocaleString()} {s.companies === 1 ? 'company' : 'companies'} · {s.members.toLocaleString()} {s.members === 1 ? 'member' : 'members'}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col gap-2.5 overflow-x-clip py-1.5 md:gap-3 md:py-2">
+    <div className="flex flex-col gap-2.5 overflow-x-clip py-1.5 md:gap-3 md:py-2">
       <div className="px-4 lg:px-6">
         <SendaiFrame>
           <Card className="relative z-10 rounded-2xl">
@@ -477,11 +392,19 @@ export function MemberDirectory() {
               {tab === 'members' ? (
                 <>
                   <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-end">
-                    <p className="flex-1 text-xs text-muted-foreground">
-                      {tab === 'members' && q.trim() ? (
-                        <>Filtering members by “{q.trim()}” — edit the search above to change it.</>
-                      ) : null}
-                    </p>
+                    <div className="relative flex-1">
+                      <HugeiconsIcon
+                        icon={Search01Icon}
+                        size={14}
+                        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      />
+                      <Input
+                        value={q}
+                        onChange={(e) => { setQ(e.target.value); setPage(0); }}
+                        placeholder="Search by name, email, or username"
+                        className="h-9 w-full pl-8"
+                      />
+                    </div>
                     <FilterSelect
                       label="Status"
                       value={status}
@@ -609,15 +532,19 @@ export function MemberDirectory() {
               ) : (
                 <>
                   <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-end">
-                    <p className="flex-1 text-xs text-muted-foreground">
-                      {companyIndustry !== 'all' ? (
-                        <>Industry: {companyIndustry} — click the tile again or pick All industries to clear.</>
-                      ) : companyQ.trim() ? (
-                        <>Filtering companies by “{companyQ.trim()}” — edit the search above to change it.</>
-                      ) : (
-                        <>Pick an industry tile above or use the search to narrow companies.</>
-                      )}
-                    </p>
+                    <div className="relative flex-1">
+                      <HugeiconsIcon
+                        icon={Search01Icon}
+                        size={14}
+                        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      />
+                      <Input
+                        value={companyQ}
+                        onChange={(e) => { setCompanyQ(e.target.value); setCompanyPage(0); }}
+                        placeholder="Search companies by name…"
+                        className="h-9 w-full pl-8"
+                      />
+                    </div>
                     <FilterSelect
                       label="Industry"
                       value={companyIndustry}
@@ -833,7 +760,6 @@ export function MemberDirectory() {
             </CardContent>
           </Card>
         </SendaiFrame>
-      </div>
       </div>
     </div>
   );

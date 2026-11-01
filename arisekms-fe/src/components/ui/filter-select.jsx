@@ -18,13 +18,12 @@ export function FilterSelect({
   options = [],
   className,
   triggerClassName,
-  labelClassName,
   hideLabel = false,
   disabled = false,
 }) {
   return (
     <div className={cn('w-full space-y-1.5', className)}>
-      {label && !hideLabel && <p className={cn('editorial-label text-muted-foreground', labelClassName)}>{label}</p>}
+      {label && !hideLabel && <p className="editorial-label text-muted-foreground">{label}</p>}
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger className={cn('w-full', triggerClassName)} aria-label={hideLabel ? (label ?? placeholder) : undefined}>
           <SelectValue placeholder={placeholder} />

@@ -18,7 +18,6 @@ import { GovernanceUsers } from '@/pages/GovernanceUsers.jsx';
 import { KnowledgeProducts } from '@/pages/KnowledgeProducts.jsx';
 import { Leaderboards } from '@/pages/Leaderboards.jsx';
 import { MemberDirectory } from '@/pages/MemberDirectory.jsx';
-import { MembersList } from '@/pages/MembersList.jsx';
 import { MembershipForm } from '@/pages/MembershipForm.jsx';
 import { ReportsMembership } from '@/pages/reports/ReportsMembership.jsx';
 import { ReportsPerformance } from '@/pages/reports/ReportsPerformance.jsx';
@@ -112,7 +111,6 @@ export function Dashboard({ locked = false }) {
                 <Routes>
                   <Route index element={<DashboardHome />} />
                   <Route path="member-directory" element={<MemberDirectory />} />
-                  <Route path="members-list" element={<MembersList />} />
                   <Route path="secretariat-overview" element={<SecretariatOverview />} />
                   <Route path="admin-overview" element={<Navigate to="/secretariat-overview" replace />} />
                   <Route path="admin-approvals" element={<Approvals />} />

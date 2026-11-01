@@ -302,31 +302,6 @@ describe('Company visibility (e2e)', () => {
         ['Acme Member', 'Other Member'],
       );
     });
-
-    it('approved members list all approved companies (directory)', async () => {
-      // Both A1 (Acme) and B (Other Corp) hold an approved company each,
-      // so the directory exposes every approved company to both.
-      for (const token of [a1Token, bToken]) {
-        const list = await request(app.getHttpServer())
-          .get('/companies')
-          .set('Authorization', auth(token))
-          .expect(HttpStatus.OK);
-        expect(list.body.data.map((c: any) => c.name).sort()).toEqual(
-          ['Acme Corp', 'Other Corp'],
-        );
-        // Directory member rows carry emails + join dates for connect cards.
-        const other = list.body.data.find((c: any) => c.name === 'Other Corp');
-        expect(other.members[0].email).toContain('@example.com');
-        expect(other.members[0].createdAt).toBeDefined();
-        expect(other.members[0].isAccountDisabled).toBe(false);
-      }
-
-      // Cross-company read works for directory (approved) companies…
-      await request(app.getHttpServer())
-        .get(`/companies/${companyId}`)
-        .set('Authorization', auth(bToken))
-        .expect(HttpStatus.OK);
-    });
   });
 
   describe('Admin enable/disable accounts', () => {

@@ -15,18 +15,6 @@ export class CompanyMemberOutput {
   @Expose()
   @ApiProperty()
   name: string;
-
-  @Expose()
-  @ApiProperty()
-  email: string;
-
-  @Expose()
-  @ApiProperty()
-  isAccountDisabled: boolean;
-
-  @Expose()
-  @ApiProperty()
-  createdAt: Date;
 }
 
 export class CompanyOutput {
