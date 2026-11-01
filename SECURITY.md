@@ -1,6 +1,15 @@
 # Security Audit — Arise KMS
 
-Date: 2026-10-31. Scope: `src/` (NestJS 11 API), `arisekms-fe/src/` (React 19), Docker/Compose, env/config, uploads. Method: code read + pattern grep, no live DAST, no `npm audit` run. Repo is source of truth.
+Date: 2026-10-31, addendum 2026-11-01. Scope: `src/` (NestJS 11 API), `arisekms-fe/src/` (React 19), Docker/Compose, env/config, migrations. Method: code read + pattern grep, no live DAST, no `npm audit` run. Repo is source of truth.
+
+## Addendum 2026-11-01 (PR #10: knowledge moderation, profile/avatar/sessions, invite)
+
+- **H6 narrowed:** knowledge IDOR-by-design is fixed — list scopes non-privileged callers to approved + own, member `Create` added with uploads landing `submitted`, `Update`/`Delete` limited to own pending, analyst `Read` approved-only, review gated by `Roles` (secretariat/admin). **Articles (`article.service.ts`) still have no company/author scoping — the remaining H6 instance.**
+- **L0 sessions improved:** `PATCH /users/me` password change requires `currentPassword` and bumps `tokenVersion` (all devices sign out) + records `USER_PASSWORD_CHANGED`; new `POST /users/me/sessions/revoke` bumps `tokenVersion` directly. Email change still doesn't bump `tokenVersion`.
+- **Avatar:** jpg/png-only pipe, old file removed on replace, `basename()` confinement on serve — but `getAvatarFile` hardcodes `image/png` (same L6 `getLogoFile` nit, now two instances).
+- **Invite:** `POST /users/invite` is IT_ADMIN-only via `RolesGuard` — correct; open `POST /auth/register` (M3) unchanged.
+- **Timeline:** `GET /knowledge/:id/history` enforces `Read` ACL before calling `AuditService.timeline()` — correct pattern (service itself intentionally has no role gate; every future caller must gate).
+- **Still open:** H1 (localStorage), H2 (no rotation/reuse detection), H3 (legacy token skip), H4 (seed passwords), H5 (Swagger/Adminer/HTTP), M1, M2, M3, M4, M5, M7 (knowledge `persistUpload` still precedes the ACL check — new code kept the order).
 
 ## Summary
 

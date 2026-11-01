@@ -56,14 +56,14 @@ KMS placeholder — domain entities are TBD:
 
 | Area | Status |
 | --- | --- |
-| Workspaces / tenants | TBD |
-| Identity and access | Starter JWT (see Authentication) |
-| Documents / notes | TBD |
-| Tags and search | TBD |
-| Sharing | TBD |
-| Audit history | TBD |
+| Workspaces / tenants | TBD (single-tenant code; company scoping only in ticket/certificate/report/activity via `getCompanyMemberUserIds`) |
+| Identity and access | Starter JWT (see Authentication) + role ACLs per module |
+| Documents / notes | Knowledge moderation live: member upload → `submitted`, staff auto-`approved`, `POST :id/review`, `GET :id/history` |
+| Tags and search | Title/description/ID search + category filter on Knowledge Products |
+| Sharing | Approved docs visible to all; own pending docs visible to author only |
+| Audit history | `src/audit/` (writes auto-recorded) + per-document timeline (`KNOWLEDGE_*` actions) |
 
-First slice: sign in → create workspace-scoped record → view in React → prove another workspace gets 404.
+First slice done: sign in → member submits report/knowledge → staff approves in Approvals → member sees it in library. Cross-tenant 404 hiding is still TBD (see `SECURITY.md` H6).
 
 ## Technology stack
 
@@ -155,8 +155,8 @@ Single role per user (`CreateUserInput.roles` / `UpdateUserInput.roles` accept e
 |---|---|
 | `ARISE_IT_ADMIN` | Manage everything; Governance → User Directory (accounts, role assignment, disable) + Support Monitoring + Audit Logs |
 | `ARISE_SECRETARIAT` | Member approvals + full Manage on content; Member Directory stays here |
-| `ARISE_MEMBER` | Author-scoped CRUD on content; apply for membership |
-| `ARISE_DATA_ANALYST` | List/Read on content (knowledge, articles, report summary, performance, activities, certificates, tickets); no users/companies/membership-analytics, no writes |
+| `ARISE_MEMBER` | Author-scoped CRUD on content; apply for membership; knowledge: upload lands `submitted`, edit/delete own pending, read approved + own |
+| `ARISE_DATA_ANALYST` | List/Read on approved content (knowledge: approved-only) + reports/summary/performance/activities/certificates/tickets; no users/companies/membership-analytics, no writes |
 
 ```bash
 docker compose exec app npm run seed:roles   # idempotent, resets password + role
@@ -183,6 +183,25 @@ Creates 71 demo members (`demo.member.1`–`71`, password `DemoPass123!`, eleven
 DELETE FROM users WHERE username LIKE 'demo.member.%';  -- cascades their reports + certificates
 DELETE FROM knowledge_documents WHERE title LIKE 'Demo:%';
 ```
+
+### 4b. Knowledge moderation (how docs flow)
+
+- Member `POST /api/v1/knowledge` (multipart: `title`, `description`, `category`, `file`) → saved `submitted`, visible to author only.
+- Staff (secretariat/IT admin) uploads skip the queue → saved `approved`.
+- Review: `POST /api/v1/knowledge/:id/review` `{status: approved|rejected, reason?}` — secretariat/IT-admin only, reject requires `reason` (≤500 chars), second decision → 409.
+- Author edits own pending docs: `PATCH /api/v1/knowledge/:id` (multipart, optional replacement `file`); editing a `rejected` doc resubmits it (`submitted`, reason cleared).
+- Author deletes own pending docs: `DELETE /api/v1/knowledge/:id`. Analysts list everything but can only read `approved` docs.
+- Timeline: `GET /api/v1/knowledge/:id/history` (author or reviewer) returns the `KNOWLEDGE_UPLOADED/EDITED/RESUBMITTED/APPROVED/REJECTED` audit trail, oldest first.
+- Migration `AddKnowledgeModeration` backfills pre-moderation docs to `approved`.
+- FE: Knowledge Products page (search + category filter, Preview/Download, Upload Document modal, status badges, History dialog); Approvals page Documents tab with bulk approve/reject.
+
+### 4c. Profile, avatar, sessions, invites
+
+- `PATCH /api/v1/users/me` — self-service `name`, `email`, `gender` + password change (`password` + `currentPassword`, 6–100 chars). A password change bumps `tokenVersion`, signing out **all** devices including this one — FE redirects to login.
+- `POST /api/v1/users/me/sessions/revoke` — sign out all devices now (bumps `tokenVersion`).
+- Avatar (jpg/png): `POST /api/v1/users/me/avatar` (multipart `file`), `GET /api/v1/users/me/avatar/file`, `DELETE /api/v1/users/me/avatar`. Migration `AddUserAvatar`.
+- `POST /api/v1/users/invite` — IT-admin only, creates an account with an explicit single role (Governance → User Directory → Invite user; share the temp password securely).
+- FE Profile page: avatar upload/remove, personal info, password change, sign-out-all-devices, activity overview.
 
 ### 5. Verify (what actually exists)
 
@@ -256,9 +275,14 @@ All calls go through `arisekms-fe/src/api/client.js` (baseURL from `VITE_API_URL
 
 ## Authentication
 
-- `POST /api/v1/auth/register` — create user
+- `POST /api/v1/auth/register` — create user (forced `ARISE_MEMBER`, active)
 - `POST /api/v1/auth/login` — `{username, password}` → `{accessToken, refreshToken}`
 - `POST /api/v1/auth/refresh-token` — `{refreshToken}` → new pair
+- `PATCH /api/v1/users/me` — own name/email/gender + password change (bumps `tokenVersion`, signs out all devices)
+- `POST /api/v1/users/me/sessions/revoke` — sign out all devices
+- `POST /api/v1/users/me/avatar` / `GET /api/v1/users/me/avatar/file` / `DELETE /api/v1/users/me/avatar` — own avatar (jpg/png)
+- `POST /api/v1/users/invite` — IT-admin only, create account with explicit role
+- Knowledge: `POST /api/v1/knowledge` (member → `submitted`, staff → `approved`), `PATCH /api/v1/knowledge/:id` (author-pending, optional file), `POST /api/v1/knowledge/:id/review` (staff), `GET /api/v1/knowledge/:id/history` (author/reviewer), `DELETE /api/v1/knowledge/:id` (author-pending)
 
 Guards: `LocalAuthGuard` (login), `JwtAuthGuard` (routes), `JwtRefreshGuard` (refresh).
 

@@ -179,6 +179,23 @@ export const QUICKSTART_STEPS = {
 // Secretariat works the same ops queue as IT admin (approvals, directory, reports).
 QUICKSTART_STEPS[ROLE.SECRETARIAT] = [...QUICKSTART_STEPS[ROLE.IT_ADMIN]];
 
+// Walkthrough screenshots (public/manual/*.png, refreshed via npm run manual:shots).
+// Steps without an entry render imageless.
+export const STEP_SHOTS = {
+  'membership-form': { shot: 'member-form.png', caption: 'Membership application, Company tab' },
+  'submit-report': { shot: 'member-submit.png', caption: 'Submit Reports page' },
+  'record-certificate': { shot: 'member-activity-cert.png', caption: 'Add Certificate dialog' },
+  'log-activity': { shot: 'member-activity-log.png', caption: 'Add Activity dialog' },
+  'explore-reports': { shot: 'member-knowledge.png', caption: 'Knowledge Products library' },
+  'leaderboards': { shot: 'member-leaderboards.png', caption: 'Leaderboards with time-range filters' },
+  'review-approvals': { shot: 'admin-approvals.png', caption: 'Approvals queue' },
+  'manage-directory': { shot: 'admin-companies.png', caption: 'Directory companies tab with filters' },
+  'review-reports': { shot: 'admin-summary.png', caption: 'Report summary with review pipeline' },
+  'track-performance': { shot: 'admin-performance.png', caption: 'Performance KPIs and review pipeline' },
+  'support-queue': { shot: 'admin-support.png', caption: 'Support ticket queue' },
+  'browse-knowledge': { shot: 'member-knowledge.png', caption: 'Knowledge Products library' },
+};
+
 // Analysts read content only: no submissions, uploads, or membership actions.
 QUICKSTART_STEPS[ROLE.DATA_ANALYST] = [
   {

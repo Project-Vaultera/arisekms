@@ -253,6 +253,21 @@
   }
 }
 
+@utility thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--muted-foreground);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
 /* ---------- editorial type system (reestly-fnb language) ---------- */
 @utility editorial-eyebrow {
   font-size: 10px;

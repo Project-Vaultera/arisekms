@@ -22,7 +22,7 @@ import { Card, CardContent } from '@/components/ui/card.jsx';
 import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
-const CAPTURED = 'October 2026';
+const CAPTURED = 'November 2026';
 
 // Screenshots live in public/manual/<shot>.png (npm run manual:shots).
 // Missing files hide gracefully so structure and captures land independently.
@@ -60,7 +60,7 @@ const MANUAL = {
         'Home is your landing page after login. At the top, three cards summarize your own footprint: My Certifications (your SkillsBuild certificates), My Reports (your submissions), and Knowledge Items (shared manuals and guides). Each card links straight to its page.',
         'Below the cards, the Member Growth chart plots active versus inactive members over time, and the Timeline lists the latest events across the workspace — new knowledge documents, certificates, and reports as they land.',
         'The Submitted Reports panel at the bottom shows weekly submissions by category for the last 26 weeks, so you can see reporting rhythm at a glance.',
-        'The top bar works everywhere: press / anywhere to jump to search, which finds both pages (Submit Reports, Membership Form, Activity…) and knowledge documents. The lightning icon replays the quickstart checklist; the bell lists everything waiting on you; the info icon explains the system.',
+        'The top bar works everywhere: press / anywhere to jump to search, which finds both pages (Submit Reports, Membership Form, Activity…) and knowledge documents. The lightning icon replays the guided tour; the bell lists everything waiting on you; the info icon explains the system.',
         'The sidebar takes you to the main areas: Home, Submit Reports, Membership Form, Knowledge Products, Activity, and Leaderboards. The Help Center at the bottom holds this manual, the Privacy Policy, and Support.',
       ],
       shots: [{ src: 'member-home.png', caption: 'Member home dashboard' }],
@@ -120,8 +120,19 @@ const MANUAL = {
         'Members upload through the Upload Document button: pick a category (or add a new one), add a title and description, and attach the file. Your upload lands as Submitted and stays visible to you with its status badge while the secretariat reviews it — it appears for everyone else only after approval.',
         'Own pending documents can be edited or deleted from their cards: editing details or replacing the file keeps them in review, and a rejection shows the reviewer reason with an Edit-and-resubmit path. The Activity button on any of your documents opens its timeline — uploaded, edited, approved or rejected, with actor and time.',
       ],
-      shots: [],
+      shots: [{ src: 'member-knowledge.png', caption: 'Knowledge Products library' }],
       links: [{ to: '/knowledge-products', label: 'Knowledge Products', hint: 'Browse and share documents.' }],
+    },
+    {
+      id: 'u-profile',
+      title: 'Manage your profile',
+      icon: UserGroupIcon,
+      body: [
+        'The Profile page holds your account. The About tab shows name, email, and gender — click Edit to change them; username and role are fixed and only an IT admin can change those.',
+        'Set a profile picture with Upload (JPG or PNG); Remove deletes it. Changing your password needs the current password plus the new one twice — on success every device is signed out, including this one, so sign in again. The Sign out all devices button does the same without changing the password; confirm and you land back at login.',
+      ],
+      shots: [{ src: 'member-profile.png', caption: 'Profile page with account settings' }],
+      links: [],
     },
     {
       id: 'u-leaderboards',
@@ -143,7 +154,7 @@ const MANUAL = {
       body: [
         'Open a support ticket from the Support page: give it a title, pick the category (Report submission, Knowledge Products, Membership, SkillsBuild, Account access, or Other), and set a priority. Tickets move from Open to In progress to Resolved, and the full thread stays on the ticket.',
         'The topbar bell lists everything currently waiting on you — submitted reports, submitted activities, your pending documents, and open tickets — each linking straight to its screen, with a count badge so you notice at a glance.',
-        'The lightning icon replays the quickstart checklist anytime: work through the per-role steps, ticking Mark done as you finish each outcome, or Reset progress to start over. Progress is stored per user in this browser.',
+        'The lightning icon replays the guided tour anytime: flip through the per-role steps with their screenshots to find your way around.',
         'The info icon opens the About box with your current role, links to this manual and Support, and the Powered-by row naming the platform partners.',
       ],
       shots: [],
@@ -188,6 +199,7 @@ const MANUAL = {
         'The Members tab lists every account with its company, Active/Inactive badge, join date, and an Enable/Disable action. Search by name, email, or username; filter by status; page through with the Show control (10, 25, 50, or 100 rows) and Previous / Next. Disabling is reversible and takes effect on next login.',
         'The Companies tab replaces the old create form with search plus two filters: Industry (the same 28-sector taxonomy as the application form) and Status, where Active means an approved membership and everything else reads as Inactive. Ten companies show per page.',
         'Selecting a company opens its dossier: member count and join date, report/certificate/open-ticket badges, submitted-versus-approved breakdown bars, a six-month submissions mini-chart, and recent activity. Add members by exact username with Add member; remove them with the X on their row, which takes effect immediately.',
+        'IT admins can create accounts directly with the Invite user button: fill username, full name, valid email, a 6+ character temporary password, and the role — then share that password with the new user through a secure channel.',
         'Every page resets to the first result set whenever a search or filter changes, and the “Showing X–Y of Z” line always tells you where you are in the list.',
       ],
       shots: [{ src: 'admin-companies.png', caption: 'Directory companies tab with filters' }],
@@ -238,7 +250,7 @@ const MANUAL = {
       icon: File02Icon,
       body: [
         'This manual, the privacy policy, and support live in the Help Center section of the sidebar — the same three destinations for every role.',
-        'The lightning icon in the topbar replays the seven-step admin quickstart checklist anytime; steps tick off only when you mark them done, and Reset progress starts the list over. Progress is stored per user in this browser.',
+        'The lightning icon in the topbar replays the seven-step admin guided tour anytime.',
         'The info icon opens the About box with your signed-in role and the Powered-by row naming the platform partners.',
       ],
       shots: [],

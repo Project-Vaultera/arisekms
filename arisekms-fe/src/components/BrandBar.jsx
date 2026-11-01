@@ -4,7 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { BookOpen01Icon, File02Icon, HelpCircleIcon, Home01Icon, InformationCircleIcon, Medal02Icon, Notification01Icon, Search01Icon, Shield01Icon, ZapIcon } from '@hugeicons/core-free-icons';
 
 import { api } from '@/api/client.js';
-import { QuickstartPanel } from '@/components/QuickstartPanel.jsx';
+import { WalkthroughModal } from '@/components/WalkthroughModal.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import {
   Dialog,
@@ -338,7 +338,7 @@ export function BrandBar() {
         )}
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1">
-        <Button variant="ghost" size="icon" onClick={() => setQuickOpen(true)} aria-label="Quickstart guide" className="cursor-pointer">
+        <Button variant="ghost" size="icon" onClick={() => setQuickOpen(true)} aria-label="Guided tour" className="cursor-pointer">
           <HugeiconsIcon icon={ZapIcon} size={20} strokeWidth={1.8} />
         </Button>
         <div ref={bellRef} className="relative">
@@ -416,7 +416,7 @@ export function BrandBar() {
           <HugeiconsIcon icon={InformationCircleIcon} size={20} strokeWidth={1.8} />
         </Button>
       </div>
-      <QuickstartPanel open={quickOpen} onOpenChange={setQuickOpen} steps={steps} />
+      <WalkthroughModal open={quickOpen} onOpenChange={setQuickOpen} steps={steps} />
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

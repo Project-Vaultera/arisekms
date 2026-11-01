@@ -20,6 +20,8 @@ const SHOTS = [
   ['member', 'member-activity', '/activity'],
   ['member', 'member-activity-cert', '/activity', 'Add Certificate'],
   ['member', 'member-activity-log', '/activity', 'Add Activity'],
+  ['member', 'member-knowledge', '/knowledge-products'],
+  ['member', 'member-profile', '/profile'],
   ['member', 'member-leaderboards', '/leaderboards'],
   ['admin', 'admin-overview', '/admin-overview'],
   ['admin', 'admin-approvals', '/admin-approvals'],
