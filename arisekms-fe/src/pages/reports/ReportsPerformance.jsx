@@ -22,7 +22,7 @@ import { DateRangeFilter, presetRange } from '@/components/reports/DateRangeFilt
 import { StatCard } from '@/components/reports/StatCard.jsx';
 import { TablePager } from '@/components/reports/TablePager.jsx';
 import { TARGET_AUDIENCES } from '@/lib/target-audiences.js';
-import { getTokenRoles, ROLE } from '@/lib/rbac.js';
+import { getTokenRoles, normalizeRole, ROLE } from '@/lib/rbac.js';
 import { cn } from '@/lib/utils.js';
 
 const ACTIVITY_TYPES = [{ value: 'all', label: 'All activity' }, ...ACTIVITY_TYPE_OPTIONS];
@@ -71,7 +71,7 @@ export function ReportsPerformance() {
   const [formOpen, setFormOpen] = useState(false);
   const [actingId, setActingId] = useState(null);
 
-  const isAdmin = getTokenRoles().includes(ROLE.IT_ADMIN);
+  const isAdmin = getTokenRoles().some((r) => [ROLE.IT_ADMIN, ROLE.SECRETARIAT].includes(normalizeRole(r)));
 
   function refreshActivities() {
     return api.get('/activities', { params: { limit: 100, offset: 0 } })

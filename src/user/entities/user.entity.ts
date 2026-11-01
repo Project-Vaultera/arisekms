@@ -31,6 +31,9 @@ export class User {
   @Column()
   isAccountDisabled: boolean;
 
+  @Column({ default: 0 })
+  tokenVersion: number;
+
   @Column({ type: 'varchar', length: 20, nullable: true })
   gender?: string | null;
 

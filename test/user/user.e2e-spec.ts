@@ -103,16 +103,22 @@ describe('UserController (e2e)', () => {
         ...{ name: 'New e2etestername' },
       };
 
-      return request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .patch('/users/1')
         .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
         .send(updateUserInput)
-        .expect(HttpStatus.OK)
-        .expect((res) => {
-          const resp = res.body;
-          expectedOutput.updatedAt = resp.data.updatedAt;
-          expect(resp).toEqual({ data: expectedOutput, meta: {} });
-        });
+        .expect(HttpStatus.OK);
+      const resp = res.body;
+      expectedOutput.updatedAt = resp.data.updatedAt;
+      expect(resp).toEqual({ data: expectedOutput, meta: {} });
+
+      // Password change bumps tokenVersion, revoking the pre-change token.
+      // Re-login so the remaining tests run with a valid token.
+      const relogin = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ username: 'default-admin', password: updateUserInput.password })
+        .expect(HttpStatus.OK);
+      authTokenForAdmin = relogin.body.data;
     });
 
     it('throws NOT_FOUND when user doesnt exist', () => {
@@ -135,8 +141,8 @@ describe('UserController (e2e)', () => {
       return request(app.getHttpServer())
         .patch('/users/1')
         .set('Authorization', 'Bearer ' + authTokenForAdmin.accessToken)
-        .expect(HttpStatus.BAD_REQUEST)
         .send(updateUserInput)
+        .expect(HttpStatus.BAD_REQUEST)
         .expect((res) => {
           const resp = res.body;
 

@@ -8,7 +8,8 @@ import { isPrivileged } from '../../auth/constants/role.constant';
 import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
-import { persistUpload,UPLOADS_DIR } from '../../shared/files/file-storage';
+import { clampPagination } from '../../shared/dtos/pagination-params.dto';
+import { persistUpload, removeUploadFile, UPLOADS_DIR } from '../../shared/files/file-storage';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { User } from '../../user/entities/user.entity';
@@ -90,8 +91,8 @@ export class ReportService {
     this.logger.log(ctx, `calling ${ReportRepository.name}.findAndCount`);
     const [reports, count] = await this.repository.findAndCount({
       where,
-      take: limit,
-      skip: offset,
+      take: clampPagination(limit, offset).take,
+      skip: clampPagination(limit, offset).skip,
       order: { createdAt: 'DESC' },
     });
 
@@ -160,6 +161,7 @@ export class ReportService {
 
     this.logger.log(ctx, `calling ${ReportRepository.name}.remove`);
     await this.repository.remove(report);
+    removeUploadFile(report.storedName);
   }
 
   async getReportFile(

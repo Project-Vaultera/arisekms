@@ -11,10 +11,17 @@ import { AuditService } from './audit.service';
 describe('AuditService', () => {
   let service: AuditService;
 
+  const mockedQb = {
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn(),
+  };
   const mockedRepository = {
     create: jest.fn((v) => v),
     save: jest.fn(async (v) => ({ id: 1, ...v })),
-    findAndCount: jest.fn(),
+    createQueryBuilder: jest.fn(() => mockedQb),
   };
   const mockedLogger = { setContext: jest.fn(), log: jest.fn(), error: jest.fn() };
 
@@ -59,7 +66,7 @@ describe('AuditService', () => {
   });
 
   it('list allows IT admin and maps output', async () => {
-    mockedRepository.findAndCount.mockResolvedValue([
+    mockedQb.getManyAndCount.mockResolvedValue([
       [{ id: 1, action: 'PATCH', entityType: 'users' }],
       1,
     ]);
@@ -68,8 +75,15 @@ describe('AuditService', () => {
     expect(items[0].action).toEqual('PATCH');
   });
 
+  it('list combines search with other filters', async () => {
+    mockedQb.getManyAndCount.mockResolvedValue([[], 0]);
+    await service.list(ctxWithRoles([ROLE.ARISE_IT_ADMIN]), { search: 'PATCH', actorId: 7 });
+    expect(mockedQb.andWhere).toHaveBeenCalledWith(expect.stringContaining('actorId'), expect.anything());
+    expect(mockedQb.andWhere).toHaveBeenCalledWith(expect.stringContaining('ILIKE'), expect.anything());
+  });
+
   it('list accepts the legacy ADMIN role', async () => {
-    mockedRepository.findAndCount.mockResolvedValue([[], 0]);
+    mockedQb.getManyAndCount.mockResolvedValue([[], 0]);
     await expect(service.list(ctxWithRoles(['ADMIN']), {})).resolves.toBeDefined();
   });
 

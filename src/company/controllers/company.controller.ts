@@ -10,13 +10,13 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Res,
   StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileTypeValidator, MaxFileSizeValidator, ParseFilePipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -30,11 +30,11 @@ import {
   BaseApiResponse,
   SwaggerBaseApiResponse,
 } from '../../shared/dtos/base-api-response.dto';
+import { PaginationParamsDto } from '../../shared/dtos/pagination-params.dto';
 import {
-  ALLOWED_UPLOAD_MIMETYPES,
-  MAX_UPLOAD_BYTES,
   multerMemoryOptions,
-} from '../../shared/files/file-storage';
+  safeDownloadFilename,
+  uploadFilePipe } from '../../shared/files/file-storage';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
@@ -55,21 +55,8 @@ import { MembershipProfileOutput } from '../dtos/membership-output.dto';
 import { CompanyService } from '../services/company.service';
 import { MembershipService } from '../services/membership.service';
 
-const membershipFilePipe = new ParseFilePipe({
-  fileIsRequired: true,
-  validators: [
-    new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
-    new FileTypeValidator({ fileType: ALLOWED_UPLOAD_MIMETYPES, fallbackToMimetype: true }),
-  ],
-});
-
-const logoFilePipe = new ParseFilePipe({
-  fileIsRequired: true,
-  validators: [
-    new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
-    new FileTypeValidator({ fileType: 'image/jpeg|image/png', fallbackToMimetype: true }),
-  ],
-});
+const membershipFilePipe = uploadFilePipe();
+const logoFilePipe = uploadFilePipe('image/jpeg|image/png');
 
 @ApiTags('companies')
 @Controller('companies')
@@ -124,11 +111,28 @@ export class CompanyController {
   @UseInterceptors(ClassSerializerInterceptor)
   async getCompanies(
     @ReqContext() ctx: RequestContext,
+    @Query() query: PaginationParamsDto,
   ): Promise<BaseApiResponse<CompanyOutput[]>> {
     this.logger.log(ctx, `${this.getCompanies.name} was called`);
 
-    const companies = await this.companyService.getCompanies(ctx);
+    const companies = await this.companyService.getCompanies(ctx, query.limit, query.offset);
     return { data: companies, meta: { count: companies.length } };
+  }
+
+  @Get('membership/submissions')
+  @ApiOperation({ summary: 'List submitted membership profiles API (admin-only)' })
+  @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse([MembershipProfileOutput]) })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
+  @ApiBearerAuth()
+  @UseInterceptors(ClassSerializerInterceptor)
+  async listSubmissions(
+    @ReqContext() ctx: RequestContext,
+  ): Promise<BaseApiResponse<MembershipProfileOutput[]>> {
+    this.logger.log(ctx, `${this.listSubmissions.name} was called`);
+
+    const profiles = await this.membershipService.listSubmissions(ctx);
+    return { data: profiles, meta: { count: profiles.length } };
   }
 
   @Get(':id')
@@ -221,22 +225,6 @@ export class CompanyController {
 
     const company = await this.companyService.removeMember(ctx, id, userId);
     return { data: company, meta: {} };
-  }
-
-  @Get('membership/submissions')
-  @ApiOperation({ summary: 'List submitted membership profiles API (admin-only)' })
-  @ApiResponse({ status: HttpStatus.OK, type: SwaggerBaseApiResponse([MembershipProfileOutput]) })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ARISE_IT_ADMIN, ROLE.ARISE_SECRETARIAT)
-  @ApiBearerAuth()
-  @UseInterceptors(ClassSerializerInterceptor)
-  async listSubmissions(
-    @ReqContext() ctx: RequestContext,
-  ): Promise<BaseApiResponse<MembershipProfileOutput[]>> {
-    this.logger.log(ctx, `${this.listSubmissions.name} was called`);
-
-    const profiles = await this.membershipService.listSubmissions(ctx);
-    return { data: profiles, meta: { count: profiles.length } };
   }
 
   @Get(':id/profile')
@@ -406,7 +394,7 @@ export class CompanyController {
     const file = await this.membershipService.getDocumentFile(ctx, id, docId);
     res.set({
       'Content-Type': file.mimeType,
-      'Content-Disposition': `attachment; filename="${file.filename}"`,
+      'Content-Disposition': `attachment; filename="${safeDownloadFilename(file.filename)}"`,
     });
     return new StreamableFile(file.stream);
   }
@@ -444,7 +432,7 @@ export class CompanyController {
     const file = await this.membershipService.getLogoFile(ctx, id);
     res.set({
       'Content-Type': file.mimeType,
-      'Content-Disposition': `inline; filename="${file.filename}"`,
+      'Content-Disposition': `inline; filename="${safeDownloadFilename(file.filename)}"`,
     });
     return new StreamableFile(file.stream);
   }

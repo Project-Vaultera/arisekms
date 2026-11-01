@@ -25,6 +25,7 @@ import { RegisterOutput } from '../dtos/auth-register-output.dto';
 import { AuthTokenOutput } from '../dtos/auth-token-output.dto';
 import { JwtRefreshGuard } from '../guards/jwt-refresh.guard';
 import { LocalAuthGuard } from '../guards/local-auth.guard';
+import { LoginThrottleGuard } from '../guards/login-throttle.guard';
 import { AuthService } from '../services/auth.service';
 
 @ApiTags('auth')
@@ -49,7 +50,7 @@ export class AuthController {
     type: BaseApiErrorResponse,
   })
   @HttpCode(HttpStatus.OK)
-  @UseGuards(LocalAuthGuard)
+  @UseGuards(LoginThrottleGuard, LocalAuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   login(
     @ReqContext() ctx: RequestContext,
@@ -63,6 +64,7 @@ export class AuthController {
   }
 
   @Post('register')
+  @UseGuards(LoginThrottleGuard)
   @ApiOperation({
     summary: 'User registration API',
   })
@@ -91,7 +93,7 @@ export class AuthController {
     type: BaseApiErrorResponse,
   })
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtRefreshGuard)
+  @UseGuards(LoginThrottleGuard, JwtRefreshGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   async refreshToken(
     @ReqContext() ctx: RequestContext,

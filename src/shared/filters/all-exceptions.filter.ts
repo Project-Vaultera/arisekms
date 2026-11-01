@@ -9,15 +9,14 @@ import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { Request, Response } from 'express';
 
-import { AuditService } from '../../audit/services/audit.service';
+import { AuditService, normalizeAuditEntityType } from '../../audit/services/audit.service';
 import { REQUEST_ID_TOKEN_HEADER } from '../constants';
 import { BaseApiException } from '../exceptions/base-api.exception';
-import { AppLogger } from '../logger/logger.service';
-import { createRequestContext } from '../request-context/util';
-
 // Mutations only: GETs would flood the trail. Mirrors the interceptor,
 // which never sees guard-level rejections — failures land here instead.
-const AUDITED_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
+import { AUDITED_METHODS } from '../interceptors/logging.interceptor';
+import { AppLogger } from '../logger/logger.service';
+import { createRequestContext } from '../request-context/util';
 
 @Catch()
 export class AllExceptionsFilter<T> implements ExceptionFilter {
@@ -102,7 +101,7 @@ export class AllExceptionsFilter<T> implements ExceptionFilter {
         audit.record({
           actorId: (req as any).user?.id ?? null,
           action: req.method,
-          entityType: url.split('?')[0].split('/').filter(Boolean).join('/'),
+          entityType: normalizeAuditEntityType(url),
           entityId:
             idCandidate !== null && idCandidate !== undefined
               ? String(idCandidate).slice(0, 64)

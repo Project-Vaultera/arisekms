@@ -177,7 +177,7 @@ export const QUICKSTART_STEPS = {
 };
 
 // Secretariat works the same ops queue as IT admin (approvals, directory, reports).
-QUICKSTART_STEPS[ROLE.SECRETARIAT] = QUICKSTART_STEPS[ROLE.IT_ADMIN];
+QUICKSTART_STEPS[ROLE.SECRETARIAT] = [...QUICKSTART_STEPS[ROLE.IT_ADMIN]];
 
 // Analysts read content only: no submissions, uploads, or membership actions.
 QUICKSTART_STEPS[ROLE.DATA_ANALYST] = [

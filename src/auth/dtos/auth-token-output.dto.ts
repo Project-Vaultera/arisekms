@@ -20,6 +20,8 @@ export class UserAccessTokenClaims {
   username: string;
   @Expose()
   roles: ROLE[];
+  @Expose()
+  tokenVersion?: number;
 }
 
 export class UserRefreshTokenClaims {

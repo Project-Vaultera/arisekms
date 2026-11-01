@@ -20,4 +20,9 @@ export class AppController {
 
     return this.appService.getHello(ctx);
   }
+
+  @Get('health')
+  health(): { status: string } {
+    return { status: 'ok' };
+  }
 }

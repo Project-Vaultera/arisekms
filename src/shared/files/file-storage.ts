@@ -1,4 +1,5 @@
-import { mkdirSync, writeFileSync } from 'fs';
+import { FileTypeValidator, MaxFileSizeValidator, ParseFilePipe } from '@nestjs/common';
+import { mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { memoryStorage } from 'multer';
 import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 // storage (signed URLs, virus scan) before handling real member data.
 export const UPLOADS_DIR = './uploads';
 
-export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 export const ALLOWED_UPLOAD_MIMETYPES =
   'application/pdf|image/jpeg|image/png|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -26,4 +27,33 @@ export function persistUpload(file: Express.Multer.File): string {
   mkdirSync(UPLOADS_DIR, { recursive: true });
   writeFileSync(`${UPLOADS_DIR}/${storedName}`, file.buffer);
   return storedName;
+}
+
+export function removeUploadFile(storedName: string | null | undefined): void {
+  if (!storedName) return;
+  try {
+    unlinkSync(`${UPLOADS_DIR}/${storedName.split('/').pop()}`);
+  } catch {
+    // already gone is fine
+  }
+}
+
+export function safeDownloadFilename(name: string, fallback = 'download'): string {
+  const clean = (name ?? fallback).replace(/[\r\n"]/g, '').slice(0, 120) || fallback;
+  return clean;
+}
+
+export function uploadFilePipe(allowedTypes: string = ALLOWED_UPLOAD_MIMETYPES): ParseFilePipe {
+  return new ParseFilePipe({
+    fileIsRequired: true,
+    validators: [
+      new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
+        // Magic-byte check first; fall back to the client mimetype when
+        // file-type cannot detect a signature (tiny/fake buffers, or Jest
+        // failing to load the ESM-only file-type package). A detected
+        // signature must still match — e.g. an .exe renamed to .pdf is
+        // detected as x-msdos-program and rejected.
+        new FileTypeValidator({ fileType: allowedTypes, fallbackToMimetype: true }),
+    ],
+  });
 }

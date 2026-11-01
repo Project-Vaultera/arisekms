@@ -36,6 +36,15 @@ export function isStaffRole(role) {
   return r === ROLE.IT_ADMIN || r === ROLE.SECRETARIAT || r === ROLE.DATA_ANALYST;
 }
 
+export function isPrivilegedRole(role) {
+  const r = normalizeRole(role);
+  return r === ROLE.IT_ADMIN || r === ROLE.SECRETARIAT;
+}
+
+export function isPrivilegedRoles(roles) {
+  return (roles ?? []).some((r) => isPrivilegedRole(r));
+}
+
 export function getTokenUserId() {
   try {
     const token = localStorage.getItem('arisekms_access_token');

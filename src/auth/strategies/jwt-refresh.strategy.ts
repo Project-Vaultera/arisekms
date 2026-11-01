@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { DataSource } from 'typeorm';
 
 import { STRATEGY_JWT_REFRESH } from '../constants/strategy.constant';
 import { UserRefreshTokenClaims } from '../dtos/auth-token-output.dto';
@@ -11,7 +12,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
   Strategy,
   STRATEGY_JWT_REFRESH,
 ) {
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
       secretOrKey: configService.getOrThrow<string>('jwt.publicKey'),
@@ -21,8 +25,17 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
   // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   async validate(payload: any): Promise<UserRefreshTokenClaims> {
-    // Passport automatically creates a user object, based on the value we return from the validate() method,
-    // and assigns it to the Request object as req.user
+    const row = await this.dataSource.query(
+      `SELECT id, "isAccountDisabled", "tokenVersion" FROM users WHERE id = $1`,
+      [payload.sub],
+    );
+    const user = row?.[0];
+    if (!user || user.isAccountDisabled) {
+      throw new UnauthorizedException();
+    }
+    if (payload.tokenVersion !== undefined && Number(payload.tokenVersion) !== Number(user.tokenVersion ?? 0)) {
+      throw new UnauthorizedException('Session revoked');
+    }
     return { id: payload.sub };
   }
 }

@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table.jsx';
-import { ROLE } from '@/lib/rbac.js';
+import { getTokenUserId, ROLE } from '@/lib/rbac.js';
 
 const ALL_ROLES = [ROLE.IT_ADMIN, ROLE.SECRETARIAT, ROLE.MEMBER, ROLE.DATA_ANALYST];
 
@@ -28,6 +28,7 @@ const ROLE_LABEL = {
 };
 
 export function GovernanceUsers() {
+  const myId = getTokenUserId();
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState('');
@@ -80,6 +81,13 @@ export function GovernanceUsers() {
   }
 
   async function patchUser(id, patch) {
+    if (Number(id) === Number(myId) && (patch.roles !== undefined || patch.isAccountDisabled !== undefined)) {
+      toast.error('You cannot change your own role or disable your own account');
+      return;
+    }
+    if (patch.isAccountDisabled === true && !window.confirm('Disable this account?')) {
+      return;
+    }
     setSavingId(id);
     try {
       await api.patch(`/users/${id}`, patch);
@@ -152,7 +160,7 @@ export function GovernanceUsers() {
                       value={(u.roles ?? [])[0] ?? ROLE.MEMBER}
                       onValueChange={(v) => patchUser(u.id, { roles: [v] })}
                       options={ALL_ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
-                      disabled={savingId === u.id}
+                      disabled={savingId === u.id || Number(u.id) === Number(myId)}
                     />
                   </TableCell>
                   <TableCell>
@@ -164,7 +172,7 @@ export function GovernanceUsers() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={savingId === u.id}
+                      disabled={savingId === u.id || Number(u.id) === Number(myId)}
                       onClick={() => patchUser(u.id, { isAccountDisabled: !u.isAccountDisabled })}
                     >
                       {u.isAccountDisabled ? 'Enable' : 'Disable'}

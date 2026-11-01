@@ -86,8 +86,12 @@ export function useDashboardData() {
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
+      // Members/analysts are denied /users: degrade to empty roster, not a dead dashboard.
+      const usersPromise = api
+        .get('/users', { params: { limit: 100, offset: 0 } })
+        .catch(() => ({ data: { data: [], meta: { count: 0 } } }));
       const [usersRes, reportsRes, knowledgeRes, certsRes] = await Promise.all([
-        api.get('/users', { params: { limit: 100, offset: 0 } }),
+        usersPromise,
         api.get('/reports', { params: { limit: 100, offset: 0 } }),
         api.get('/knowledge', { params: { limit: 10, offset: 0 } }),
         api.get('/certificates', { params: { limit: 10, offset: 0 } }),

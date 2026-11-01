@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -23,6 +24,9 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const { user } = context.switchToHttp().getRequest();
+    if (!user) {
+      throw new UnauthorizedException();
+    }
     const userRoles = normalizeRoles(user.roles ?? []);
 
     if (requiredRoles.map(String).some((role) => userRoles.includes(role))) {
@@ -30,7 +34,7 @@ export class RolesGuard implements CanActivate {
     }
 
     throw new ForbiddenException(
-      `User with roles ${user.roles} does not have access to this route with roles ${requiredRoles}`,
+      `User with roles ${user?.roles} does not have access to this route with roles ${requiredRoles}`,
     );
   }
 }

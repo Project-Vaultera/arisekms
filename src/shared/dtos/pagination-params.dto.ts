@@ -4,14 +4,14 @@ import { IsNumber, IsOptional, Min } from 'class-validator';
 
 export class PaginationParamsDto {
   @ApiPropertyOptional({
-    description: 'Optional, defaults to 100',
+    description: 'Optional, defaults to 20, max 100 (larger values are clamped)',
     type: Number,
   })
   @IsNumber()
   @IsOptional()
-  @Min(0)
+  @Min(1)
   @Transform(({ value }) => parseInt(value, 10), { toClassOnly: true })
-  limit = 100;
+  limit = 20;
 
   @ApiPropertyOptional({
     description: 'Optional, defaults to 0',
@@ -22,4 +22,11 @@ export class PaginationParamsDto {
   @Min(0)
   @Transform(({ value }) => parseInt(value, 10), { toClassOnly: true })
   offset = 0;
+}
+
+// Defense in depth: controllers validate, services clamp (unit calls bypass pipes).
+export function clampPagination(limit: number, offset: number): { take: number; skip: number } {
+  const take = Math.min(Math.max(limit ?? 20, 1), 100);
+  const skip = Math.max(offset ?? 0, 0);
+  return { take, skip };
 }

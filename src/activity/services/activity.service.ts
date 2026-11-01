@@ -6,6 +6,7 @@ import { isPrivileged } from '../../auth/constants/role.constant';
 import { CompanyService } from '../../company/services/company.service';
 import { Action } from '../../shared/acl/action.constant';
 import { Actor } from '../../shared/acl/actor.constant';
+import { clampPagination } from '../../shared/dtos/pagination-params.dto';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { User } from '../../user/entities/user.entity';
@@ -88,8 +89,8 @@ export class ActivityService {
 
     const [activities, count] = await this.repository.findAndCount({
       where,
-      take: limit,
-      skip: offset,
+      take: clampPagination(limit, offset).take,
+      skip: clampPagination(limit, offset).skip,
       order: { createdAt: 'DESC' },
       relations: { company: true },
     });
