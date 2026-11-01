@@ -42,7 +42,7 @@ export function presetRange(preset) {
 }
 
 // Consistent date dropdown used by all three report pages.
-export function DateRangeFilter({ preset, onPreset, from, to, onFrom, onTo }) {
+export function DateRangeFilter({ preset, onPreset, from, to, onFrom, onTo, hideLabel = false }) {
   return (
     <>
       <FilterSelect
@@ -51,16 +51,17 @@ export function DateRangeFilter({ preset, onPreset, from, to, onFrom, onTo }) {
         onValueChange={(v) => onPreset(v)}
         className="lg:w-48"
         options={DATE_PRESETS}
+        hideLabel={hideLabel}
       />
       {preset === 'custom' && (
         <>
           <div className="space-y-1.5">
-            <p className="editorial-label text-muted-foreground">From</p>
-            <Input type="date" value={from} onChange={(e) => onFrom(e.target.value)} className="h-9" />
+            {!hideLabel && <p className="editorial-label text-muted-foreground">From</p>}
+            <Input type="date" value={from} onChange={(e) => onFrom(e.target.value)} className="h-9" aria-label="From" />
           </div>
           <div className="space-y-1.5">
-            <p className="editorial-label text-muted-foreground">To</p>
-            <Input type="date" value={to} onChange={(e) => onTo(e.target.value)} className="h-9" />
+            {!hideLabel && <p className="editorial-label text-muted-foreground">To</p>}
+            <Input type="date" value={to} onChange={(e) => onTo(e.target.value)} className="h-9" aria-label="To" />
           </div>
         </>
       )}

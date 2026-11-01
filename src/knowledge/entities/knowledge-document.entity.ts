@@ -18,6 +18,12 @@ export enum KnowledgeCategory {
   TERMS = 'Terms',
 }
 
+export enum KnowledgeStatus {
+  SUBMITTED = 'submitted',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
 @Entity('knowledge_documents')
 export class KnowledgeDocument {
   @PrimaryGeneratedColumn()
@@ -46,6 +52,16 @@ export class KnowledgeDocument {
 
   @Column()
   size: number;
+
+  @Column({
+    type: 'enum',
+    enum: KnowledgeStatus,
+    default: KnowledgeStatus.SUBMITTED,
+  })
+  status: KnowledgeStatus;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  rejectReason: string | null;
 
   @ManyToOne(() => User, { eager: true, onDelete: 'SET NULL', nullable: true })
   author: User;

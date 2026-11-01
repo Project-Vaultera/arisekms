@@ -22,7 +22,7 @@ import { validateUploadFile } from '@/lib/file-upload.js';
 
 const NEW_CATEGORY = '__new';
 
-export function UploadDocumentModal({ open, onClose, onUploaded, categories = [] }) {
+export function UploadDocumentModal({ open, onClose, onUploaded, categories = [], doc = null }) {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [customCategory, setCustomCategory] = useState('');
@@ -30,9 +30,17 @@ export function UploadDocumentModal({ open, onClose, onUploaded, categories = []
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const editing = !!doc;
 
   useEffect(() => {
-    if (open) {
+    if (open && doc) {
+      setTitle(doc.title ?? '');
+      setCategory(doc.category ?? categories[0] ?? 'Manual');
+      setCustomCategory('');
+      setDescription(doc.description ?? '');
+      setFile(null);
+      setError('');
+    } else if (open) {
       setTitle('');
       setCategory(categories[0] ?? 'Manual');
       setCustomCategory('');
@@ -40,7 +48,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded, categories = []
       setFile(null);
       setError('');
     }
-  }, [open, categories ]);
+  }, [open, doc, categories ]);
 
   function close() {
     if (uploading) return;
@@ -71,7 +79,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded, categories = []
       setError(category === NEW_CATEGORY ? 'Enter a name for the new category.' : 'Choose a document type.');
       return;
     }
-    if (!file) {
+    if (!editing && !file) {
       setError('Choose a file to upload.');
       return;
     }
@@ -82,13 +90,18 @@ export function UploadDocumentModal({ open, onClose, onUploaded, categories = []
       form.append('title', title.trim());
       form.append('category', resolvedCategory());
       if (description.trim()) form.append('description', description.trim());
-      form.append('file', file);
-      await api.post('/knowledge', form);
-      toast.success('Document uploaded');
+      if (file) form.append('file', file);
+      if (editing) {
+        await api.patch(`/knowledge/${doc.id}`, form);
+        toast.success(doc.status === 'rejected' ? 'Document updated and resubmitted for review' : 'Document updated');
+      } else {
+        await api.post('/knowledge', form);
+        toast.success('Document uploaded');
+      }
       onUploaded?.();
       onClose();
     } catch {
-      setError('Upload failed. Check the file type and try again.');
+      setError(editing ? 'Update failed. Check the fields and try again.' : 'Upload failed. Check the file type and try again.');
     } finally {
       setUploading(false);
     }
@@ -100,8 +113,8 @@ export function UploadDocumentModal({ open, onClose, onUploaded, categories = []
         <SendaiFrame>
           <div className="relative z-10 max-h-[90vh] overflow-y-auto rounded-lg bg-background p-6">
             <DialogHeader>
-              <DialogTitle>Upload document</DialogTitle>
-              <DialogDescription>Add a new file to the knowledge repository.</DialogDescription>
+              <DialogTitle>{editing ? 'Edit document' : 'Upload document'}</DialogTitle>
+              <DialogDescription>{editing ? 'Update the details or replace the file. Saving resubmits rejected documents.' : 'Add a new file to the knowledge repository.'}</DialogDescription>
             </DialogHeader>
             <form onSubmit={submit} className="mt-4 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
@@ -149,7 +162,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded, categories = []
                 <p className="text-right text-xs text-muted-foreground">{description.length}/2000</p>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>File</Label>
+                <Label>File {editing && <span className="font-normal text-muted-foreground">(leave empty to keep current file)</span>}</Label>
                 <FileDropzone compact onPick={pickFile} />
                 {file && (
                   <span className="flex max-w-full items-center gap-1.5 self-start rounded-sm bg-[#e9eff5] px-2 py-1 text-xs font-medium text-[#0B4484]">
@@ -172,7 +185,7 @@ export function UploadDocumentModal({ open, onClose, onUploaded, categories = []
                   Cancel
                 </Button>
                 <Button type="submit" disabled={uploading}>
-                  {uploading ? 'Uploading…' : 'Upload'}
+                  {uploading ? (editing ? 'Saving…' : 'Uploading…') : (editing ? 'Save changes' : 'Upload')}
                 </Button>
               </DialogFooter>
             </form>

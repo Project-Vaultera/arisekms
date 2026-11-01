@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils.js';
 
 // Global dropdown: editorial-label + radix Select (member-directory pattern).
 // options: ['All', ...] or [{ value, label }].
+// hideLabel drops the visible title but keeps it as the trigger aria-label.
 export function FilterSelect({
   label,
   value,
@@ -17,13 +18,14 @@ export function FilterSelect({
   options = [],
   className,
   triggerClassName,
+  hideLabel = false,
   disabled = false,
 }) {
   return (
     <div className={cn('w-full space-y-1.5', className)}>
-      {label && <p className="editorial-label text-muted-foreground">{label}</p>}
+      {label && !hideLabel && <p className="editorial-label text-muted-foreground">{label}</p>}
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger className={cn('w-full', triggerClassName)}>
+        <SelectTrigger className={cn('w-full', triggerClassName)} aria-label={hideLabel ? (label ?? placeholder) : undefined}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         {/* popper: fixed-positioned menu that flips above the trigger near the viewport bottom */}

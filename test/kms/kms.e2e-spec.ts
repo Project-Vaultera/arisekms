@@ -198,14 +198,16 @@ describe('KMS modules (e2e)', () => {
   let docId: number;
 
   describe('Knowledge', () => {
-    it('member upload is denied', async () => {
-      await request(app.getHttpServer())
+    it('member upload lands as submitted for review', async () => {
+      const res = await request(app.getHttpServer())
         .post('/knowledge')
         .set('Authorization', auth(memberToken))
-        .field('title', 'Sneaky Doc')
+        .field('title', 'Member Doc')
         .field('category', 'Manual')
-        .attach('file', PDF_BUFFER, 'sneaky.pdf')
-        .expect(HttpStatus.UNAUTHORIZED);
+        .attach('file', PDF_BUFFER, 'member.pdf')
+        .expect(HttpStatus.CREATED);
+
+      expect(res.body.data.status).toEqual('submitted');
     });
 
     it('admin uploads a manual', async () => {

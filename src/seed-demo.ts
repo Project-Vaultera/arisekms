@@ -27,8 +27,11 @@ import {
   planDemoCompanyDetails,
   planDemoKnowledge,
   planDemoReports,
+  planDemoTickets,
   planDemoUserDetails,
 } from './shared/seeds/demo-content';
+import { SupportTicket } from './ticket/entities/support-ticket.entity';
+import { TicketService } from './ticket/services/ticket.service';
 import { User } from './user/entities/user.entity';
 import { UserService } from './user/services/user.service';
 
@@ -248,6 +251,48 @@ async function bootstrap() {
       });
     }
     console.log(`Seeded ${createdActivities} new demo activities (converged by title).`);
+
+    // Tickets converge by subject so re-runs backfill without duplicating.
+    // Authors are approved-company members so the membership gate passes.
+    const ticketSvc = app.get(TicketService);
+    const ticketRows = planDemoTickets();
+    let createdTickets = 0;
+    for (const row of ticketRows) {
+      const existing = await dataSource
+        .getRepository(SupportTicket)
+        .findOne({ where: { subject: row.subject } });
+      if (!existing) {
+        const author = await users.findByUsername(ctx, row.authorUsername);
+        if (!author) {
+          console.log(`Skipping ticket seed with no author: ${row.subject}`);
+          continue;
+        }
+        const saved = await ticketSvc.createTicket(
+          actorCtx({ id: author.id, username: author.username, roles: author.roles }),
+          {
+            subject: row.subject,
+            category: row.category,
+            priority: row.priority,
+            description: `${row.subject} (demo seed data).`,
+          },
+        );
+        const createdAt = daysAgoToDate(row.daysAgo);
+        await dataSource.getRepository(SupportTicket).update(saved.id, {
+          status: row.status,
+          createdAt,
+          updatedAt: new Date(createdAt.getTime() + row.updatedLagDays * 86_400_000),
+        });
+        createdTickets += 1;
+      } else {
+        const createdAt = daysAgoToDate(row.daysAgo);
+        await dataSource.getRepository(SupportTicket).update(existing.id, {
+          status: row.status,
+          createdAt,
+          updatedAt: new Date(createdAt.getTime() + row.updatedLagDays * 86_400_000),
+        });
+      }
+    }
+    console.log(`Seeded ${createdTickets} new demo tickets (converged by subject).`);
   } finally {
     await app.close();
   }

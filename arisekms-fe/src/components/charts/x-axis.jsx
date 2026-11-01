@@ -21,7 +21,8 @@ function XAxisLabel({
   hoveredLabel,
   isHovering,
   tickerHalfWidth,
-  animatePosition
+  animatePosition,
+  maxWidth,
 }) {
   const fadeBuffer = 20;
   const fadeRadius = tickerHalfWidth + fadeBuffer;
@@ -57,7 +58,11 @@ function XAxisLabel({
         style={{
           opacity,
           transition: "opacity 0.4s ease-in-out",
+          ...(maxWidth != null
+            ? { maxWidth, overflow: "hidden", textOverflow: "ellipsis" }
+            : null),
         }}
+        title={label}
       >
         {label}
       </span>
@@ -565,6 +570,22 @@ const XAxisInner = memo(function XAxisInner({
     resolvedNumTicks,
   ]);
 
+  // Cap each label to its share of the axis so long names truncate with an
+  // ellipsis (full text stays available via the native title tooltip) instead
+  // of bleeding into neighbouring ticks.
+  const ticksToShow = useMemo(() => {
+    const ordered = [...labelsToShow].sort((a, b) => a.x - b.x);
+    return ordered.map((tick, i) => {
+      const gaps = [];
+      const prev = ordered[i - 1];
+      const next = ordered[i + 1];
+      if (prev) gaps.push(tick.x - prev.x);
+      if (next) gaps.push(next.x - tick.x);
+      if (gaps.length === 0) return tick;
+      return { ...tick, maxWidth: Math.max(28, Math.min(...gaps) - 16) };
+    });
+  }, [labelsToShow]);
+
   const isHovering = tooltipData !== null;
   const crosshairX = tooltipData ? tooltipData.x + margin.left : null;
   const hoveredLabel =
@@ -575,7 +596,7 @@ const XAxisInner = memo(function XAxisInner({
 
   return createPortal(
     <div className="pointer-events-none absolute inset-0">
-      {labelsToShow.map((item) => (
+      {ticksToShow.map((item) => (
         <XAxisLabel
           animatePosition={xDomain == null}
           crosshairX={crosshairX}
@@ -583,6 +604,7 @@ const XAxisInner = memo(function XAxisInner({
           isHovering={isHovering}
           key={`${item.date.getTime()}-${item.x}`}
           label={item.label}
+          maxWidth={item.maxWidth}
           tickerHalfWidth={tickerHalfWidth}
           x={item.x}
         />

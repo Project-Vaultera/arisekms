@@ -1,9 +1,12 @@
-import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { compare, hash } from 'bcrypt';
 import { plainToClass } from 'class-transformer';
+import { createReadStream } from 'fs';
+import { basename, join } from 'path';
 
 import { AuditService } from '../../audit/services/audit.service';
 import { clampPagination } from '../../shared/dtos/pagination-params.dto';
+import { persistUpload, removeUploadFile, UPLOADS_DIR } from '../../shared/files/file-storage';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { CreateUserInput } from '../dtos/user-create-input.dto';
@@ -148,13 +151,115 @@ export class UserService {
       }
     }
 
-    // Whitelist merge: only name + email + gender are self-editable.
+    // Whitelist merge: only name + email + gender + password are self-editable.
+    // A password change bumps tokenVersion so every device (including this
+    // one) signs out — the caller must redirect to login afterwards.
+    const newPassword = input.password;
+    const passwordChanged = newPassword !== undefined;
+    if (passwordChanged) {
+      if (!input.currentPassword) {
+        throw new UnauthorizedException('Current password is required.');
+      }
+      // Throws Unauthorized when the current password does not match.
+      await this.validateUsernamePassword(ctx, user.username, input.currentPassword);
+    }
     const updatedUser: User = {
       ...user,
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.email !== undefined ? { email: input.email } : {}),
       ...(input.gender !== undefined ? { gender: input.gender } : {}),
+      ...(passwordChanged ? { password: await hash(newPassword, 10) } : {}),
+      ...(passwordChanged ? { tokenVersion: (user.tokenVersion ?? 0) + 1 } : {}),
     };
+
+    this.logger.log(ctx, `calling ${UserRepository.name}.save`);
+    await this.repository.save(updatedUser);
+
+    if (passwordChanged) {
+      this.auditService.record({
+        actorId: ctx.user?.id ?? null,
+        action: 'USER_PASSWORD_CHANGED',
+        entityType: 'users',
+        entityId: String(userId),
+        metadata: {},
+        outcome: 'success',
+      });
+    }
+
+    return plainToClass(UserOutput, updatedUser, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  async revokeMySessions(ctx: RequestContext, userId: number): Promise<UserOutput> {
+    this.logger.log(ctx, `${this.revokeMySessions.name} was called`);
+
+    const user = await this.repository.getById(userId);
+    const updatedUser: User = { ...user, tokenVersion: (user.tokenVersion ?? 0) + 1 };
+
+    this.logger.log(ctx, `calling ${UserRepository.name}.save`);
+    await this.repository.save(updatedUser);
+
+    this.auditService.record({
+      actorId: ctx.user?.id ?? null,
+      action: 'USER_SESSIONS_REVOKED',
+      entityType: 'users',
+      entityId: String(userId),
+      metadata: {},
+      outcome: 'success',
+    });
+
+    return plainToClass(UserOutput, updatedUser, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  async uploadAvatar(
+    ctx: RequestContext,
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<UserOutput> {
+    this.logger.log(ctx, `${this.uploadAvatar.name} was called`);
+
+    const user = await this.repository.getById(userId);
+    removeUploadFile(user.avatarStoredName);
+    const updatedUser: User = {
+      ...user,
+      avatarStoredName: persistUpload(file),
+      avatarOriginalName: file.originalname,
+    };
+
+    this.logger.log(ctx, `calling ${UserRepository.name}.save`);
+    await this.repository.save(updatedUser);
+
+    return plainToClass(UserOutput, updatedUser, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  async getAvatarFile(
+    ctx: RequestContext,
+    userId: number,
+  ): Promise<{ stream: ReturnType<typeof createReadStream>; filename: string; mimeType: string }> {
+    this.logger.log(ctx, `${this.getAvatarFile.name} was called`);
+
+    const user = await this.repository.getById(userId);
+    if (!user.avatarStoredName) {
+      throw new NotFoundException('No avatar set.');
+    }
+    return {
+      stream: createReadStream(join(process.cwd(), UPLOADS_DIR, basename(user.avatarStoredName))),
+      filename: user.avatarOriginalName ?? 'avatar',
+      mimeType: 'image/png',
+    };
+  }
+
+  async removeAvatar(ctx: RequestContext, userId: number): Promise<UserOutput> {
+    this.logger.log(ctx, `${this.removeAvatar.name} was called`);
+
+    const user = await this.repository.getById(userId);
+    removeUploadFile(user.avatarStoredName);
+    const updatedUser: User = { ...user, avatarStoredName: null, avatarOriginalName: null };
 
     this.logger.log(ctx, `calling ${UserRepository.name}.save`);
     await this.repository.save(updatedUser);

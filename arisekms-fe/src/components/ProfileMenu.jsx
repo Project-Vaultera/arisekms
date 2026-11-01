@@ -16,7 +16,7 @@ function initialsOf(name) {
     .toUpperCase();
 }
 
-function Avatar({ size, className, label }) {
+function Avatar({ size, className, label, src }) {
   const px = { width: size, height: size };
   const innerSize = size - 6;
   const fontSize = Math.max(10, Math.round(size * 0.28));
@@ -35,9 +35,13 @@ function Avatar({ size, className, label }) {
       />
       <span
         style={{ width: innerSize, height: innerSize, fontSize }}
-        className="relative grid place-items-center rounded-full bg-[#0B4484] font-heading font-black text-white"
+        className="relative grid place-items-center overflow-hidden rounded-full bg-[#0B4484] font-heading font-black text-white"
       >
-        {label ?? 'IA'}
+        {src ? (
+          <img src={src} alt="" className="size-full object-cover" />
+        ) : (
+          label ?? 'IA'
+        )}
       </span>
     </span>
   );
@@ -49,6 +53,7 @@ export function ProfileMenu() {
   const collapsed = state === 'collapsed';
   const [me, setMe] = useState(null);
   const [companyName, setCompanyName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +69,28 @@ export function ProfileMenu() {
       cancelled = true;
     };
   }, []);
+
+  // Profile photo served as a blob (auth headers can't ride an <img> URL).
+  useEffect(() => {
+    if (!me?.avatarOriginalName) {
+      setAvatarUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let url = null;
+    api
+      .get('/users/me/avatar/file', { responseType: 'blob' })
+      .then((res) => {
+        if (cancelled) return;
+        url = URL.createObjectURL(res.data);
+        setAvatarUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [me?.avatarOriginalName]);
 
   return (
     <div className="flex w-full flex-col items-center gap-2 rounded-sm px-1 py-1">
@@ -84,7 +111,7 @@ export function ProfileMenu() {
           onClick={() => navigate('/profile')}
           className="group flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-sm px-1 py-1 text-left group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
         >
-          <Avatar size={40} className="relative" label={initialsOf(me?.name)} />
+          <Avatar size={40} className="relative" label={initialsOf(me?.name)} src={avatarUrl} />
           <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <span className="block truncate text-base font-semibold text-[#1e3a5f]">{me?.name ?? '…'}</span>
             <span className="block truncate text-sm text-muted-foreground">{companyName || 'ARISE Philippines'}</span>

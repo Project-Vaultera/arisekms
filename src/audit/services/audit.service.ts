@@ -7,6 +7,7 @@ import { normalizeRoles,ROLE } from '../../auth/constants/role.constant';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { AuditLogOutput } from '../dtos/audit-log-output.dto';
+import { AuditTimelineEntry } from '../dtos/audit-timeline-output.dto';
 import { AuditLog } from '../entities/audit-log.entity';
 
 export interface AuditQuery {
@@ -138,6 +139,41 @@ export class AuditService {
       items: plainToClass(AuditLogOutput, items, { excludeExtraneousValues: true }),
       total,
     };
+  }
+
+  // Scoped entity history (e.g. a knowledge document's moderation trail).
+  // Exact entityId match plus an action allowlist: the logging interceptor
+  // records every HTTP request as an audit row, so a timeline must exclude
+  // that noise. No IT_ADMIN gate here — callers enforce their own scoping
+  // (author-or-reviewer) before calling.
+  async timeline(
+    entityType: string,
+    entityId: string,
+    actions: string[],
+  ): Promise<AuditTimelineEntry[]> {
+    if (actions.length === 0) return [];
+    const rows = await this.repository
+      .createQueryBuilder('log')
+      .leftJoinAndSelect('log.actor', 'actor')
+      .where('log.entityType = :entityType', { entityType })
+      .andWhere('log.entityId = :entityId', { entityId })
+      .andWhere('log.action IN (:...actions)', { actions })
+      .orderBy('log.createdAt', 'ASC')
+      .addOrderBy('log.id', 'ASC')
+      .getMany();
+
+    return plainToClass(
+      AuditTimelineEntry,
+      rows.map((r) => ({
+        action: r.action,
+        actorId: r.actorId ?? null,
+        actorName: r.actor?.name ?? null,
+        actorUsername: (r.actor as { username?: string } | null)?.username ?? null,
+        createdAt: r.createdAt,
+        metadata: r.metadata ?? null,
+      })),
+      { excludeExtraneousValues: true },
+    );
   }
 
   private assertAuditReader(ctx: RequestContext): void {

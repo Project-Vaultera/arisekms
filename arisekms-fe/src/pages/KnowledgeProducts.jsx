@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { BookOpen01Icon, Cancel01Icon, Certificate01Icon, Download01Icon, EyeIcon, File02Icon, GridViewIcon, PlusSignIcon, Search01Icon, Shield01Icon, Upload01Icon } from '@hugeicons/core-free-icons';
+import { BookOpen01Icon, Certificate01Icon, Delete01Icon, Download01Icon, Edit01Icon, EyeIcon, File02Icon, GridViewIcon, HistoryIcon, PlusSignIcon, Search01Icon, Shield01Icon, Upload01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
 import { api, downloadFile } from '@/api/client.js';
+import { HistoryDialog } from '@/components/knowledge/HistoryDialog.jsx';
 import { PageHero } from '@/components/PageHero.jsx';
 import { PageHeader } from '@/components/PageHeader.jsx';
 import { UploadDocumentModal } from '@/components/UploadDocumentModal.jsx';
@@ -11,9 +12,18 @@ import { SendaiFrame } from '@/components/SendaiFrame.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent } from '@/components/ui/card.jsx';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog.jsx';
 import { Input } from '@/components/ui/input.jsx';
+import { Label } from '@/components/ui/label.jsx';
 import { cn } from '@/lib/utils.js';
-import { canUpload, effectiveRole, getTokenRoles } from '@/lib/rbac.js';
+import { canUpload, effectiveRole, getTokenRoles, getTokenUserId, isPrivilegedRoles } from '@/lib/rbac.js';
 import knowledgeBg from '/bg-arise.jpg';
 
 const KNOWN_CATEGORIES = ['ECE', 'Manual', 'Policies', 'Terms'];
@@ -37,9 +47,11 @@ export function KnowledgeProducts() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const [addingCat, setAddingCat] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [histDoc, setHistDoc] = useState(null);
+  const [catOpen, setCatOpen] = useState(false);
   const [newCat, setNewCat] = useState('');
+  const [preview, setPreview] = useState(null);
   const [customCats, setCustomCats] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem('arisekms_custom_categories') ?? '[]');
@@ -49,6 +61,32 @@ export function KnowledgeProducts() {
     }
   });
   const role = effectiveRole(getTokenRoles());
+  const myId = getTokenUserId();
+  const isPrivileged = isPrivilegedRoles(getTokenRoles());
+  const isOwnDoc = (doc) => Number(doc.author?.id) === Number(myId);
+  const canManageDoc = (doc) => isOwnDoc(doc) && (doc.status === 'submitted' || doc.status === 'rejected');
+  const canSeeHistory = (doc) => isPrivileged || isOwnDoc(doc);
+
+  function openEdit(doc) {
+    setEditingDoc(doc);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingDoc(null);
+  }
+
+  async function removeDoc(doc) {
+    if (!window.confirm(`Delete "${doc.title}"?`)) return;
+    try {
+      await api.delete(`/knowledge/${doc.id}`);
+      toast.success('Document deleted');
+      refresh();
+    } catch {
+      toast.error('Could not delete document');
+    }
+  }
 
   function refresh() {
     setLoading(true);
@@ -88,7 +126,7 @@ export function KnowledgeProducts() {
       // shortcut: session-only when storage is unavailable; syncs once a doc uses it.
     }
     setNewCat('');
-    setAddingCat(false);
+    setCatOpen(false);
     toast.success(`Category "${name}" added`);
   }
 
@@ -184,10 +222,45 @@ export function KnowledgeProducts() {
       </PageHero>
       <UploadDocumentModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         onUploaded={refresh}
         categories={categories.filter((c) => c !== 'All')}
+        doc={editingDoc}
       />
+      <HistoryDialog
+        open={!!histDoc}
+        onClose={() => setHistDoc(null)}
+        docId={histDoc?.id}
+        title={histDoc?.title}
+      />
+      <Dialog open={catOpen} onOpenChange={(v) => !v && setCatOpen(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add category</DialogTitle>
+            <DialogDescription>Name a new sidebar category for organizing documents.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={addCategory}
+            className="space-y-3"
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="new-category-name">Category name</Label>
+              <Input
+                id="new-category-name"
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                placeholder="e.g. Guidelines"
+                maxLength={50}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCatOpen(false)}>Cancel</Button>
+              <Button type="submit">Add category</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 lg:flex-row lg:px-6">
         <aside className="w-full shrink-0 lg:w-56">
           <SendaiFrame>
@@ -217,37 +290,12 @@ export function KnowledgeProducts() {
                   );
                 })}
               </div>
-              {canUpload(role) &&
-                (addingCat ? (
-                  <form onSubmit={addCategory} className="mt-2 flex gap-1.5">
-                    <Input
-                      value={newCat}
-                      onChange={(e) => setNewCat(e.target.value)}
-                      placeholder="New category"
-                      maxLength={50}
-                      autoFocus
-                      className="h-8"
-                    />
-                    <Button type="submit" size="sm" className="h-8 shrink-0">
-                      Add
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => { setAddingCat(false); setNewCat(''); }}
-                      className="h-8 shrink-0"
-                      aria-label="Cancel add category"
-                    >
-                      <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} />
-                    </Button>
-                  </form>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={() => setAddingCat(true)} className="mt-2 w-full">
-                    <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
-                    Add category
-                  </Button>
-                ))}
+              {canUpload(role) && (
+                <Button variant="outline" size="sm" onClick={() => { setNewCat(''); setCatOpen(true); }} className="mt-2 w-full">
+                  <HugeiconsIcon icon={PlusSignIcon} size={15} strokeWidth={2} />
+                  Add category
+                </Button>
+              )}
             </CardContent>
           </Card>
           </SendaiFrame>
@@ -260,9 +308,20 @@ export function KnowledgeProducts() {
                   <div className="flex flex-wrap gap-1.5">
                     {doc.kind && <Badge className="bg-[var(--sendai-plum)] text-white uppercase tracking-wide">{doc.kind}</Badge>}
                     <Badge className="bg-[var(--sendai-teal)] text-white uppercase tracking-wide">{doc.category}</Badge>
+                    {doc.status === 'submitted' && (
+                      <Badge className="bg-[var(--sendai-orange)]/15 text-[var(--sendai-orange)] uppercase tracking-wide">Submitted</Badge>
+                    )}
+                    {doc.status === 'rejected' && (
+                      <Badge className="bg-[var(--sendai-crimson)]/10 text-[var(--sendai-crimson)] uppercase tracking-wide">Rejected</Badge>
+                    )}
                   </div>
                   <p className="font-heading min-w-0 text-base font-bold break-words text-[#1e3a5f]">{doc.title}</p>
                   <p className="line-clamp-3 min-w-0 text-xs leading-relaxed break-words text-muted-foreground">{doc.description || 'No description provided.'}</p>
+                  {doc.status === 'rejected' && isOwnDoc(doc) && doc.rejectReason && (
+                    <p className="rounded-sm bg-[var(--sendai-crimson)]/10 px-3 py-2 text-xs text-[var(--sendai-crimson)]">
+                      Reviewer feedback: {doc.rejectReason} — edit and save to resubmit.
+                    </p>
+                  )}
                   <div className="mt-auto flex gap-2 pt-2">
                     <Button variant="outline" size="sm" onClick={() => previewDoc(doc)} className="flex-1">
                       <HugeiconsIcon icon={EyeIcon} size={15} strokeWidth={2} />
@@ -278,6 +337,28 @@ export function KnowledgeProducts() {
                       Download
                     </Button>
                   </div>
+                  {(canManageDoc(doc) || canSeeHistory(doc)) && (
+                    <div className="flex gap-2">
+                      {canManageDoc(doc) && (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(doc)} className="flex-1 text-[#0c4585] hover:text-[#00ada8]">
+                            <HugeiconsIcon icon={Edit01Icon} size={15} strokeWidth={2} />
+                            Edit
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => removeDoc(doc)} className="flex-1 text-[var(--sendai-crimson)]">
+                            <HugeiconsIcon icon={Delete01Icon} size={15} strokeWidth={2} />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                      {canSeeHistory(doc) && (
+                        <Button variant="ghost" size="sm" onClick={() => setHistDoc({ id: doc.id, title: doc.title })} className={cn('flex-1 text-muted-foreground', !canManageDoc(doc) && 'flex-none px-2')}>
+                          <HugeiconsIcon icon={HistoryIcon} size={15} strokeWidth={2} />
+                          Activity
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

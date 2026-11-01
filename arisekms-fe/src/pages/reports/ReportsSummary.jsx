@@ -150,18 +150,15 @@ export function ReportsSummary() {
     .slice(safePage * pageSize, safePage * pageSize + pageSize);
 
   return (
-    <div className="flex flex-col gap-2.5 py-1.5 md:gap-3 md:py-2">
+    <div className="flex flex-col gap-2.5 pb-2 md:gap-3 md:pb-3">
       <PageHero title="Report Summary" subtitle="Creation trends and breakdowns from live submissions"
-        bg={stocksBg} overlayClassName="bg-[var(--sendai-teal)]/70" />
+        bg={stocksBg} overlayClassName="bg-[var(--sendai-teal)]/70" className="rounded-none" />
       <div className="px-4 lg:px-6">
-        <Card>
-          <CardContent className="flex flex-col gap-2 pt-4 lg:flex-row lg:items-end">
-            <FilterSelect label="Report type" value={type} onValueChange={(v) => { setType(v); setPage(0); }} className="lg:w-56" options={TYPES} />
-            <FilterSelect label="Gender" value={gender} onValueChange={(v) => { setGender(v); setPage(0); }} className="lg:w-56" options={GENDERS} />
-            <DateRangeFilter preset={preset} onPreset={onPreset} from={from} to={to} onFrom={(v) => { setFrom(v); setPage(0); }} onTo={(v) => { setTo(v); setPage(0); }} />
-          </CardContent>
-        </Card>
-        <p className="mt-1 px-1 text-xs text-muted-foreground">Gender = report author gender. Unspecified covers accounts created before gender capture.</p>
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+          <FilterSelect label="Report type" value={type} onValueChange={(v) => { setType(v); setPage(0); }} className="lg:w-56" options={TYPES} hideLabel />
+          <FilterSelect label="Gender" value={gender} onValueChange={(v) => { setGender(v); setPage(0); }} className="lg:w-56" options={GENDERS} hideLabel />
+          <DateRangeFilter preset={preset} onPreset={onPreset} from={from} to={to} onFrom={(v) => { setFrom(v); setPage(0); }} onTo={(v) => { setTo(v); setPage(0); }} hideLabel />
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-3 lg:px-6">
         <StatCard label="Total reports" value={total.toLocaleString()} hint="Reports matching filters" icon={File02Icon} tint="text-[var(--sendai-teal)]/10" to="/submit-reports" linkLabel="View Reports" loading={loading} />

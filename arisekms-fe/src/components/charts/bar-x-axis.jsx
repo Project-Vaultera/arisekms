@@ -15,7 +15,8 @@ function BarXAxisLabel({
   x,
   crosshairX,
   isHovering,
-  tickerHalfWidth
+  tickerHalfWidth,
+  maxWidth,
 }) {
   const fadeBuffer = 20;
   const fadeRadius = tickerHalfWidth + fadeBuffer;
@@ -30,7 +31,9 @@ function BarXAxisLabel({
     }
   }
 
-  // Zero-width container approach for perfect centering
+  // Zero-width container approach for perfect centering. The label is capped
+  // to its band slot (ellipsis + native title tooltip) so long category names
+  // can never bleed into their neighbours.
   return (
     <div
       className="absolute"
@@ -45,6 +48,12 @@ function BarXAxisLabel({
       <motion.span
         animate={{ opacity }}
         className={cn("whitespace-nowrap text-chart-label text-xs")}
+        style={
+          maxWidth != null
+            ? { maxWidth, overflow: "hidden", textOverflow: "ellipsis" }
+            : undefined
+        }
+        title={label}
         initial={{ opacity: 1 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
       >
@@ -105,12 +114,17 @@ const BarXAxisInner = memo(function BarXAxisInner({
 
     // If showAllLabels is true or we have fewer than maxLabels, show all
     if (showAllLabels || allLabels.length <= resolvedMaxLabels) {
-      return allLabels;
+      const slotWidth = Math.max(0, bandWidth - 8);
+      return allLabels.map((item) => ({ ...item, maxWidth: slotWidth }));
     }
 
-    // Otherwise, skip some labels to avoid crowding
+    // Otherwise, skip some labels to avoid crowding. The surviving labels get
+    // the freed-up slot width so they can use the full gap between ticks.
     const step = Math.ceil(allLabels.length / Math.max(1, resolvedMaxLabels));
-    return allLabels.filter((_, i) => i % step === 0);
+    const slotWidth = Math.max(0, bandWidth * step - 8);
+    return allLabels
+      .filter((_, i) => i % step === 0)
+      .map((item) => ({ ...item, maxWidth: slotWidth }));
   }, [
     barScale,
     bandWidth,
@@ -132,6 +146,7 @@ const BarXAxisInner = memo(function BarXAxisInner({
           isHovering={isHovering}
           key={`${item.label}-${item.x}`}
           label={item.label}
+          maxWidth={item.maxWidth}
           tickerHalfWidth={tickerHalfWidth}
           x={item.x}
         />

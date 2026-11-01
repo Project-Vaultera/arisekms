@@ -187,8 +187,11 @@ export function AriseSidebar({ locked = false }) {
   const navigate = useNavigate();
   const isStaff = role === ROLE.IT_ADMIN || role === ROLE.SECRETARIAT;
   const isAnalyst = role === ROLE.DATA_ANALYST;
-  // Pending members see only the membership form until approval.
-  const main = locked ? MAIN.filter((item) => item.id === 'membership-form') : MAIN;
+  const isMember = role === ROLE.MEMBER;
+  // Only members answer the membership application; staff get a simple profile.
+  const main = (locked ? MAIN.filter((item) => item.id === 'membership-form') : MAIN).filter(
+    (item) => item.id !== 'membership-form' || isMember,
+  );
 
   function logout() {
     clearTokens();

@@ -3,7 +3,7 @@ import { IsEnum, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class
 
 import { TicketStatus } from '../entities/support-ticket.entity';
 
-const TICKET_CATEGORIES = [
+export const TICKET_CATEGORIES = [
   'Report submission',
   'Knowledge Products',
   'Membership',
@@ -12,7 +12,7 @@ const TICKET_CATEGORIES = [
   'Other',
 ] as const;
 
-const TICKET_PRIORITIES = ['Low', 'Medium', 'High'] as const;
+export const TICKET_PRIORITIES = ['Low', 'Medium', 'High'] as const;
 
 export class CreateTicketInput {
   @ApiProperty()

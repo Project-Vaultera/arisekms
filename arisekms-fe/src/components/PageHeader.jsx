@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
+import { canUpload, effectiveRole, getTokenRoles } from '@/lib/rbac.js';
 
 // Page heading strip. Titles live in each page's PageHero — this row only
 // carries an optional standalone title (dashboard home) and the "Add New"
@@ -17,7 +17,9 @@ import { effectiveRole, getTokenRoles, ROLE } from '@/lib/rbac.js';
 export function PageHeader({ title, subtitle, actions = [] }) {
   const navigate = useNavigate();
   const role = effectiveRole(getTokenRoles());
-  const visible = actions.filter((a) => !a.adminOnly || role === ROLE.IT_ADMIN);
+  // adminOnly actions (e.g. knowledge upload) show to upload-capable roles:
+  // staff publish live, members submit for review, analysts stay read-only.
+  const visible = actions.filter((a) => !a.adminOnly || canUpload(role));
 
   if (!title && visible.length === 0) return null;
 

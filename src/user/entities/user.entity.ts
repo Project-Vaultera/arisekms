@@ -37,6 +37,12 @@ export class User {
   @Column({ type: 'varchar', length: 20, nullable: true })
   gender?: string | null;
 
+  @Column({ type: 'varchar', length: 260, nullable: true })
+  avatarOriginalName: string | null;
+
+  @Column({ type: 'varchar', length: 260, nullable: true })
+  avatarStoredName: string | null;
+
   @Unique('email', ['email'])
   @Column({ length: 200 })
   email: string;

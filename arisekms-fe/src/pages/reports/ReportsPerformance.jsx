@@ -27,6 +27,9 @@ import { cn } from '@/lib/utils.js';
 
 const ACTIVITY_TYPES = [{ value: 'all', label: 'All activity' }, ...ACTIVITY_TYPE_OPTIONS];
 
+// Human-readable labels from the same source the entry form uses.
+const ACTIVITY_TYPE_LABEL = Object.fromEntries(ACTIVITY_TYPE_OPTIONS.map((o) => [o.value, o.label]));
+
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'submitted', label: 'Submitted' },
@@ -206,22 +209,18 @@ export function ReportsPerformance() {
   const val = (n) => (loading ? '—' : n.toLocaleString());
 
   return (
-    <div className="flex flex-col gap-2.5 py-1.5 md:gap-3 md:py-2">
+    <div className="flex flex-col gap-2.5 pb-2 md:gap-3 md:pb-3">
       <PageHero title="Performance and Metrics" subtitle="Manual activity entries feed the KPI cards; reports stay as proxies"
-        bg={metricsBg} overlayClassName="bg-[var(--sendai-plum)]/70" />
+        bg={metricsBg} overlayClassName="bg-[var(--sendai-plum)]/70" className="rounded-none" />
       <div className="px-4 lg:px-6">
-        <Card>
-          <CardContent className="flex flex-col gap-2 pt-4 lg:flex-row lg:items-end">
-            <DateRangeFilter preset={preset} onPreset={onPreset} from={from} to={to} onFrom={(v) => { setFrom(v); setPage(0); }} onTo={(v) => { setTo(v); setPage(0); }} />
-            <FilterSelect label="Activity type" value={activity} onValueChange={(v) => { setActivity(v); setPage(0); }} className="lg:w-56" options={ACTIVITY_TYPES} />
-            <FilterSelect label="Target audience" value={audience} onValueChange={(v) => { setAudience(v); setPage(0); }} className="lg:w-56"
-              options={audiences} />
-            <FilterSelect label="Status" value={status} onValueChange={(v) => { setStatus(v); setPage(0); }} className="lg:w-44" options={STATUS_OPTIONS} />
-          </CardContent>
-        </Card>
-        <p className="mt-1 px-1 text-xs text-muted-foreground">KPI cards count approved activities only. Target audience is live from logged activities.</p>
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+          <DateRangeFilter preset={preset} onPreset={onPreset} from={from} to={to} onFrom={(v) => { setFrom(v); setPage(0); }} onTo={(v) => { setTo(v); setPage(0); }} hideLabel />
+          <FilterSelect label="Activity type" value={activity} onValueChange={(v) => { setActivity(v); setPage(0); }} className="lg:w-56" options={ACTIVITY_TYPES} hideLabel />
+          <FilterSelect label="Target audience" value={audience} onValueChange={(v) => { setAudience(v); setPage(0); }} className="lg:w-56" hideLabel
+            options={audiences} />
+          <FilterSelect label="Status" value={status} onValueChange={(v) => { setStatus(v); setPage(0); }} className="lg:w-44" options={STATUS_OPTIONS} hideLabel />
+        </div>
       </div>
-      <p className="px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase lg:px-6">Key outcomes · approved activities only</p>
       <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-5">
         <StatCard label="International responses" value={val(kpis.international)} hint="Approved only" icon={Medal01Icon} tint="text-[var(--sendai-teal)]/10" loading={loading} />
         <StatCard label="Youth reached" value={val(kpis.youth)} hint="Sum of youth counts" icon={UserGroupIcon} tint="text-[#00ada8]/10" loading={loading} />
@@ -229,7 +228,6 @@ export function ReportsPerformance() {
         <StatCard label="Trained via F2F" value={val(kpis.f2f)} hint="Sum of trained counts" icon={Award01Icon} tint="text-[var(--sendai-plum)]/10" loading={loading} />
         <StatCard label="Collaborations" value={val(kpis.collaborations)} hint="Approved only" icon={Medal01Icon} tint="text-[var(--sendai-teal)]/10" loading={loading} />
       </div>
-      <p className="px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase lg:px-6">Context · not KPIs</p>
       <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-6 xl:grid-cols-4">
         {usersVisible && <StatCard label="Active members" value={val(activeMembers)} hint="Users · live" icon={UserGroupIcon} tint="text-[#00ada8]/10" loading={loading} />}
         <StatCard label="SkillsBuild proxy" value={val(skillsbuild)} hint="Certificates issued · proxy, not enrollment" icon={Award01Icon} tint="text-[var(--sendai-orange)]/10" loading={loading} />
@@ -281,15 +279,22 @@ export function ReportsPerformance() {
               : filteredActivities.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No activities yet — log the first one.</p> : (
               <>
                 <div className="overflow-hidden rounded-lg border">
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Title</TableHead><TableHead>Activity</TableHead><TableHead>Audience</TableHead><TableHead className="text-right">Youth</TableHead><TableHead className="text-right">Trained</TableHead><TableHead>Status</TableHead>{isAdmin && <TableHead className="text-right">Review</TableHead>}</TableRow></TableHeader>
+                  <Table className="text-xs [&_td]:py-1 [&_th]:h-8">
+                    <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Title</TableHead><TableHead>Type</TableHead><TableHead>Audience</TableHead><TableHead className="text-right">Youth</TableHead><TableHead className="text-right">Trained</TableHead><TableHead>Status</TableHead>{isAdmin && <TableHead className="text-right">Review</TableHead>}</TableRow></TableHeader>
                     <TableBody>
                       {visible.map((a) => (
                         <TableRow key={a.id}>
                           <TableCell className="whitespace-nowrap text-muted-foreground">{effDate(a) ? new Date(effDate(a)).toLocaleDateString() : '—'}</TableCell>
-                          <TableCell className="font-medium">{a.title}</TableCell>
-                          <TableCell className="text-muted-foreground">{a.activityType}{a.isInternational ? ' · intl' : ''}</TableCell>
-                          <TableCell className="text-muted-foreground">{a.targetAudience || '—'}</TableCell>
+                          <TableCell className="max-w-64 truncate font-medium" title={a.title}>{a.title}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            <span className="inline-block max-w-44 truncate align-middle" title={ACTIVITY_TYPE_LABEL[a.activityType] ?? a.activityType ?? undefined}>
+                              {ACTIVITY_TYPE_LABEL[a.activityType] ?? a.activityType ?? '—'}
+                            </span>
+                            {a.isInternational && (
+                              <Badge variant="outline" className="ml-1.5 shrink-0 px-1 py-0 text-[10px] font-semibold tracking-wide uppercase">Intl</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="max-w-44 truncate text-muted-foreground" title={a.targetAudience || undefined}>{a.targetAudience || '—'}</TableCell>
                           <TableCell className="text-right tabular-nums">{a.youthCount ?? '—'}</TableCell>
                           <TableCell className="text-right tabular-nums">{a.trainedCount ?? '—'}</TableCell>
                           <TableCell>

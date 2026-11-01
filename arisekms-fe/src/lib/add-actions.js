@@ -1,7 +1,7 @@
 import { Award01Icon, BookOpen01Icon, Upload01Icon } from '@hugeicons/core-free-icons';
 
-// Shared "Add New" destinations. Uploads are admin-only (mirrors canUpload);
-// report + certificate submission are open to every signed-in member.
+// Shared "Add New" destinations. Knowledge upload follows canUpload (staff publish live, members submit for review).
+// report + certificate submission are open to every signed-in role.
 export const ADD_ACTIONS = {
   report: { label: 'Submit Report', to: '/submit-reports', icon: Upload01Icon },
   product: {

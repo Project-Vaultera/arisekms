@@ -1,5 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+
+import { KnowledgeStatus } from '../entities/knowledge-document.entity';
+
+export class ReviewKnowledgeInput {
+  @ApiProperty({ enum: [KnowledgeStatus.APPROVED, KnowledgeStatus.REJECTED] })
+  @IsIn([KnowledgeStatus.APPROVED, KnowledgeStatus.REJECTED])
+  status: KnowledgeStatus.APPROVED | KnowledgeStatus.REJECTED;
+
+  @ApiPropertyOptional({ description: 'Required when rejecting.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
 
 export class CreateKnowledgeInput {
   @ApiProperty()

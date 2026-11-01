@@ -57,3 +57,15 @@ export function uploadFilePipe(allowedTypes: string = ALLOWED_UPLOAD_MIMETYPES):
     ],
   });
 }
+
+// Optional-file twin of uploadFilePipe for PATCH endpoints where the caller
+// may update metadata without replacing the file.
+export function uploadOptionalFilePipe(allowedTypes: string = ALLOWED_UPLOAD_MIMETYPES): ParseFilePipe {
+  return new ParseFilePipe({
+    fileIsRequired: false,
+    validators: [
+      new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
+      new FileTypeValidator({ fileType: allowedTypes, fallbackToMimetype: true }),
+    ],
+  });
+}

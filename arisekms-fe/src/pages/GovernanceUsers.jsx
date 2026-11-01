@@ -6,8 +6,10 @@ import { PageHeader } from '@/components/PageHeader.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.jsx';
 import { FilterSelect } from '@/components/ui/filter-select.jsx';
 import { Input } from '@/components/ui/input.jsx';
+import { Label } from '@/components/ui/label.jsx';
 import {
   Table,
   TableBody,
@@ -16,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table.jsx';
-import { getTokenUserId, ROLE } from '@/lib/rbac.js';
+import { getTokenRoles, getTokenUserId, normalizeRole, ROLE } from '@/lib/rbac.js';
 
 const ALL_ROLES = [ROLE.IT_ADMIN, ROLE.SECRETARIAT, ROLE.MEMBER, ROLE.DATA_ANALYST];
 
@@ -29,6 +31,10 @@ const ROLE_LABEL = {
 
 export function GovernanceUsers() {
   const myId = getTokenUserId();
+  const isItAdmin = getTokenRoles().some((r) => normalizeRole(r) === ROLE.IT_ADMIN);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invite, setInvite] = useState({ username: '', name: '', email: '', password: '', role: ROLE.MEMBER });
+  const [inviting, setInviting] = useState(false);
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState('');
@@ -100,6 +106,38 @@ export function GovernanceUsers() {
     }
   }
 
+  async function inviteUser() {
+    if (!invite.username.trim() || !invite.name.trim() || !invite.email.trim() || invite.password.length < 6) {
+      toast.error('Fill username, name, valid email and a 6+ character password');
+      return;
+    }
+    setInviting(true);
+    try {
+      await api.post('/users/invite', {
+        username: invite.username.trim(),
+        name: invite.name.trim(),
+        email: invite.email.trim(),
+        password: invite.password,
+        roles: [invite.role],
+        isAccountDisabled: false,
+      });
+      toast.success('User invited');
+      closeInvite();
+      await refresh();
+    } catch (err) {
+      toast.error('Could not invite user', {
+        description: err?.response?.data?.error?.message ?? err?.response?.data?.message,
+      });
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  function closeInvite() {
+    setInviteOpen(false);
+    setInvite({ username: '', name: '', email: '', password: '', role: ROLE.MEMBER });
+  }
+
   return (
     <div className="flex flex-col gap-3 py-1.5">
       <PageHeader
@@ -108,8 +146,17 @@ export function GovernanceUsers() {
       />
       <Card className="mx-4 lg:mx-6">
         <CardHeader>
-          <CardTitle>Accounts ({rows.length}{total ? ` of ${total}` : ''})</CardTitle>
-          <CardDescription>Governance is IT-admin only. You cannot change your own role or disable your own account.</CardDescription>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle>Accounts ({rows.length}{total ? ` of ${total}` : ''})</CardTitle>
+              <CardDescription>Governance is IT-admin only. You cannot change your own role or disable your own account.</CardDescription>
+            </div>
+            {isItAdmin && (
+              <Button size="sm" onClick={() => setInviteOpen(true)}>
+                Invite user
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
@@ -221,6 +268,39 @@ export function GovernanceUsers() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={inviteOpen} onOpenChange={(v) => !v && closeInvite()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite user</DialogTitle>
+            <DialogDescription>Create an account with a role. Share the temporary password securely.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Username</Label>
+              <Input placeholder="Username…" value={invite.username} onChange={(e) => setInvite((v) => ({ ...v, username: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Full name</Label>
+              <Input placeholder="Full name…" value={invite.name} onChange={(e) => setInvite((v) => ({ ...v, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Email</Label>
+              <Input placeholder="Email…" type="email" value={invite.email} onChange={(e) => setInvite((v) => ({ ...v, email: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Temporary password</Label>
+              <Input placeholder="6+ characters…" type="password" value={invite.password} onChange={(e) => setInvite((v) => ({ ...v, password: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <FilterSelect label="Role" value={invite.role} onValueChange={(v) => setInvite((iv) => ({ ...iv, role: v }))} options={ALL_ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeInvite} disabled={inviting}>Cancel</Button>
+            <Button disabled={inviting} onClick={inviteUser}>{inviting ? 'Inviting…' : 'Send invite'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
