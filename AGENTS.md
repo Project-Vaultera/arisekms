@@ -26,6 +26,7 @@ Never weaken auth, authz, validation, tenant scoping, or auditability to make a 
 | `arisekms-fe/src/` | React 19 + Vite 8 | `api/client.js` (shared layer), `App.jsx`, pages/components as added |
 | `migrations/` | TypeORM | Only way to change schema |
 | `test/` | e2e (BE) | `jest --config ./test/jest-e2e.json` |
+| `deploy/` | Caddy + shell | Prod Caddyfile, `deploy.sh`, `backup.sh`; see `docs/deployment.md` |
 
 ## 4. Environment
 
