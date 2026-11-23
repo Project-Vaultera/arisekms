@@ -32,10 +32,67 @@ Compose network.
 
 - A Linux VPS with Docker Engine and Docker Compose v2.17+ (needed for
   `up --wait`).
+- A **static** public IP. Point DNS at the stable address, not at a
+  provider-assigned ephemeral one that survives only until the next reboot.
 - DNS: an `A` (and `AAAA` if applicable) record for `DOMAIN` pointing at the VPS.
+  Behind Cloudflare, use **DNS only** (grey cloud) so Caddy terminates TLS and
+  issues its own certificate.
 - Firewall/security group allowing inbound `22`, `80`, `443` (TCP) and `443/UDP`
   (HTTP/3). Do **not** expose `5432` or `3006`.
 - The repository checked out on the server, e.g. `/opt/arisekms`.
+
+## Provisioned host (this deployment)
+
+The production host is already bootstrapped. This records what exists, so it can
+be handed over or rebuilt.
+
+| Item | Value |
+| --- | --- |
+| Provider / region | AWS Lightsail, `ap-southeast-1` |
+| Public IPv4 | `13.212.91.118` |
+| Public IPv6 | `2406:da18:7bf:6200:a719:77d8:2206:f9d3` |
+| OS | Ubuntu 24.04.5 LTS |
+| Size | 2 vCPU, 412 MiB RAM, 19 GB disk |
+| SSH | `ssh ubuntu@13.212.91.118` — key-based, passwordless `sudo` |
+| Checkout | `/opt/arisekms` |
+| Domain | `arisekms.vaulteralabs.com` |
+| ACME email | `info@vaulteralabs.com` |
+
+Already applied:
+
+- 2 GB swap at `/swapfile`, persisted in `/etc/fstab`.
+- UFW enabled, allowing inbound `22`, `80`, `443` TCP and `443` UDP only.
+- Repository cloned to `/opt/arisekms` (HTTPS, read-only, no credentials on the
+  host).
+- `.env.production` written in `/opt/arisekms`, mode `600`, with freshly
+  generated `DB_PASS`, JWT key pair, and `DEFAULT_ADMIN_USER_PASSWORD`.
+- A dedicated ed25519 deploy keypair for CI, stored in the repository secrets
+  below — the operator's own SSH key is not used by the workflow.
+- Repository secrets set: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`,
+  `SSH_KNOWN_HOSTS`, `DEPLOY_PATH`.
+
+### Lightsail specifics
+
+Lightsail does not use EC2 security groups. Its **IPv4 and IPv6 firewalls are
+separate** and live in the Lightsail console (Instance → Networking) or in
+`aws lightsail put-instance-public-ports`. Allow `22`, `80`, `443` TCP and `443`
+UDP on both.
+
+A port missing from that firewall times out from the internet; a port that is
+allowed but has nothing listening is refused. That difference is the quickest way
+to tell a firewall gap from a stopped service (`nc -vz <host> 443`).
+
+Lightsail public IPs are dynamic until a static IP is attached. Attach one
+**before** pointing DNS at the host, otherwise a stop/start breaks both DNS and
+TLS.
+
+### Memory
+
+412 MiB is below comfortable for PostgreSQL 16, Node, and Caddy on one box. Swap
+prevents OOM kills, but resize to at least 2 GB before this carries real traffic.
+If you must stay small: leave `shared_buffers` at the default, keep
+`max_connections` low, and never build images on the host — `npm ci` plus a Vite
+build needs more headroom than the box has, so let CI build and push instead.
 
 ## One-time server setup
 
