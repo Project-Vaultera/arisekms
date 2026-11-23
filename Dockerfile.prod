@@ -1,42 +1,56 @@
-# Stage 1: Build the application
-FROM node:20.19.6-bookworm-slim as builder
+# syntax=docker/dockerfile:1
+
+# ---------- Build stage ----------
+FROM node:20.19.6-bookworm-slim AS builder
 
 WORKDIR /usr/src/app
 
-# Install dependencies
+# Skip husky hooks (no .git in the build context) and Playwright browser
+# downloads (test-only; they would bloat the build).
+ENV HUSKY=0 \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+# Install lockfile-exact dependencies first for better layer caching.
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copy the rest of the application files
+# Compile TypeScript: src/ -> dist/src, migrations/ + ormconfig.ts -> dist/.
 COPY . .
 
-# Build the application
 ARG APP_ENV=production
 ENV NODE_ENV=${APP_ENV}
-RUN npm run build
 
-# Prune development dependencies
-RUN npm prune --production
+RUN npm run build \
+ && test -f dist/ormconfig.js \
+ && test -d dist/migrations
 
-# Stage 2: Create the production image
-FROM node:20.19.6-bookworm-slim
+# Keep only production dependencies in the runtime image.
+RUN npm prune --omit=dev
+
+# ---------- Runtime stage ----------
+FROM node:20.19.6-bookworm-slim AS runtime
 
 WORKDIR /usr/src/app
 
-# Copy only the necessary files from the builder stage
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/package*.json ./
-COPY --from=builder /usr/src/app/dist ./dist
+ENV NODE_ENV=production \
+    APP_ENV=production
 
-# Set the environment variables
-ARG APP_ENV=production
-ENV NODE_ENV=${APP_ENV}
+COPY --chown=node:node --from=builder /usr/src/app/package.json /usr/src/app/package-lock.json ./
+COPY --chown=node:node --from=builder /usr/src/app/node_modules ./node_modules
+COPY --chown=node:node --from=builder /usr/src/app/dist ./dist
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-# Expose the application port
-EXPOSE 3000
+# Uploaded files live on a volume; the app runs as the unprivileged `node` user.
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+ && mkdir -p /usr/src/app/uploads \
+ && chown -R node:node /usr/src/app/uploads
 
-# Use a non-root user for security
 USER node
 
-# Set the default command to run the application
-CMD [ "npm", "run", "start:prod" ]
+EXPOSE 3006
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.APP_PORT||3006)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["npm", "run", "start:prod"]

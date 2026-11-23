@@ -1,0 +1,107 @@
+name: arisekms
+
+# Production stack. Always run with the production env file so `${...}`
+# interpolation resolves:
+#
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+#
+# Nothing here publishes the database or the API to the host: only Caddy
+# (80/443) is reachable from outside the Docker network.
+
+services:
+  app:
+    image: ${API_IMAGE:-arisekms-api:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env.production
+    environment:
+      APP_ENV: production
+      APP_PORT: ${APP_PORT:-3006}
+      DB_HOST: pgsqldb
+      DB_PORT: 5432
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    volumes:
+      - app_uploads:/usr/src/app/uploads
+    depends_on:
+      pgsqldb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:'+(process.env.APP_PORT||3006)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - arisekms_network
+
+  web:
+    image: ${WEB_IMAGE:-arisekms-web:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set in .env.production}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set in .env.production}
+      APP_PORT: ${APP_PORT:-3006}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2019/config/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - arisekms_network
+
+  pgsqldb:
+    image: postgres:16.3
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:?DB_USER must be set in .env.production}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS must be set in .env.production}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME must be set in .env.production}
+    volumes:
+      - arisekms_pgsql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - arisekms_network
+
+networks:
+  arisekms_network:
+    name: arisekms_prod_network
+    driver: bridge
+
+volumes:
+  app_uploads:
+    name: arisekms_prod_app_uploads
+  arisekms_pgsql_data:
+    name: arisekms_prod_pgsql_data
+  caddy_data:
+    name: arisekms_caddy_data
+  caddy_config:
+    name: arisekms_caddy_config

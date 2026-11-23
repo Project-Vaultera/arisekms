@@ -388,8 +388,11 @@ Temporary Items
 =======
 # Local
 .env
+.env.production
+.env.*.local
 dist
 uploads/
+backups/
 local/
 documentation
 test-report.xml

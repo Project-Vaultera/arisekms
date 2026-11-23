@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+
+# ---------- Frontend build ----------
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Playwright is only used by manual screenshot scripts; skip browser downloads.
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+COPY arisekms-fe/package.json arisekms-fe/package-lock.json ./
+RUN npm ci
+
+COPY arisekms-fe/ ./
+
+# Same-origin default: Caddy proxies /api/* to the NestJS service.
+ARG VITE_API_URL=/api/v1
+ENV VITE_API_URL=${VITE_API_URL}
+
+RUN npm run build
+
+# ---------- Edge: static SPA + API reverse proxy + automatic TLS ----------
+FROM caddy:2-alpine
+
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/dist /srv
+
+EXPOSE 80 443 443/udp

@@ -40,6 +40,7 @@ docker compose ps
 - [Local services](#local-services)
 - [Prerequisites](#prerequisites)
 - [First-run setup](#first-run-setup)
+- [Production deployment](#production-deployment)
 - [Returning contributors](#returning-contributors)
 - [Branch switching and resets](#branch-switching-and-resets)
 - [Application configuration](#application-configuration)
@@ -85,9 +86,14 @@ arisekms/
 ├── migrations/          # TypeORM migrations (only way to change schema)
 ├── scripts/             # generate-jwt-keys, npm
 ├── arisekms-fe/         # React placeholder (api/client.js, App.jsx)
+├── deploy/              # Caddyfile, deploy.sh, backup.sh (production)
 ├── docs/
-├── docker-compose.yml
+├── docker-compose.yml          # local dev stack
+├── docker-compose.prod.yml     # production stack (Caddy + API + Postgres)
+├── Dockerfile.prod             # production API image
+├── Dockerfile.web              # SPA build + Caddy edge image
 ├── .env.template
+├── .env.production.template
 ├── AGENTS.md
 └── README.md
 ```
@@ -205,10 +211,11 @@ DELETE FROM knowledge_documents WHERE title LIKE 'Demo:%';
 
 ### 5. Verify (what actually exists)
 
-There is **no** `/api/v1/health` in this starter — a 404 there is expected. Verify with:
+`GET /api/v1/health` returns `{"status":"ok"}` (also used by container healthchecks). Verify with:
 
 ```bash
 curl -i http://localhost:3006/api/v1          # hello from AppController
+curl -i http://localhost:3006/api/v1/health   # {"status":"ok"}
 curl -i http://localhost:3006/swagger         # 301/HTML redirect, open in browser instead
 curl -i -X POST http://localhost:3006/api/v1/auth/login \
   -H 'Content-Type: application/json' \
@@ -221,6 +228,37 @@ Open <http://localhost:3006/swagger> and <http://localhost:5176> in a browser. I
 ```bash
 rg "setGlobalPrefix|SwaggerModule.setup|Controller\(" src
 ```
+
+## Production deployment
+
+Production runs on a single Linux VPS with Docker Compose + Caddy. Caddy serves
+the built React SPA, reverse-proxies `/api/*` to NestJS on the same origin (no
+CORS), and manages Let's Encrypt certificates. Only ports 80/443 are public;
+Postgres and the API stay on the internal Docker network.
+
+```bash
+cp .env.production.template .env.production
+chmod 600 .env.production
+# fill in DOMAIN, ACME_EMAIL, DB_PASS, DEFAULT_ADMIN_USER_PASSWORD, JWT keys
+./deploy/deploy.sh
+```
+
+For the very first deploy, before any image exists in GHCR, build locally:
+`docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build`.
+
+The API container entrypoint applies pending migrations before it starts
+serving. Create the first admin once:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  exec app npm run cli:prod
+```
+
+Full runbook (DNS, server setup, CI/CD secrets, backups, rollback, security
+checklist, troubleshooting): [`docs/deployment.md`](docs/deployment.md).
+
+CI/CD: `.github/workflows/deploy.yml` builds and pushes both images to GHCR on
+every push to `main`, then pulls and restarts the stack over SSH.
 
 ## Returning contributors
 

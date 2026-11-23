@@ -34,6 +34,8 @@
     "migration:generate": "ts-node node_modules/.bin/typeorm migration:generate -d ormconfig.ts migrations/$npm_config_name",
     "migration:run": "ts-node node_modules/.bin/typeorm migration:run -d ormconfig.ts",
     "migration:revert": "ts-node node_modules/.bin/typeorm migration:revert -d ormconfig.ts",
+    "migration:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d ./dist/ormconfig.js",
+    "migration:revert:prod": "node ./node_modules/typeorm/cli.js migration:revert -d ./dist/ormconfig.js",
     "prepare": "husky install",
     "pre-commit": "lint-staged"
   },

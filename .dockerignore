@@ -1,6 +1,13 @@
 node_modules
-npm-debug.log
-dist
+**/node_modules
+**/dist
 .git
+.github
 .env
-local
+.env.*
+!.env.template
+!.env.production.template
+uploads
+coverage
+backups
+*.log
