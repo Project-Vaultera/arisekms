@@ -62,14 +62,48 @@ Already applied:
 
 - 2 GB swap at `/swapfile`, persisted in `/etc/fstab`.
 - UFW enabled, allowing inbound `22`, `80`, `443` TCP and `443` UDP only.
+- `ubuntu` added to the `docker` group, so deploys and backups do not need `sudo`.
+  **This one bites:** until the group is applied, `docker compose pull` fails with
+  `permission denied ... unix:///var/run/docker.sock`, and the SSH deploy job
+  fails even though the app images built fine.
 - Repository cloned to `/opt/arisekms` (HTTPS, read-only, no credentials on the
-  host).
+  host) on branch `main`.
 - `.env.production` written in `/opt/arisekms`, mode `600`, with freshly
   generated `DB_PASS`, JWT key pair, and `DEFAULT_ADMIN_USER_PASSWORD`.
 - A dedicated ed25519 deploy keypair for CI, stored in the repository secrets
   below — the operator's own SSH key is not used by the workflow.
 - Repository secrets set: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`,
   `SSH_KNOWN_HOSTS`, `DEPLOY_PATH`.
+- Daily database backup in `ubuntu`'s crontab at 03:15 UTC, writing
+  `/opt/arisekms/backups` and logging to `/var/log/arisekms-backup.log`.
+- Initial admin user created: `it-admin`, password from
+  `DEFAULT_ADMIN_USER_PASSWORD` in `.env.production`. Change it after first login
+  and store it in the team password manager — it is not recorded anywhere else.
+
+The first rollout (merged PR #15) verified: all 16 migrations applied at startup,
+`app`, `pgsqldb`, and `web` reached `healthy`, `/api/v1/health` returned `200`,
+and `deploy/backup.sh` produced a restorable `pg_dump` on the first run.
+
+TLS is the last step and depends on the two items below. Until the DNS record
+exists, Caddy logs `DNS problem: NXDOMAIN looking up A for <domain>` and retries;
+it issues the certificate on its own once the record resolves.
+
+### Still required to go live
+
+1. **Lightsail → Networking** — add `HTTPS` (443/TCP) to the IPv4 firewall and
+   `HTTPS` (443/TCP) to the IPv6 firewall. Add UDP 443 as a custom rule if you
+   want HTTP/3.
+2. **Cloudflare → DNS** — `A arisekms` → `13.212.91.118`, proxy status
+   **DNS only** (grey cloud). Add an `AAAA` record for the IPv6 address or omit
+   IPv6 entirely; do not publish an address the firewall does not allow.
+3. **Verify**
+
+   ```bash
+   curl -fsS https://arisekms.vaulteralabs.com/api/v1/health   # {"status":"ok"}
+   curl -sSI https://arisekms.vaulteralabs.com | head -1        # HTTP/2 200
+   docker compose --env-file .env.production -f docker-compose.prod.yml \
+     logs web --tail 20                                          # certificate obtained
+   ```
 
 ### Lightsail specifics
 
