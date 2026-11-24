@@ -245,8 +245,31 @@ export interface DemoReportRow {
 }
 
 // ~50 reports: 1-3 per week over DEMO_WEEKS, all categories covered.
-export function planDemoReports(weeks = DEMO_WEEKS, seed = 42, now = Date.now()): DemoReportRow[] {
+// Member authors must belong to an approved company or ReportService rejects
+// the create (403), so authors are drawn from the first roster member of the
+// companies the seed marks approved (every 3rd) — same rule as activities.
+function approvedAuthorIndices(): number[] {
+  return DEMO_COMPANY_MEMBERS.map((entry, i) =>
+    i % 3 === 0
+      ? DEMO_USERS.findIndex((u) => u.username === entry.members[0])
+      : -1,
+  ).filter((index) => index >= 0);
+}
+
+export function planDemoReports(
+  weeks = DEMO_WEEKS,
+  seed = 42,
+  now = Date.now(),
+): DemoReportRow[] {
   const rand = mulberry32(seed);
+  const authors = approvedAuthorIndices();
+  // Below that threshold every demo author is in an approved company, so the
+  // random pick passes the gate.
+  const authorsPassGate = authors.length === DEMO_USERS.length;
+  const pickAuthor = () =>
+    authorsPassGate
+      ? Math.floor(rand() * DEMO_USERS.length)
+      : authors[Math.floor(rand() * authors.length)];
   const rows: DemoReportRow[] = [];
   const today = new Date(now);
   const thisSunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
@@ -264,7 +287,7 @@ export function planDemoReports(weeks = DEMO_WEEKS, seed = 42, now = Date.now())
       const daysAgo = Math.max(0, Math.floor((now - date.getTime()) / 86_400_000));
       const s = rand();
       rows.push({
-        authorIndex: Math.floor(rand() * DEMO_USERS.length),
+        authorIndex: pickAuthor(),
         category: REPORT_CATEGORIES[Math.floor(rand() * REPORT_CATEGORIES.length)],
         status: s < 0.6 ? ReportStatus.APPROVED : s < 0.85 ? ReportStatus.SUBMITTED : ReportStatus.REJECTED,
         daysAgo,
