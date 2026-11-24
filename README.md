@@ -165,7 +165,7 @@ Single role per user (`CreateUserInput.roles` / `UpdateUserInput.roles` accept e
 | `ARISE_DATA_ANALYST` | List/Read on approved content (knowledge: approved-only) + reports/summary/performance/activities/certificates/tickets; no users/companies/membership-analytics, no writes |
 
 ```bash
-docker compose exec app npm run seed:roles   # idempotent, resets password + role
+docker compose exec app npm run seed:roles   # idempotent, resets password +<|place_holder_mm_span_0442|>
 ```
 
 | Username | Role | Password |
@@ -175,15 +175,24 @@ docker compose exec app npm run seed:roles   # idempotent, resets password + rol
 | `arisemember` | Arise Member | `Arise@2026` |
 | `ariseanalyst` | Arise Data Analyst | `Arise@2026` |
 
+On production run `npm run seed:roles:prod` instead. It needs
+`SEED_ALLOW_PRODUCTION=1` and `SEED_ROLES_PASSWORD` (>= 12 chars), and
+`SEED_ROLES_ONLY=arisemember,ariseanalyst` narrows the run to those accounts —
+see [`docs/specs/production-seeding.md`](docs/specs/production-seeding.md).
+
 Demo content accounts (from `seed:demo`, §4): `demo.member.1`–`71`, password `DemoPass123!` (eleven inactive). Default admin: `it-admin` / `DEFAULT_ADMIN_USER_PASSWORD`.
 
-### 4. Seed demo dashboard data (optional, dev only)
+### 4. Seed demo dashboard data (optional)
 
 ```bash
 docker compose exec app npm run seed:demo
 ```
 
-Creates 71 demo members (`demo.member.1`–`71`, password `DemoPass123!`, eleven inactive), 20 demo companies (4 primary companies with exclusive member pairs, 16 with a single member), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Staff see everything; members only see their own company's submissions (server-enforced). Refuses to run with `APP_ENV=production`. Re-running is a no-op for users/reports, while company membership converges by name. To wipe (orphan files under `./uploads` are harmless in dev):
+Creates 71 demo members (`demo.member.1`–`71`, password `DemoPass123!`, eleven inactive), 20 demo companies (4 primary companies with exclusive member pairs, 16 with a single member), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Staff see everything; members only see their own company's submissions (server-enforced). Re-running is a no-op for users/reports, while company membership converges by name.
+
+On production use `npm run seed:demo:prod` with `SEED_ALLOW_PRODUCTION=1` and
+`SEED_DEMO_PASSWORD`; the development password is never used on a live
+deployment. To wipe (orphan files under `./uploads` are harmless in dev):
 
 ```sql
 DELETE FROM users WHERE username LIKE 'demo.member.%';  -- cascades their reports + certificates

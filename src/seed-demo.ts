@@ -30,12 +30,22 @@ import {
   planDemoTickets,
   planDemoUserDetails,
 } from './shared/seeds/demo-content';
+import {
+  assertSeedingAllowed,
+  handleSeedRefusal,
+  resolveSeedPassword,
+} from './shared/seeds/seeding-gate';
 import { SupportTicket } from './ticket/entities/support-ticket.entity';
 import { TicketService } from './ticket/services/ticket.service';
 import { User } from './user/entities/user.entity';
 import { UserService } from './user/services/user.service';
 
 const MARKER_USERNAME = DEMO_USERS[0].username;
+
+const SEED_NAME = 'seed:demo';
+const PASSWORD_ENV = 'SEED_DEMO_PASSWORD';
+// DEMO_PASSWORD is the development default only. Production requires
+// SEED_DEMO_PASSWORD — see docs/specs/production-seeding.md.
 
 // Minimal valid one-page PDF generated in code (no binary fixtures).
 function demoPdf(title: string): Buffer {
@@ -73,15 +83,19 @@ function actorCtx(user: { id: number; username: string; roles: string[] }): Requ
 }
 
 async function bootstrap() {
+  try {
+    assertSeedingAllowed(SEED_NAME, PASSWORD_ENV);
+  } catch (error) {
+    if (handleSeedRefusal(error)) {
+      return;
+    }
+    throw error;
+  }
+  const demoPassword = resolveSeedPassword(PASSWORD_ENV, DEMO_PASSWORD);
+
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
   try {
     const config = app.get(ConfigService);
-    if (config.get<string>('env') === 'production') {
-      console.error('seed:demo refuses to run with APP_ENV=production.');
-      process.exitCode = 1;
-      return;
-    }
-
     const users = app.get(UserService);
     const reports = app.get(ReportService);
     const certificates = app.get(CertificateService);
@@ -119,7 +133,7 @@ async function bootstrap() {
         found = await users.createUser(ctx, {
           name: m.name,
           username: m.username,
-          password: DEMO_PASSWORD,
+          password: demoPassword,
           roles: [ROLE.ARISE_MEMBER],
           isAccountDisabled: userDetails.get(m.username)?.disabled ?? m.disabled,
           email: `${m.username}@example.com`,
@@ -133,7 +147,14 @@ async function bootstrap() {
       }
     }
     if (createdUsers > 0) {
-      console.log(`Seeded ${createdUsers} new demo users (password: ${DEMO_PASSWORD}).`);
+      // Never print the password itself: container logs outlive the run and are
+      // readable by anyone with host access.
+      const source = (process.env[PASSWORD_ENV] ?? '').trim()
+        ? PASSWORD_ENV
+        : 'development default';
+      console.log(
+        `Seeded ${createdUsers} new demo users (password source: ${source}).`,
+      );
     }
 
     if (!hadMarker) {
