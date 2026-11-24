@@ -49,6 +49,19 @@ describe('demo-content planner', () => {
     expect(statuses).toEqual(new Set([ReportStatus.APPROVED, ReportStatus.SUBMITTED, ReportStatus.REJECTED]));
   });
 
+  it('plans report authors inside approved companies so the membership gate passes', () => {
+    // ReportService rejects member submissions without an approved company
+    // (403), so a demo author from an unapproved company fails the whole seed.
+    const approvedAuthors = new Set(
+      DEMO_COMPANY_MEMBERS.flatMap((e, i) => (i % 3 === 0 ? e.members : [])),
+    );
+    expect(
+      planDemoReports().every((r) =>
+        approvedAuthors.has(DEMO_USERS[r.authorIndex].username),
+      ),
+    ).toBe(true);
+  });
+
   it('keeps row references inside the demo catalogs', () => {
     const rows = planDemoReports();
     expect(rows.every((r) => r.authorIndex >= 0 && r.authorIndex < DEMO_USERS.length)).toBe(true);
