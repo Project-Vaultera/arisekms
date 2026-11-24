@@ -96,28 +96,44 @@ Attaching the static IP reassigned the public address (`13.212.91.118` →
 After such a change, update `SSH_HOST` **and** regenerate `SSH_KNOWN_HOSTS` —
 the secret is keyed by address, so a stale value fails the deploy.
 
-TLS is the last step and depends on the DNS record below. Until it exists, Caddy
-logs `DNS problem: NXDOMAIN looking up A for <domain>`. It does not always retry
-promptly: the Let's Encrypt order fails fast, then the ZeroSSL fallback can sit
-in a pending challenge for hours. **Restart `web` after the record resolves** to
-force a fresh order instead of waiting out the backoff.
+### Verified live
 
-### Still required to go live
+TLS was issued on the first attempt once the DNS record became DNS-only, and the
+site serves end to end.
 
-1. ~~**Lightsail → Networking** — `HTTPS`/443 on both the IPv4 and IPv6
-   firewalls.~~ Done; 443 answers from the internet.
-2. **Cloudflare → DNS** — `A arisekms` → `47.131.221.85`, proxy status
-   **DNS only** (grey cloud). Do not add an `AAAA` record until IPv6 is proven;
-   never publish an address the firewall does not allow.
-3. **Restart the edge, then verify**
+| Check | Result |
+| --- | --- |
+| `GET /api/v1/health` | `200 {"status":"ok"}` |
+| `GET /` | `200 text/html` with HSTS, `nosniff`, `DENY`, `no-referrer` |
+| `GET /admin-approvals` | `200` — SPA fallback resolves client-side routes |
+| `GET http://…` | `308` to `https://…` |
+| Certificate | Let's Encrypt `YE1`, `arisekms.vaulteralabs.com`, 24 Nov 2026 → 22 Feb 2027 |
+| `POST /api/v1/auth/login` | `200` with an access token |
+| `GET /api/v1/users/me` without a token | `401` |
+| `GET /swagger` | `200` (publicly proxied; drop the `/swagger*` block in `deploy/Caddyfile` to keep it private) |
 
-   ```bash
-   docker compose --env-file .env.production -f docker-compose.prod.yml restart web
-   curl -fsS https://arisekms.vaulteralabs.com/api/v1/health   # {"status":"ok"}
-   curl -sSI https://arisekms.vaulteralabs.com | head -1        # HTTP/2 200
-   docker compose --env-file .env.production -f docker-compose.prod.yml \
-     logs web --tail 20                                          # certificate obtained
-   ```
+### Three traps that cost time
+
+- **The DNS record must be DNS only.** Cloudflare creates records *Proxied* by
+  default. With the proxy on, the edge returns `HTTP 525`: Caddy holds no
+  certificate for the name yet, and Let's Encrypt cannot validate either —
+  TLS-ALPN terminates at Cloudflare, and an "Always Use HTTPS" rule can redirect
+  away the HTTP-01 path. Grey cloud, and Caddy issues its own certificate.
+- **Restart `web` after the record resolves.** Caddy does not always retry
+  promptly: the Let's Encrypt order fails fast, but the ZeroSSL fallback can sit
+  in a pending challenge for hours. A restart forces a fresh order.
+- **The 443 rule lives in the Lightsail console, not `ufw`.** The IPv4 and IPv6
+  firewalls are separate, and a port open in `ufw` still times out from the
+  internet until the instance firewall allows it.
+
+### Verify a deploy
+
+```bash
+curl -fsS https://arisekms.vaulteralabs.com/api/v1/health   # {"status":"ok"}
+curl -sSI https://arisekms.vaulteralabs.com | head -1        # HTTP/2 200
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  logs web --tail 20                                          # certificate obtained
+```
 
 ### Lightsail specifics
 
