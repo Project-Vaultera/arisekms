@@ -231,10 +231,11 @@ rg "setGlobalPrefix|SwaggerModule.setup|Controller\(" src
 
 ## Production deployment
 
-Production runs on a single Linux VPS with Docker Compose + Caddy. Caddy serves
-the built React SPA, reverse-proxies `/api/*` to NestJS on the same origin (no
-CORS), and manages Let's Encrypt certificates. Only ports 80/443 are public;
-Postgres and the API stay on the internal Docker network.
+Production runs on a single Linux VPS with Docker Compose + Caddy at
+**https://arisekms.vaulteralabs.com**. Caddy serves the built React SPA,
+reverse-proxies `/api/*` to NestJS on the same origin (no CORS), and manages
+Let's Encrypt certificates. Only ports 80/443 are public; Postgres and the API
+stay on the internal Docker network.
 
 ```bash
 cp .env.production.template .env.production
