@@ -188,7 +188,7 @@ Demo content accounts (from `seed:demo`, §4): `demo.member.1`–`71`, password 
 docker compose exec app npm run seed:demo
 ```
 
-Creates 71 demo members (`demo.member.1`–`71`, password `DemoPass123!`, eleven inactive), 20 demo companies (4 primary companies with exclusive member pairs, 16 with a single member), ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Staff see everything; members only see their own company's submissions (server-enforced). Re-running is a no-op for users/reports, while company membership converges by name.
+Creates 71 demo members (`demo.member.1`–`71`, password `DemoPass123!`, eleven inactive), 70 demo companies, ~40 reports across the last 26 weeks, ~30 certificates, and 12 knowledge docs with backdated timestamps so the dashboard charts, timeline, and recent activity have content. Staff see everything; members only see their own company's submissions (server-enforced). Re-running converges: accounts, companies, activities and tickets are matched by username/name/title/subject, and the once-only content is skipped after a completed run — an interrupted run retries it.
 
 On production use `npm run seed:demo:prod` with `SEED_ALLOW_PRODUCTION=1` and
 `SEED_DEMO_PASSWORD`; the development password is never used on a live

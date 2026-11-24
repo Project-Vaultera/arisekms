@@ -140,12 +140,32 @@ Rollback: delete the seeded rows (`DELETE FROM users WHERE username LIKE
 'demo.member.%'` cascades their rows), remove the variables, `up -d
 --force-recreate`. The scripts themselves need no revert.
 
+## Idempotency contract
+
+`seed:demo` converges: users by username, companies by name, activities by
+title, tickets by subject. Reports, certificates and knowledge are written once
+and gated as a block (see *Content marker* below).
+
+**Content marker.** The first demo company doubles as the marker: its join date
+is the only field the companies block does not backfill, and it is stamped `now`
+in a `finally` after all three once-only families are written. A stale date
+means the last attempt did not finish, so the content is retried; a finished run
+stamps today and the next run skips. The stamp must be the *only* writer of that
+column — the planner never yields today (`daysAgoToDate` floors at 5 days), so
+backfilling it from the planner leaves the gate permanently open and every run
+duplicates the content.
+
+Memberships are deliberately not consulted when resolving an author's company:
+most approved demo companies are approved by this seed and are still `draft`
+during a run, and a member may sit in two companies.
+
 ## Known gaps
 
-- **Re-runs reset planner passwords.** `seed:roles` always resets, and
-  `seed:demo` creates users only when the first demo member is missing. Changing
-  `SEED_*_PASSWORD` after a first run needs the rows deleted first.
-- `seed:demo` reports/certificates/knowledge are keyed off that marker user and
-  are not per-row idempotent.
-- Passwords still travel through `env_file`, so `docker compose config` will
-  print them (as it already does `DB_PASS`).
+- **Changing a `SEED_*_PASSWORD` after a first run needs the rows deleted
+  first.** `seed:roles` always resets its accounts, and `seed:demo` creates
+  users only once.
+- Reports, certificates and knowledge are keyed off the marker as a block, not
+  per row: an interrupted `seedContent` can leave that family partially seeded
+  and the warning-free run that follows only completes the remainder.
+- Passwords travel through `env_file`, so `docker compose config` prints them
+  (as it already does `DB_PASS`).
