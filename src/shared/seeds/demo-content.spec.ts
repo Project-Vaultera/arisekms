@@ -67,6 +67,18 @@ describe('demo-content planner', () => {
     ).toBe(true);
   });
 
+  it('never plans a company join date of today (the content marker relies on it)', () => {
+    // seed-demo stamps its marker company's date as "now" and skips a run that
+    // still reads today. If the planner ever produced today, the stamp would be
+    // redundant and every re-run would duplicate content.
+    const today = new Date().toISOString().slice(0, 10);
+    expect(
+      planDemoCompanyDetails().every(
+        (d) => daysAgoToDate(d.daysAgo).toISOString().slice(0, 10) !== today,
+      ),
+    ).toBe(true);
+  });
+
   it('keeps company names unique, as the activity lookup is by name', () => {
     // seedCompaniesAndActivities resolves an activity's company with a single
     // findOne({name}) and the entity is @Unique('company_name'); duplicate

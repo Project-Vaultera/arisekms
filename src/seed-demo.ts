@@ -99,6 +99,9 @@ async function bootstrap() {
   }
 }
 
+// The first demo company doubles as the content marker.
+const markerName = DEMO_COMPANY_MEMBERS[0].name;
+
 async function run(app: NestApplicationContext) {
   try {
     assertSeedingAllowed(SEED_NAME, PASSWORD_ENV);
@@ -121,10 +124,6 @@ async function run(app: NestApplicationContext) {
       const ctx = new RequestContext();
       ctx.requestID = 'seed-demo';
 
-      // Demo companies are written every run; converged companies keep their join
-      // date, so only a genuinely new company counts here (the content gate
-      // below keys off the marker company's date instead).
-      const newCompanies = new Set<number>();
       let admin = await users.findByUsername(ctx, 'it-admin');
       if (!admin) {
         const fallback = config.get<string>('defaultAdminUserPassword') ?? 'AdminPass123!';
@@ -192,22 +191,18 @@ async function run(app: NestApplicationContext) {
         dataSource,
         companyRepository,
         adminCtx,
-        newCompanies,
       });
 
-      // Content is keyed off the marker company's join date: the planner writes
-      // it in the past like every other company and the seeder stamps today, so
-      // a past date means the last attempt never finished. Read only after the
-      // companies block has rewritten it — and gate on that, not on the first
-      // demo *user* existing, which a failed attempt already satisfies.
+      // Content is keyed off the marker company's join date: stamping it "now"
+      // is the only way it reads as today, because the planner never yields
+      // today (`daysAgoToDate` floors at 5 days). Read only after the companies
+      // block has rewritten it — and gate on that, not on the first demo *user*
+      // existing, which a failed attempt already satisfies.
       {
         const markerAfter = await companyRepository.findOne({
           where: { id: markerCompany.id },
         });
-        const completedContentRun =
-          !!markerAfter && isToday(markerAfter.createdAt);
-
-        if (completedContentRun) {
+        if (markerAfter && isToday(markerAfter.createdAt)) {
           console.log(
             'Demo content already seeded; skipping reports, certificates and knowledge.',
           );
@@ -299,10 +294,9 @@ async function seedCompaniesAndActivities(
     dataSource: DataSource;
     companyRepository: Repository<Company>;
     adminCtx: RequestContext;
-    newCompanies: Set<number>;
   },
 ) {
-  const { users, dataSource, companyRepository, adminCtx, newCompanies } = c;
+  const { users, dataSource, companyRepository, adminCtx } = c;
   const companiesSvc = app.get(CompanyService);
   const details = new Map(planDemoCompanyDetails().map((d) => [d.name, d]));
   for (const [i, entry] of DEMO_COMPANY_MEMBERS.entries()) {
@@ -310,7 +304,6 @@ async function seedCompaniesAndActivities(
     if (!company) {
       const created = await companiesSvc.createCompany(adminCtx, { name: entry.name });
       company = { id: created.id } as Company;
-      newCompanies.add(company.id);
     }
     const userIds = [];
     for (const username of entry.members) {
@@ -323,7 +316,13 @@ async function seedCompaniesAndActivities(
       await companyRepository.update(company.id, {
         sector: detail.sector,
         region: detail.region,
-        createdAt: daysAgoToDate(detail.daysAgo),
+        // The marker company's join date doubles as "content run completed", so
+        // it keeps whatever date it has and is only ever set by the stamp. The
+        // planner never yields today (daysAgoToDate floors at 5 days), so
+        // backfilling it here would leave the gate permanently open.
+        ...(entry.name === markerName
+          ? {}
+          : { createdAt: daysAgoToDate(detail.daysAgo) }),
         // Every 3rd seed company reads as approved (Active in the directory);
         // the rest stay as-is so manual states survive.
         ...(i % 3 === 0 ? { status: MembershipStatus.APPROVED } : {}),
@@ -380,7 +379,7 @@ async function seedCompaniesAndActivities(
     alphaSet.size > 0
       ? `${alphaSet.size} companies marked approved`
       : 'approved-company set empty';
-  console.log(`Company gate: ${gate}, ${newCompanies.size} new.`);
+  console.log(`Company gate: ${gate}.`);
 
   await seedTickets(app, ctx, { users, dataSource });
 }
