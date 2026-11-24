@@ -60,6 +60,31 @@ describe('demo-content planner', () => {
         approvedAuthors.has(DEMO_USERS[r.authorIndex].username),
       ),
     ).toBe(true);
+    expect(
+      planDemoCertificates().every((r) =>
+        approvedAuthors.has(DEMO_USERS[r.authorIndex].username),
+      ),
+    ).toBe(true);
+  });
+
+  it('never plans a company join date of today (the content marker relies on it)', () => {
+    // seed-demo stamps its marker company's date as "now" and skips a run that
+    // still reads today. If the planner ever produced today, the stamp would be
+    // redundant and every re-run would duplicate content.
+    const today = new Date().toISOString().slice(0, 10);
+    expect(
+      planDemoCompanyDetails().every(
+        (d) => daysAgoToDate(d.daysAgo).toISOString().slice(0, 10) !== today,
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps company names unique, as the activity lookup is by name', () => {
+    // seedCompaniesAndActivities resolves an activity's company with a single
+    // findOne({name}) and the entity is @Unique('company_name'); duplicate
+    // names would make "which company" ambiguous or throw on create.
+    const names = DEMO_COMPANY_MEMBERS.map((e) => e.name);
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it('keeps row references inside the demo catalogs', () => {

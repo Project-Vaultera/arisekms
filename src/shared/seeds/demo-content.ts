@@ -307,10 +307,16 @@ export interface DemoCertificateRow {
 // 30 certificates spread over the past ~6 months.
 export function planDemoCertificates(total = 30, seed = 13): DemoCertificateRow[] {
   const rand = mulberry32(seed);
+  const authors = approvedAuthorIndices();
+  const authorsPassGate = authors.length === DEMO_USERS.length;
   return Array.from({ length: total }, () => {
     const s = rand();
     return {
-      authorIndex: Math.floor(rand() * DEMO_USERS.length),
+      // Same approved-company rule as reports: CertificateService rejects a
+      // member author whose company is not approved yet (403).
+      authorIndex: authorsPassGate
+        ? Math.floor(rand() * DEMO_USERS.length)
+        : authors[Math.floor(rand() * authors.length)],
       courseIndex: Math.floor(rand() * DEMO_COURSES.length),
       status:
         s < 0.6 ? CertificateStatus.VERIFIED : s < 0.9 ? CertificateStatus.PENDING : CertificateStatus.REJECTED,
