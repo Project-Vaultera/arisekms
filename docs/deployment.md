@@ -238,8 +238,39 @@ docker compose --env-file .env.production -f docker-compose.prod.yml \
 ```
 
 Log in at `https://<DOMAIN>` as `it-admin` with `DEFAULT_ADMIN_USER_PASSWORD`,
-then change the password. Do **not** run `seed:roles` or `seed:demo` in
-production (`seed:demo` refuses to run when `APP_ENV=production`).
+then change the password.
+
+### Seeding a live deployment for testers
+
+The seeders ship in the API image as `seed:roles:prod` / `seed:demo:prod`.
+Production refuses them unless the run is deliberate and carries its own
+password, so set these in `.env.production` (mode 600), then recreate `app`:
+
+```bash
+SEED_ALLOW_PRODUCTION=1
+SEED_DEMO_PASSWORD=choose_at_least_12_chars
+```
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  up -d --force-recreate app
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  exec app npm run seed:demo:prod
+```
+
+That seeds the demo dataset and 71 `demo.member.*` accounts with
+`SEED_DEMO_PASSWORD`; `it-admin` is untouched and stays yours. To give testers
+staff views as well, narrow a `seed:roles:prod` run instead of creating every
+POV account:
+
+```bash
+docker compose ... exec -e SEED_ROLES_PASSWORD=choose_at_least_12_chars \
+  -e SEED_ROLES_ONLY=arisesecretariat app npm run seed:roles:prod
+```
+
+Policy, contract and rollback: [`docs/specs/production-seeding.md`](specs/production-seeding.md).
+Re-runs reset the account passwords that were already seeded; delete the rows
+first if you change a `SEED_*_PASSWORD`.
 
 ## CI/CD
 
