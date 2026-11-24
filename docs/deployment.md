@@ -48,12 +48,12 @@ be handed over or rebuilt.
 
 | Item | Value |
 | --- | --- |
-| Provider / region | AWS Lightsail, `ap-southeast-1` |
-| Public IPv4 | `13.212.91.118` |
+| Provider / region | AWS Lightsail, `ap-southeast-1`, 0.5 GB bundle |
+| Public IPv4 | `47.131.221.85` — attached **static** IP (was ephemeral `13.212.91.118`) |
 | Public IPv6 | `2406:da18:7bf:6200:a719:77d8:2206:f9d3` |
 | OS | Ubuntu 24.04.5 LTS |
 | Size | 2 vCPU, 412 MiB RAM, 19 GB disk |
-| SSH | `ssh ubuntu@13.212.91.118` — key-based, passwordless `sudo` |
+| SSH | `ssh ubuntu@47.131.221.85` — key-based, passwordless `sudo` |
 | Checkout | `/opt/arisekms` |
 | Domain | `arisekms.vaulteralabs.com` |
 | ACME email | `info@vaulteralabs.com` |
@@ -76,29 +76,43 @@ Already applied:
   `SSH_KNOWN_HOSTS`, `DEPLOY_PATH`.
 - Daily database backup in `ubuntu`'s crontab at 03:15 UTC, writing
   `/opt/arisekms/backups` and logging to `/var/log/arisekms-backup.log`.
+- Docker log rotation at the daemon level (`/etc/docker/daemon.json`,
+  `json-file`, 10 MB × 3). Caddy logs every request to stdout, so unbounded
+  `json-file` growth would eventually fill a 19 GB disk. The setting applies to
+  **newly created** containers, so apply it and then recreate the stack:
+  `docker compose ... up -d --force-recreate`.
 - Initial admin user created: `it-admin`, password from
   `DEFAULT_ADMIN_USER_PASSWORD` in `.env.production`. Change it after first login
   and store it in the team password manager — it is not recorded anywhere else.
+  The CLI seeds `it-admin@example.com` as the email; replace it via `PATCH
+  /users/me` after the first login.
 
 The first rollout (merged PR #15) verified: all 16 migrations applied at startup,
 `app`, `pgsqldb`, and `web` reached `healthy`, `/api/v1/health` returned `200`,
 and `deploy/backup.sh` produced a restorable `pg_dump` on the first run.
 
-TLS is the last step and depends on the two items below. Until the DNS record
-exists, Caddy logs `DNS problem: NXDOMAIN looking up A for <domain>` and retries;
-it issues the certificate on its own once the record resolves.
+Attaching the static IP reassigned the public address (`13.212.91.118` →
+`47.131.221.85`) but the host keys were unchanged, confirming the same instance.
+After such a change, update `SSH_HOST` **and** regenerate `SSH_KNOWN_HOSTS` —
+the secret is keyed by address, so a stale value fails the deploy.
+
+TLS is the last step and depends on the DNS record below. Until it exists, Caddy
+logs `DNS problem: NXDOMAIN looking up A for <domain>`. It does not always retry
+promptly: the Let's Encrypt order fails fast, then the ZeroSSL fallback can sit
+in a pending challenge for hours. **Restart `web` after the record resolves** to
+force a fresh order instead of waiting out the backoff.
 
 ### Still required to go live
 
-1. **Lightsail → Networking** — add `HTTPS` (443/TCP) to the IPv4 firewall and
-   `HTTPS` (443/TCP) to the IPv6 firewall. Add UDP 443 as a custom rule if you
-   want HTTP/3.
-2. **Cloudflare → DNS** — `A arisekms` → `13.212.91.118`, proxy status
-   **DNS only** (grey cloud). Add an `AAAA` record for the IPv6 address or omit
-   IPv6 entirely; do not publish an address the firewall does not allow.
-3. **Verify**
+1. ~~**Lightsail → Networking** — `HTTPS`/443 on both the IPv4 and IPv6
+   firewalls.~~ Done; 443 answers from the internet.
+2. **Cloudflare → DNS** — `A arisekms` → `47.131.221.85`, proxy status
+   **DNS only** (grey cloud). Do not add an `AAAA` record until IPv6 is proven;
+   never publish an address the firewall does not allow.
+3. **Restart the edge, then verify**
 
    ```bash
+   docker compose --env-file .env.production -f docker-compose.prod.yml restart web
    curl -fsS https://arisekms.vaulteralabs.com/api/v1/health   # {"status":"ok"}
    curl -sSI https://arisekms.vaulteralabs.com | head -1        # HTTP/2 200
    docker compose --env-file .env.production -f docker-compose.prod.yml \
