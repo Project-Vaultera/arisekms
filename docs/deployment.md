@@ -351,6 +351,25 @@ The remote step runs `git fetch` + `git reset --hard origin/main` in
 scripts also reach the server. `.env.production` is untracked and preserved.
 For manual deploys, run `git pull --ff-only` yourself first.
 
+### ECS (prepared, not applied)
+
+`terraform/` describes an ECS Fargate + ALB + RDS stack and
+`.github/workflows/deploy-ecs.yml` deploys to it. Neither has been run: no AWS
+resource exists and no `plan` has been executed against an account. The VPS
+stack above remains the live path, and `deploy-ecs` is `workflow_dispatch` only
+so it cannot fire on a merge.
+
+Read [`terraform/README.md`](../terraform/README.md) before applying, and
+[`docs/specs/ecs-deployment.md`](specs/ecs-deployment.md) for the decisions and
+the known gaps. Two things differ from this host and matter operationally:
+
+- **`APP_TRUSTED_PROXY_HOPS=1`** is set in the task definition, matching an ALB
+  that appends the client IP. If Cloudflare's proxy is ever enabled in front of
+  the ALB, this must become `2` in the same change or every caller collapses
+  onto the CDN's addresses.
+- **`DB_SSL=true`** is required: RDS enforces TLS (`rds.force_ssl=1`). The VPS
+  stack leaves it unset, so nothing changes there.
+
 ## Operations
 
 ```bash

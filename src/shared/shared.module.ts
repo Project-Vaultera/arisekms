@@ -25,6 +25,11 @@ import { AppLoggerModule } from './logger/logger.module';
         // Timezone configured on the Postgres server.
         // This is used to typecast server date/time values to JavaScript Date object and vice versa.
         timezone: 'Z',
+        // Managed Postgres (RDS) enforces TLS via `rds.force_ssl`; a local
+        // container does not offer it. `DB_SSL=true` turns it on.
+        ssl: configService.get<boolean>('database.ssl')
+          ? { rejectUnauthorized: false }
+          : false,
         synchronize: false,
         debug: configService.get<string>('env') === 'development',
       }),

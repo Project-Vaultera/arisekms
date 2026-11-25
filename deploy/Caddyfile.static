@@ -1,0 +1,36 @@
+# Static-only edge for platforms where a load balancer routes the API.
+#
+# On ECS the ALB sends /api/* to the API target group and everything else to
+# this container, so there is no `app` upstream to proxy to and no TLS to
+# terminate here. Keep this file free of `reverse_proxy`: a reference to a
+# service that does not exist fails the request, not the boot, which makes the
+# mistake look like a 502 rather than a config error.
+#
+# `:80` because the ALB terminates TLS with an ACM certificate.
+:80 {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	root * /srv
+
+	@immutable path /assets/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# index.html must revalidate, or a deploy keeps serving the old bundle.
+	@documentation path / /index.html
+	header @documentation Cache-Control "no-cache"
+
+	try_files {path} /index.html
+	file_server
+
+	log {
+		output stdout
+		format console
+	}
+}

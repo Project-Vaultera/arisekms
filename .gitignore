@@ -400,3 +400,12 @@ tsconfig.build.tsbuildinfo
 .nvmrc
 arisekms-fe/.env
 arisekms-fe/dist/
+
+# Terraform: state holds resource ids and, for some resources, sensitive values.
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+terraform/backend.tf

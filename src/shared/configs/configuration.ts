@@ -7,6 +7,9 @@ export default (): any => ({
     name: process.env.DB_NAME,
     user: process.env.DB_USER,
     pass: process.env.DB_PASS,
+    // RDS enforces TLS; the CA is the RDS-managed one, so verification is
+    // relaxed rather than bundling a certificate.
+    ssl: process.env.DB_SSL === 'true',
   },
   jwt: {
     publicKey: Buffer.from(

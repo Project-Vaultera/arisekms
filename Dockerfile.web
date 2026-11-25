@@ -22,7 +22,11 @@ RUN npm run build
 # ---------- Edge: static SPA + API reverse proxy + automatic TLS ----------
 FROM caddy:2-alpine
 
-COPY deploy/Caddyfile /etc/caddy/Caddyfile
+# VPS: one Caddy fronts the SPA and proxies /api/* (deploy/Caddyfile).
+# ECS: an ALB routes /api/*, so this container serves static only
+#      (deploy/Caddyfile.static). Pick with --build-arg CADDYFILE=...
+ARG CADDYFILE=deploy/Caddyfile
+COPY ${CADDYFILE} /etc/caddy/Caddyfile
 COPY --from=builder /app/dist /srv
 
 EXPOSE 80 443 443/udp
