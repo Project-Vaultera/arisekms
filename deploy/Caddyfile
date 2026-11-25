@@ -17,13 +17,17 @@
 		-Server
 	}
 
-	# NestJS API. Health probe: /api/v1/health
-	handle /api/* {
+	# OpenAPI docs. Must precede the general API rule: `handle` blocks are
+	# exclusive and first-match, so `/api/*` would otherwise swallow this. The
+	# app only mounts the schema with APP_ENV=development, so in production this
+	# path reaches the app and 404s there — delete the block to stop proxying it
+	# at the edge, or drop `handle /api/v1/swagger*` in favour of publishing.
+	handle /api/v1/swagger* {
 		reverse_proxy app:{$APP_PORT:3006}
 	}
 
-	# OpenAPI docs. Remove this block to keep Swagger off the public internet.
-	handle /swagger* {
+	# NestJS API. Health probe: /api/v1/health
+	handle /api/* {
 		reverse_proxy app:{$APP_PORT:3006}
 	}
 
