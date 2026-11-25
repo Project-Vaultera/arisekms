@@ -107,7 +107,7 @@ Host ports offset to run beside a sibling stack on `3000/5173/5432/8080`:
 | Frontend | `frontend` | <http://localhost:5176> |
 | API server | `app` | <http://localhost:3006> |
 | API base (global prefix) | `app` | <http://localhost:3006/api/v1> |
-| Swagger | `app` | <http://localhost:3006/swagger> |
+| Swagger (development only) | `app` | <http://localhost:3006/api/v1/swagger> |
 | Adminer | `adminer` | <http://localhost:8086> |
 | Postgres (host) | `pgsqldb` | `localhost:5436` |
 | Postgres (in Compose) | `pgsqldb` | `pgsqldb:5432` |
@@ -225,14 +225,14 @@ DELETE FROM knowledge_documents WHERE title LIKE 'Demo:%';
 ```bash
 curl -i http://localhost:3006/api/v1          # hello from AppController
 curl -i http://localhost:3006/api/v1/health   # {"status":"ok"}
-curl -i http://localhost:3006/swagger         # 301/HTML redirect, open in browser instead
+curl -i http://localhost:3006/api/v1/swagger   # development only, open in browser
 curl -i -X POST http://localhost:3006/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"it-admin","password":"<from .env>"}'
 curl -i http://localhost:5176
 ```
 
-Open <http://localhost:3006/swagger> and <http://localhost:5176> in a browser. If a route 404s, inspect source instead of guessing:
+Open <http://localhost:3006/api/v1/swagger> and <http://localhost:5176> in a browser. If a route 404s, inspect source instead of guessing:
 
 ```bash
 rg "setGlobalPrefix|SwaggerModule.setup|Controller\(" src
@@ -352,7 +352,7 @@ Guards: `LocalAuthGuard` (login), `JwtAuthGuard` (routes), `JwtRefreshGuard` (re
 
 | Symptom | Fix |
 | --- | --- |
-| `GET /api/v1/health` 404 | Expected — no health controller yet; verify with `GET /api/v1` + `/swagger` |
+| `GET /api/v1/health` 404 | Expected — no health controller yet; verify with `GET /api/v1` + `/api/v1/swagger` |
 | `Cannot GET /` | Expected — global prefix is `/api/v1`; `/` is outside the app |
 | React can't reach API | Check `VITE_API_URL`, CORS `5176`, port `3006`, `docker compose restart frontend` |
 | PG connect fail | Inside Compose use `DB_HOST=pgsqldb`; compare `DB_*` in `.env` vs compose |
