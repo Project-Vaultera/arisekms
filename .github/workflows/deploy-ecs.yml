@@ -1,0 +1,154 @@
+name: deploy-ecs
+
+# Manual only on purpose: the VPS stack is still the live one (deploy.yml).
+# Nothing here runs on push, so this cannot ship by accident before the ECS
+# stack has been reviewed, applied and cut over.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Tag to deploy. Use a git SHA to roll back; `latest` deploys the newest build."
+        required: false
+        default: latest
+      skip_build:
+        description: "Skip build+push and deploy an existing tag (rollback / retry)."
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: deploy-ecs-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # OIDC to AWS
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  CLUSTER: ${{ vars.ECS_CLUSTER }}
+  API_SERVICE: ${{ vars.ECS_API_SERVICE }}
+  WEB_SERVICE: ${{ vars.ECS_WEB_SERVICE }}
+  API_REPOSITORY: ${{ vars.ECR_API_REPOSITORY }}
+  WEB_REPOSITORY: ${{ vars.ECR_WEB_REPOSITORY }}
+  IMAGE_TAG: ${{ inputs.image_tag }}
+
+jobs:
+  build-and-push:
+    name: Build and push to ECR
+    if: ${{ !inputs.skip_build }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.prod
+          push: true
+          tags: |
+            ${{ env.API_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.API_REPOSITORY }}:sha-${{ github.sha }}
+          cache-from: type=gha,scope=api-ecs
+          cache-to: type=gha,mode=max,scope=api-ecs
+
+      - name: Build and push web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.web
+          push: true
+          # The ALB routes /api/*, so the container serves static files only.
+          build-args: |
+            VITE_API_URL=/api/v1
+            CADDYFILE=deploy/Caddyfile.static
+          tags: |
+            ${{ env.WEB_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.WEB_REPOSITORY }}:sha-${{ github.sha }}
+          cache-from: type=gha,scope=web-ecs
+          cache-to: type=gha,mode=max,scope=web-ecs
+
+  deploy:
+    name: Migrate then roll out
+    needs: build-and-push
+    # `always()` so a skip_build run still deploys; a failed build still blocks.
+    if: ${{ always() && (needs.build-and-push.result == 'success' || inputs.skip_build) }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Migrations run once, before any new task serves traffic. The service
+      # task definition sets RUN_MIGRATIONS=false, so the entrypoint skips them
+      # there and two tasks can never race the same migration.
+      - name: Apply migrations
+        run: |
+          set -euo pipefail
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition "$CLUSTER-api" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "Running migrations with $TASK_DEF"
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.ECS_PRIVATE_SUBNETS }}],securityGroups=[${{ vars.ECS_TASK_SECURITY_GROUP }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","migration:run:prod"]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          echo "Migration task exited with $EXIT_CODE"
+          test "$EXIT_CODE" = "0"
+
+      # Roll both services onto the requested tag. Terraform owns the task
+      # definitions, so this re-points the image rather than registering a new
+      # revision: no drift between CI and `terraform apply`.
+      - name: Update services
+        run: |
+          set -euo pipefail
+          for service in "$API_SERVICE" "$WEB_SERVICE"; do
+            echo "Updating $service"
+            aws ecs update-service \
+              --cluster "$CLUSTER" \
+              --service "$service" \
+              --force-new-deployment \
+              --query 'service.serviceName' --output text
+          done
+
+      - name: Wait for stability
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$API_SERVICE" "$WEB_SERVICE"
+
+      - name: Smoke test the ALB
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://${{ vars.PUBLIC_HOST }}/api/v1/health" || true)
+            if [ "$code" = "200" ]; then echo "healthy"; exit 0; fi
+            echo "attempt $i: $code"; sleep 6
+          done
+          echo "ALB did not report healthy"; exit 1
