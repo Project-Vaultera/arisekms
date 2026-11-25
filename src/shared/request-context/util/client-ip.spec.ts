@@ -2,7 +2,9 @@ import { FORWARDED_FOR_TOKEN_HEADER } from '../../constants';
 import {
   clientIpFromHeader,
   clientIpPrefix,
+  DEFAULT_TRUSTED_PROXY_HOPS,
   resolveClientIp,
+  setTrustedProxyHops,
   UNKNOWN_CLIENT_IP,
 } from './client-ip';
 
@@ -21,6 +23,40 @@ describe('client IP resolution', () => {
     expect(clientIpFromHeader('a,,b')).toBe('b');
     expect(clientIpFromHeader('')).toBeUndefined();
     expect(clientIpFromHeader(undefined)).toBeUndefined();
+  });
+
+  it('walks back the configured number of proxies', () => {
+    // Cloudflare in front of the load balancer: the ALB appended the CDN edge,
+    // so the caller is one further left.
+    expect(clientIpFromHeader('203.0.113.5, 198.51.100.7', 2)).toBe(
+      '203.0.113.5',
+    );
+    // A spoofed prefix still cannot shift a right-anchored count.
+    expect(clientIpFromHeader('9.9.9.9, 203.0.113.5, 198.51.100.7', 2)).toBe(
+      '203.0.113.5',
+    );
+  });
+
+  it('ignores a header shorter than the trusted chain', () => {
+    // Direct-to-app request carrying a hand-written value: not from our
+    // proxies, so it must not be trusted at all.
+    expect(clientIpFromHeader('9.9.9.9', 2)).toBeUndefined();
+    const request = {
+      header: (name: string) =>
+        name === FORWARDED_FOR_TOKEN_HEADER ? '9.9.9.9' : undefined,
+      ip: '10.0.0.4',
+      socket: { remoteAddress: '10.0.0.4' },
+    };
+    expect(resolveClientIp(request, 2)).toBe('10.0.0.4');
+  });
+
+  it('defaults to one hop and never trusts a nonsense depth', () => {
+    expect(clientIpFromHeader('203.0.113.5')).toBe('203.0.113.5');
+    setTrustedProxyHops(Number.NaN);
+    expect(clientIpFromHeader('1.1.1.1, 203.0.113.5')).toBe('203.0.113.5');
+    setTrustedProxyHops(0);
+    expect(clientIpFromHeader('1.1.1.1, 203.0.113.5')).toBe('203.0.113.5');
+    setTrustedProxyHops(DEFAULT_TRUSTED_PROXY_HOPS);
   });
 
   it('prefers the forwarded hop, then the socket, then unknown', () => {

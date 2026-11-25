@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 
 import {
   clientIpPrefix,
+  DEFAULT_TRUSTED_PROXY_HOPS,
   resolveClientIp,
   UNKNOWN_CLIENT_IP,
 } from '../../shared/request-context/util/client-ip';
@@ -108,7 +109,11 @@ export class LoginThrottleGuard implements CanActivate {
     const ip =
       this.config.get<boolean>('throttle.trustProxyHeaders') === false
         ? (request.socket?.remoteAddress ?? UNKNOWN_CLIENT_IP)
-        : resolveClientIp(request);
+        : resolveClientIp(
+            request,
+            this.config.get<number>('throttle.trustedProxyHops') ??
+              DEFAULT_TRUSTED_PROXY_HOPS,
+          );
     // `unknown` would pool every untaggable client into one bucket, so let them
     // through rather than letting them lock each other out.
     if (ip === UNKNOWN_CLIENT_IP) {

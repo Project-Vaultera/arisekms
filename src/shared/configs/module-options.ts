@@ -23,5 +23,6 @@ export const configModuleOptions: ConfigModuleOptions = {
     DEFAULT_ADMIN_USER_PASSWORD: Joi.string().required(),
     APP_TRUST_PROXY_HEADERS: Joi.string().valid('0', '1').optional(),
     APP_THROTTLE_ENABLED: Joi.string().valid('0', '1').optional(),
+    APP_TRUSTED_PROXY_HOPS: Joi.number().integer().min(1).max(10).optional(),
   }),
 };

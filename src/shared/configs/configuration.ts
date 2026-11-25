@@ -28,9 +28,14 @@ export default (): any => ({
   },
   defaultAdminUserPassword: process.env.DEFAULT_ADMIN_USER_PASSWORD,
   throttle: {
-    // On: Caddy appends the real peer to X-Forwarded-For and we key on it.
-    // Off: the header is ignored for limiting (direct connections only).
+    // On: the proxy in front appends the real peer to X-Forwarded-For and we
+    // key on it. Off: the header is ignored (direct connections only).
     trustProxyHeaders: process.env.APP_TRUST_PROXY_HEADERS !== '0',
+    // How many proxies we sit behind. 1 for Caddy or a bare ALB; 2 when a CDN
+    // in front of the load balancer also appends. See client-ip.ts.
+    trustedProxyHops: process.env.APP_TRUSTED_PROXY_HOPS
+      ? parseInt(process.env.APP_TRUSTED_PROXY_HOPS, 10)
+      : 1,
     enabled: process.env.APP_THROTTLE_ENABLED !== '0',
   },
 });

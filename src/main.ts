@@ -6,6 +6,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { VALIDATION_PIPE_OPTIONS } from './shared/constants';
 import { RequestIdMiddleware } from './shared/middlewares/request-id/request-id.middleware';
+import {
+  DEFAULT_TRUSTED_PROXY_HOPS,
+  setTrustedProxyHops,
+} from './shared/request-context/util/client-ip';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -30,6 +34,13 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+
+  // How many proxies append to X-Forwarded-For here. Set before the first
+  // request so logs, audit and the throttle all resolve the same client.
+  setTrustedProxyHops(
+    configService.get<number>('throttle.trustedProxyHops') ??
+      DEFAULT_TRUSTED_PROXY_HOPS,
+  );
 
   // The schema maps every endpoint and payload, so it is developer surface
   // rather than product surface: served in development only (the tests run as

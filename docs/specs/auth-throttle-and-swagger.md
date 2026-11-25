@@ -59,15 +59,21 @@ so counting it would consume the login budget.
 
 ## Security and identity
 
-- Client IP is the **right-most** `X-Forwarded-For` hop — the peer Caddy
-  appended. Everything left of it is caller-controlled.
+- Client IP is the **right-most** `X-Forwarded-For` hop, because each proxy
+  appends the peer it saw and everything left of it is caller-controlled.
+  `APP_TRUSTED_PROXY_HOPS` says how many proxies to walk back: `1` for Caddy or
+  a bare ALB, `2` when a CDN in front of the load balancer also appends. Too
+  few hops collapses every caller onto the CDN's address — the shared-bucket
+  bug this fix exists to prevent — so the count is deployment config, not a
+  constant. A header shorter than the configured depth is ignored entirely.
 - Widening: an address that exhausts its IP budget moves to its `/24` (`/48` for
   IPv6) until the window ends, and the network bucket inherits the spent
   allowance so a neighbour cannot walk in on a fresh one.
 - An unidentifiable client (`unknown`) is let through rather than pooled, since a
   shared bucket would let them lock each other out.
 - `APP_TRUST_PROXY_HEADERS=0` falls back to the socket address (direct
-  connections, or Caddy bypassed). `APP_THROTTLE_ENABLED=0` disables everything.
+  connections, or the proxy bypassed). `APP_THROTTLE_ENABLED=0` disables
+  everything.
 - State is in process memory: correct for one replica, split across several, lost
   on restart.
 
