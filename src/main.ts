@@ -29,18 +29,27 @@ async function bootstrap() {
     credentials: true,
   });
 
-  /** Swagger configuration*/
-  const options = new DocumentBuilder()
-    .setTitle('Nestjs API starter')
-    .setDescription('Nestjs API description')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, options);
-  SwaggerModule.setup('swagger', app, document);
-
   const configService = app.get(ConfigService);
+
+  // The schema maps every endpoint and payload, so it is developer surface
+  // rather than product surface: served in development only (the tests run as
+  // `test`, which is close enough), 404 everywhere else. Caddy keeps
+  // forwarding /api/v1/swagger* so flipping APP_ENV republishes without an edge
+  // edit — in production the route simply 404s at the app.
+  const env = configService.get<string>('env');
+  if (env === 'development' || env === 'test') {
+    const options = new DocumentBuilder()
+      .setTitle('Arise KMS API')
+      .setDescription('Arise KMS API description')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+
+    const document = SwaggerModule.createDocument(app, options);
+    SwaggerModule.setup('swagger', app, document);
+    console.log(`Swagger UI: http://localhost:${app.get(ConfigService).get('port')}/api/v1/swagger`);
+  }
+
   const port = configService.get<number>('port') ?? 3006;
   await app.listen(port, '0.0.0.0');
 

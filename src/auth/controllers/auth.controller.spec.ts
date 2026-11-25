@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppLogger } from '../../shared/logger/logger.service';
@@ -27,6 +28,8 @@ describe('AuthController', () => {
       providers: [
         { provide: AuthService, useValue: mockedAuthService },
         { provide: AppLogger, useValue: mockedLogger },
+        // LoginThrottleGuard reads its switches from here.
+        { provide: ConfigService, useValue: { get: () => undefined } },
       ],
     }).compile();
 

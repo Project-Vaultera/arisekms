@@ -6,7 +6,7 @@ and obtains/renews TLS certificates automatically.
 
 ```text
 Internet ──80/443──▶ Caddy (web)
-                      ├─ /api/*, /swagger*  ──▶ app:3006 (NestJS)
+                      ├─ /api/*, /api/v1/swagger*  ──▶ app:3006 (NestJS)
                       └─ everything else    ──▶ /srv (Vite build, SPA fallback)
                                                 app ──▶ pgsqldb:5432
 ```
@@ -110,7 +110,45 @@ site serves end to end.
 | Certificate | Let's Encrypt `YE1`, `arisekms.vaulteralabs.com`, 24 Nov 2026 → 22 Feb 2027 |
 | `POST /api/v1/auth/login` | `200` with an access token |
 | `GET /api/v1/users/me` without a token | `401` |
-| `GET /swagger` | `200` (publicly proxied; drop the `/swagger*` block in `deploy/Caddyfile` to keep it private) |
+| `GET /api/v1/swagger` | `404` — the schema is developer surface and is only mounted with `APP_ENV=development` |
+
+### Swagger and the auth throttle
+
+**The schema is not public.** `src/main.ts` only mounts Swagger when `APP_ENV` is
+`development` or `test`, so production 404s `/api/v1/swagger`. The Caddy block
+forwarding that path is kept (ordered before `/api/*`, because `handle` is
+first-match) so flipping `APP_ENV=development` publishes it again without a
+Caddy edit. It is a redeploy either way; the schema enumerates every endpoint,
+payload and error shape.
+
+`login` and `register` are throttled per client. The real client IP is the
+**right-most** `X-Forwarded-For` hop, which is the peer Caddy appended — the
+left-most values are caller-supplied and trivially rotated. Three rules apply,
+narrowest first so one client cannot starve another:
+
+| Rule | Default | Purpose |
+| --- | --- | --- |
+| `(ip, username)` | 10 / minute | guessing one account |
+| `username` | 20 / 5 minutes | spreading a guess across addresses |
+| `ip` | 30 / minute | unauthenticated floods |
+| `ip` (register) | 20 / hour | signup spam |
+
+A `429` carries `Retry-After`. An address that exhausts its IP budget is widened
+to its `/24` (or `/48` for IPv6) until the window ends, so a neighbour inherits
+the limit instead of walking straight through the exhausted allowance.
+
+```bash
+APP_THROTTLE_ENABLED=0        # off entirely
+APP_TRUST_PROXY_HEADERS=0     # direct connections only, ignore the header
+```
+
+`POST /api/v1/auth/refresh-token` is deliberately **not** throttled: it carries
+no username and fires on every access-token expiry, so it would spend the login
+budget rather than protect it.
+
+> **Single replica only.** Counters live in process memory and reset on restart.
+> Running more than one `app` replica splits each budget between them — move to a
+> shared store (Redis) before scaling out.
 
 ### Three traps that cost time
 
@@ -376,7 +414,8 @@ or restore a dump.
 - [ ] Firewall exposes only `22`, `80`, `443` (TCP) and `443/UDP`.
 - [ ] DNS resolves to this VPS before the first start (Caddy needs it for ACME).
 - [ ] HTTPS redirect works; `http://` requests return `308` to `https://`.
-- [ ] Remove the `/swagger*` block from `deploy/Caddyfile` if the API docs should not be public.
+- [ ] Decide whether the API schema should be public. It is off by default; see
+      *Swagger and the auth throttle*.
 - [ ] Backups run on a schedule and copies leave the VPS.
 - [ ] Review `SECURITY.md` before real member data lands.
 

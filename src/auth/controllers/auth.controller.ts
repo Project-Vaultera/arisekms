@@ -49,6 +49,11 @@ export class AuthController {
     status: HttpStatus.UNAUTHORIZED,
     type: BaseApiErrorResponse,
   })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Rate limited; honours the Retry-After header.',
+    type: BaseApiErrorResponse,
+  })
   @HttpCode(HttpStatus.OK)
   @UseGuards(LoginThrottleGuard, LocalAuthGuard)
   @UseInterceptors(ClassSerializerInterceptor)
@@ -67,6 +72,11 @@ export class AuthController {
   @UseGuards(LoginThrottleGuard)
   @ApiOperation({
     summary: 'User registration API',
+  })
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: 'Rate limited; honours the Retry-After header.',
+    type: BaseApiErrorResponse,
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -93,7 +103,9 @@ export class AuthController {
     type: BaseApiErrorResponse,
   })
   @HttpCode(HttpStatus.OK)
-  @UseGuards(LoginThrottleGuard, JwtRefreshGuard)
+  // No throttle: a refresh carries no username and happens on every expiry, so
+  // it would spend the login budget rather than protect it.
+  @UseGuards(JwtRefreshGuard)
   @UseInterceptors(ClassSerializerInterceptor)
   async refreshToken(
     @ReqContext() ctx: RequestContext,
