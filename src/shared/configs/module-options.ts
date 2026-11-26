@@ -25,7 +25,12 @@ export const configModuleOptions: ConfigModuleOptions = {
     JWT_REFRESH_TOKEN_EXP_IN_SEC: Joi.number().required(),
     DEFAULT_ADMIN_USER_PASSWORD: Joi.string().required(),
     APP_TRUST_PROXY_HEADERS: Joi.string().valid('0', '1').optional(),
-    MAIL_TRANSPORT: Joi.string().valid('log', 'resend').default('log'),
+    MAIL_TRANSPORT: Joi.string().valid('log', 'smtp', 'resend').default('log'),
+    // Mailpit or any relay. Only read when MAIL_TRANSPORT=smtp.
+    MAIL_SMTP_HOST: Joi.string().optional(),
+    MAIL_SMTP_PORT: Joi.number().optional(),
+    MAIL_SMTP_USER: Joi.string().optional(),
+    MAIL_SMTP_PASS: Joi.string().optional(),
     // Required only for the resend transport: a missing key fails at boot
     // rather than at the first password reset.
     RESEND_API_KEY: Joi.string().when('MAIL_TRANSPORT', {

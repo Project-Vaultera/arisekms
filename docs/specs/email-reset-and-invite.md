@@ -106,6 +106,7 @@ wrongly.
 | Transport | Behaviour |
 | --- | --- |
 | `log` (default) | renders the message and the link into the container log. Works in dev, CI and demo with no config |
+| `smtp` | nodemailer to `MAIL_SMTP_HOST:MAIL_SMTP_PORT`. Development points at the Mailpit container, so full rendered messages appear in a local inbox and are never delivered onward |
 | `resend` | `POST https://api.resend.com/emails`, requires `RESEND_API_KEY` and `MAIL_FROM` |
 
 Missing `RESEND_API_KEY` with `MAIL_TRANSPORT=resend` fails at boot via Joi

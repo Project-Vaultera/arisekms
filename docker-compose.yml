@@ -77,6 +77,16 @@ services:
     networks:
       - arisekms_network
 
+  # Dev mail catcher: SMTP in on 1026, web inbox on 8025. Everything the app
+  # sends in MAIL_TRANSPORT=smtp mode lands here and is never delivered onward.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1026}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - arisekms_network
+
 networks:
   arisekms_network:
     name: arisekms_network

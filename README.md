@@ -109,10 +109,16 @@ Host ports offset to run beside a sibling stack on `3000/5173/5432/8080`:
 | API base (global prefix) | `app` | <http://localhost:3006/api/v1> |
 | Swagger (development only) | `app` | <http://localhost:3006/api/v1/swagger> |
 | Adminer | `adminer` | <http://localhost:8086> |
+| Mailpit inbox (dev mail catcher) | `mailpit` | <http://localhost:8025> |
 | Postgres (host) | `pgsqldb` | `localhost:5436` |
 | Postgres (in Compose) | `pgsqldb` | `pgsqldb:5432` |
 
-All host ports overridable via `.env` (`APP_PORT`, `FRONTEND_PORT`, `PGSQL_HOST_PORT`, `ADMINER_PORT`).
+All host ports overridable via `.env` (`APP_PORT`, `FRONTEND_PORT`, `PGSQL_HOST_PORT`, `ADMINER_PORT`, `MAILPIT_UI_PORT`, `MAILPIT_SMTP_PORT`).
+
+Password reset and invite mail never leaves the machine in development:
+`MAIL_TRANSPORT=smtp` points at `mailpit`, and every message appears at
+<http://localhost:8025> with its links clickable. Set `MAIL_TRANSPORT=log` to
+get the links in the API log instead. See `docs/specs/email-reset-and-invite.md`.
 
 ## Prerequisites
 

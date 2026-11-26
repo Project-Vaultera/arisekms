@@ -23,6 +23,10 @@ unreliable from the VPS).
    send or suppress live mail for the wrong reason.
 2. **`log` renders the link into container output.** Dev, CI and demo need no
    provider and no key.
+3. **A third `smtp` transport serves a local catcher.** Development points it at
+   Mailpit (`docker-compose.yml`), so rendered messages have an inbox and are
+   never delivered. This is why nodemailer is a dependency at all: Resend's HTTP
+   API needs none, but an SMTP catcher does.
 3. **Tokens are random 32 bytes, stored only as SHA-256.** Single-use through
    one guarded `UPDATE ... RETURNING`; expired rows swept on issue, capped at 5
    open per user and kind.
@@ -50,5 +54,8 @@ unreliable from the VPS).
   controls seeding, and staging would silently send or suppress real mail.
 - **Mail the admin-chosen password.** Smallest change, but a plaintext password
   lands in an inbox and usually outlives the invite.
-- **Raw SMTP (Gmail/Mailtrap).** Blocked or rate-capped by port 25 from this
-  host.
+- **Raw SMTP for everything, including production.** Blocked or rate-capped by
+  port 25 from this host, which is why production stays on the HTTP transport.
+- **Mailpit without nodemailer.** Not possible: it speaks SMTP only. The cost is
+  one runtime dependency, kept behind the same interface as every other
+  transport.

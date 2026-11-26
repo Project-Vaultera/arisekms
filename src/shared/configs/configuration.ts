@@ -34,6 +34,10 @@ export default (): any => ({
     transport: process.env.MAIL_TRANSPORT ?? 'log',
     resendApiKey: process.env.RESEND_API_KEY,
     from: process.env.MAIL_FROM,
+    smtpHost: process.env.MAIL_SMTP_HOST,
+    smtpPort: process.env.MAIL_SMTP_PORT,
+    smtpUser: process.env.MAIL_SMTP_USER,
+    smtpPass: process.env.MAIL_SMTP_PASS,
   },
   throttle: {
     // On: Caddy appends the real peer to X-Forwarded-For and we key on it.
