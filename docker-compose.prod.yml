@@ -19,7 +19,9 @@ services:
     env_file:
       - .env.production
     environment:
-      APP_ENV: production
+      # Interpolated, not hardcoded: a hardcoded value silently wins over
+      # `.env.production`, so flipping APP_ENV there would do nothing.
+      APP_ENV: ${APP_ENV:-production}
       APP_PORT: ${APP_PORT:-3006}
       DB_HOST: pgsqldb
       DB_PORT: 5432

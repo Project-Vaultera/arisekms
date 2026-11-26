@@ -25,6 +25,8 @@
     "seed:demo:prod": "node dist/src/seed-demo.js",
     "seed:roles": "ts-node -r tsconfig-paths/register src/seed-roles.ts",
     "seed:roles:prod": "node dist/src/seed-roles.js",
+    "seed:all": "npm run seed:roles && npm run seed:demo",
+    "seed:all:prod": "npm run seed:roles:prod && npm run seed:demo:prod",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest --runInBand",

@@ -33,9 +33,11 @@ async function bootstrap() {
 
   // The schema maps every endpoint and payload, so it is developer surface
   // rather than product surface: served in development only (the tests run as
-  // `test`, which is close enough), 404 everywhere else. Caddy keeps
-  // forwarding /api/v1/swagger* so flipping APP_ENV republishes without an edge
-  // edit — in production the route simply 404s at the app.
+  // `test`, which is close enough), 404 everywhere else. `staging` is
+  // deliberately excluded — it is a publicly reachable tester deployment, so
+  // relabelling production as staging must not republish the schema. Caddy
+  // keeps forwarding /api/v1/swagger* so flipping APP_ENV republishes without
+  // an edge edit — in production the route simply 404s at the app.
   const env = configService.get<string>('env');
   if (env === 'development' || env === 'test') {
     const options = new DocumentBuilder()
