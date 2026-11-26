@@ -6,6 +6,12 @@
 // production seeding takes two explicit opt-ins — SEED_ALLOW_PRODUCTION=1 and a
 // per-seeder password from the environment — so a live deployment is never
 // seeded by accident, and never with a password committed to the repository.
+//
+// `staging` sits outside that gate on purpose. It is the environment for a
+// tester-facing deployment that should be seedable with one command and no
+// flags, so `seed:all:prod` runs there unguarded and falls back to the
+// development passwords. That is the trade: a staging box is still publicly
+// reachable, so never put real member data behind it.
 
 export const SEED_ALLOW_PRODUCTION = 'SEED_ALLOW_PRODUCTION';
 
@@ -29,8 +35,9 @@ export function isProduction(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 /**
- * Throws unless seeding may run in the current environment. Development and
- * test always pass; production needs the flag *and* a usable password.
+ * Throws unless seeding may run in the current environment. Development,
+ * test and staging always pass; production needs the flag *and* a usable
+ * password.
  */
 export function assertSeedingAllowed(
   kind: string,

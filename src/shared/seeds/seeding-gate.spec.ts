@@ -41,6 +41,16 @@ describe('seeding gate', () => {
       ).not.toThrow();
     });
 
+    it('treats staging as seedable, so one command needs no flags', () => {
+      expect(isProduction({ APP_ENV: 'staging' })).toBe(false);
+      expect(() =>
+        assertSeedingAllowed('seed:demo', PASSWORD_ENV, { APP_ENV: 'staging' }),
+      ).not.toThrow();
+      expect(
+        resolveSeedPassword(PASSWORD_ENV, DEV_PASSWORD, { APP_ENV: 'staging' }),
+      ).toBe(DEV_PASSWORD);
+    });
+
     it('refuses production without the opt-in flag', () => {
       expect(() =>
         assertSeedingAllowed('seed:demo', PASSWORD_ENV, prodEnv()),

@@ -280,35 +280,78 @@ then change the password.
 
 ### Seeding a live deployment for testers
 
-The seeders ship in the API image as `seed:roles:prod` / `seed:demo:prod`.
-Production refuses them unless the run is deliberate and carries its own
-password, so set these in `.env.production` (mode 600), then recreate `app`:
+Two ways to do this, depending on how the deployment is labelled. Both use the
+compiled scripts (`:prod`), because `Dockerfile.prod` prunes `ts-node`.
+
+**`APP_ENV=staging` — one command, every account.** `staging` is outside the
+seeding gate, so no flag and no password variable are needed:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  exec app npm run seed:all:prod
+```
+
+That creates `it-admin`, the four POV accounts (`ariseitadmin`,
+`arisesecretariat`, `arisemember`, `ariseanalyst`), the 71 `demo.member.*`
+accounts and the demo content. Passwords fall back to the committed development
+defaults: `Arise@2026` for the POV accounts, `DemoPass123!` for the members.
+Swagger stays off in staging — the app only mounts it for
+`development`/`test`.
+
+**`APP_ENV=production` — the gate still applies.** Two opt-ins, set in
+`.env.production` (mode 600), then recreate `app`:
 
 ```bash
 SEED_ALLOW_PRODUCTION=1
 SEED_DEMO_PASSWORD=choose_at_least_12_chars
+SEED_ROLES_PASSWORD=choose_at_least_12_chars
 ```
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml \
   up -d --force-recreate app
 docker compose --env-file .env.production -f docker-compose.prod.yml \
-  exec app npm run seed:demo:prod
+  exec app npm run seed:all:prod
 ```
 
-That seeds the demo dataset and 71 `demo.member.*` accounts with
-`SEED_DEMO_PASSWORD`; `it-admin` is untouched and stays yours. To give testers
-staff views as well, narrow a `seed:roles:prod` run instead of creating every
-POV account:
+To create fewer accounts, run one seeder and narrow it:
 
 ```bash
-docker compose ... exec -e SEED_ROLES_PASSWORD=choose_at_least_12_chars \
-  -e SEED_ROLES_ONLY=arisesecretariat app npm run seed:roles:prod
+docker compose ... exec -e SEED_ROLES_ONLY=arisesecretariat \
+  -e SEED_ROLES_PASSWORD=choose_at_least_12_chars \
+  app npm run seed:roles:prod
 ```
 
-Policy, contract and rollback: [`docs/specs/production-seeding.md`](specs/production-seeding.md).
-Re-runs reset the account passwords that were already seeded; delete the rows
-first if you change a `SEED_*_PASSWORD`.
+Policy, contract and rollback: [`docs/specs/production-seeding.md`](specs/production-seeding.md)
+and [`docs/adr/0001-staging-environment-and-full-seeding.md`](adr/0001-staging-environment-and-full-seeding.md).
+
+Two behaviours worth knowing before re-running:
+
+- `seed:roles` **resets** the POV passwords on every run, so a reseed puts them
+  back to `Arise@2026` (or `SEED_ROLES_PASSWORD`).
+- `seed:demo` only creates **missing** accounts. Editing `SEED_DEMO_PASSWORD`
+  and re-running does not change the password of an existing member.
+
+### Switching a deployment to `staging`
+
+`APP_ENV` is interpolated in `docker-compose.prod.yml` (`${APP_ENV:-production}`)
+so `.env.production` can set it:
+
+```bash
+APP_ENV=staging
+```
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  up -d --force-recreate app
+docker compose --env-file .env.production -f docker-compose.prod.yml \
+  exec app sh -c 'echo "$APP_ENV"'
+```
+
+The last line must print `staging`; a hardcoded compose value used to win here
+silently. What changes: seeding no longer needs the gate, and nothing else —
+throttling, error suppression and tenant isolation do not branch on
+`production`. What does not change: `/api/v1/swagger` stays `404`.
 
 ## CI/CD
 

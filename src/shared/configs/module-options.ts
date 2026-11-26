@@ -8,7 +8,10 @@ export const configModuleOptions: ConfigModuleOptions = {
   load: [configuration],
   validationSchema: Joi.object({
     APP_ENV: Joi.string()
-      .valid('development', 'production', 'test')
+      // `staging` is a first-class value so a tester-facing deployment can be
+      // seeded with one command and no flags (see seeding-gate.ts). Swagger
+      // stays off for it: main.ts only mounts the schema for development/test.
+      .valid('development', 'production', 'staging', 'test')
       .default('development'),
     APP_PORT: Joi.number().required(),
     DB_HOST: Joi.string().required(),

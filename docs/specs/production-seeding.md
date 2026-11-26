@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted — implemented |
 | Owners | `src/shared/seeds/seeding-gate.ts`, `src/seed-roles.ts`, `src/seed-demo.ts` |
-| Related | `docs/deployment.md`, ADR: seeding stays inside `APP_ENV=production` |
+| Related | `docs/deployment.md`, `docs/adr/0001-staging-environment-and-full-seeding.md` |
 
 ## Problem
 
@@ -34,6 +34,11 @@ refusals that protect it, and without planting a public password.
 Testers get demo member accounts only. `it-admin` and the POV staff accounts are
 **not** seeded on production, so no admin credential is handed out.
 
+> **Revised.** `APP_ENV=staging` is now a supported value and `seed:all:prod`
+> seeds every account — admin, the four POV staff accounts and the 71 demo
+> members — with no flags. That reverses both decisions above, deliberately;
+> see the ADR. Production still keeps the gate described below.
+
 ## Scope
 
 In:
@@ -45,7 +50,7 @@ In:
 
 Out:
 
-- changing `APP_ENV`, adding a `staging` value, or a developer role;
+- a developer role;
 - making seeders idempotent where they are not (see *Known gaps*);
 - an in-app seeding endpoint or an admin UI trigger.
 
@@ -66,6 +71,11 @@ refusal, not a silent fallback. Outside production nothing changes — the
 defaults still apply, so `npm run seed:demo` in development behaves exactly as
 before.
 
+`staging` is outside the gate entirely: `seed:all:prod` there runs with no flag
+and falls back to `Arise@2026` / `DemoPass123!`. That is the point of the
+environment — one command, no ceremony — and the cost is that a staging box is
+still publicly reachable with committed passwords.
+
 Both variables and the flag live in `.env.production`, which is already mode
 600, passed to the stack with `env_file`, and excluded from the image and from
 git. They are therefore present inside the container:
@@ -83,6 +93,8 @@ SEED_DEMO_PASSWORD` versus `development default`.
 | Command | Failure | Exit |
 | --- | --- | --- |
 | `seed:roles` / `seed:demo` (dev, via `ts-node`) | unchanged | non-zero on DB errors |
+| `seed:all:prod` in staging | none — seeds everything with dev defaults | 0 |
+| `seed:all:prod` in production, no flag | same refusal as the individual seeders | 1 |
 | `*:prod` in production, no flag | `refuses to run with APP_ENV=production` + both remedies | 1, no DB connection |
 | `*:prod` in production, flag, no password | names the variable | 1 |
 | `*:prod` in production, password < 12 | names the variable and minimum | 1 |
