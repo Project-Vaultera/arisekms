@@ -21,10 +21,11 @@
 Pull requests are the only way to propose a value you want to add. Following is a general workflow for submitting any requests.
 
 1. Clone the repo and create your branch from `master`.
-2. If you've added code that should be tested
-3. Ensure that your code doesn't fail to build
-4. Make pull request to `master` branch
-5. Assign respective developers to review and merge pull request
+2. Get it running with the copy-paste block in the README's [New contributor](../README.md#new-contributor) section — do not improvise setup steps.
+3. If you've added code that should be tested
+4. Ensure that your code doesn't fail to build
+5. Make pull request to `master` branch
+6. Assign respective developers to review and merge pull request
 
 ### Commit Message Guidelines
 

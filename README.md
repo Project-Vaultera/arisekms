@@ -4,44 +4,84 @@
 
 NestJS REST API + React/Vite + PostgreSQL in Docker Compose, optimized for Ubuntu on WSL2. AI agents must read `AGENTS.md` before editing.
 
-## New contributor checklist
+## New contributor
 
-First run (copy-paste):
+Goal: from a clean machine to a signed-in app, with the commands below and
+nothing else. Defaults are shown, so an omitted optional value is never a
+surprise.
+
+**Prerequisites, done by you once** (the commands cannot install these):
+
+- Git.
+- Docker Engine with the Compose plugin. `docker compose version` must print
+  `v2.` or later. On Windows use WSL2 Ubuntu with Docker Desktop's WSL
+  integration on, and keep the clone under `/home/...`, not `/mnt/c/...`.
+
+The stack publishes its own host ports, so no `.env` editing is needed to start.
 
 ```bash
-git clone <arisekms-remote> ~/oss-vaultera/arisekms
-cd ~/oss-vaultera/arisekms
+git clone https://github.com/Project-Vaultera/arisekms.git
+cd arisekms
 cp .env.template .env
-chmod +x ./scripts/generate-jwt-keys
-./scripts/generate-jwt-keys
-# paste JWT_PUBLIC_KEY_BASE64 / JWT_PRIVATE_KEY_BASE64 into .env, set DB_PASS + DEFAULT_ADMIN_USER_PASSWORD
-cp arisekms-fe/.env.example arisekms-fe/.env
-docker compose up --build -d
+node scripts/init-env.mjs .env
+docker compose up -d --wait
 docker compose exec app npm run migration:run
-docker compose exec app npm run cli:dev
-curl -i http://localhost:3006/api/v1
-curl -i http://localhost:5176
+docker compose exec app npm run seed:dev
+curl -i http://localhost:3006/api/v1/health
+open http://localhost:5176/login          # macOS; xdg-open on Linux
 ```
 
-Returning contributor:
+Sign in as `dev.secretariat` with the value of `DEFAULT_ADMIN_USER_PASSWORD`
+in `.env` — `Arise@2026` unless you changed it. The account lands on
+**`/approvals`**, the first screen with content on it.
+
+To confirm the whole chain from the terminal instead of a browser, this must
+print `200` (it mints a token and reads `/reports?limit=1`, the call that page
+makes):
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:3006/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"username\":\"dev.secretariat\",\"password\":\"$(sed -n 's/^DEFAULT_ADMIN_USER_PASSWORD=//p' .env)\"}" \
+  | node -pe 'JSON.parse(require("fs").readFileSync(0)).data.accessToken')
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3006/api/v1/reports?limit=1 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+`node scripts/init-env.mjs .env` fills the three values a template cannot carry:
+both `JWT_*_BASE64` keys and `DB_PASS`. Nothing is sent anywhere and re-running
+is safe.
+
+`--wait` returns once every container reports healthy, so the next command
+cannot race the database.
+
+`seed:dev` creates one secretariat account and is safe to run twice; the
+second run leaves it alone. `npm run seed:all` adds 71 demo members and demo
+content on top if you want a populated app.
+
+## Returning contributor
 
 ```bash
 git pull --ff-only
-docker compose up -d
+docker compose up -d --wait
 docker compose exec app npm run migration:run
-docker compose ps
+curl -s http://localhost:3006/api/v1/health   # {"status":"ok"}
 ```
+
+If `init-env` is ever re-run, it keeps an existing `DB_PASS`: a Postgres volume
+only keeps the password it was created with.
 
 ## Table of contents
 
+- [New contributor](#new-contributor)
+- [Returning contributor](#returning-contributor)
+- [Prerequisites](#prerequisites)
 - [Product scope](#product-scope)
 - [Technology stack](#technology-stack)
 - [Repository structure](#repository-structure)
 - [Local services](#local-services)
-- [Prerequisites](#prerequisites)
-- [First-run setup](#first-run-setup)
+- [First-run reference](#first-run-reference)
 - [Production deployment](#production-deployment)
-- [Returning contributors](#returning-contributors)
 - [Branch switching and resets](#branch-switching-and-resets)
 - [Application configuration](#application-configuration)
 - [Authentication](#authentication)
@@ -100,25 +140,41 @@ arisekms/
 
 ## Local services
 
-Host ports offset to run beside a sibling stack on `3000/5173/5432/8080`:
+`docker compose up` starts all of these. Check one with the command in the last
+column; URLs are the browser-facing ones and are `curl`-able from the host.
 
-| Service | Compose name | Host address |
-| --- | --- | --- |
-| Frontend | `frontend` | <http://localhost:5176> |
-| API server | `app` | <http://localhost:3006> |
-| API base (global prefix) | `app` | <http://localhost:3006/api/v1> |
-| Swagger (development only) | `app` | <http://localhost:3006/api/v1/swagger> |
-| Adminer | `adminer` | <http://localhost:8086> |
-| Mailpit inbox (dev mail catcher) | `mailpit` | <http://localhost:8025> |
-| Postgres (host) | `pgsqldb` | `localhost:5436` |
-| Postgres (in Compose) | `pgsqldb` | `pgsqldb:5432` |
+| Process | Compose name | URL | "It is up" is |
+| --- | --- | --- | --- |
+| Frontend (React dev server) | `frontend` | <http://localhost:5176> | `curl -sI http://localhost:5176/login` → `200` |
+| API | `app` | <http://localhost:3006/api/v1> | `curl -s http://localhost:3006/api/v1/health` → `{"status":"ok"}` |
+| API docs (development only) | `app` | <http://localhost:3006/api/v1/swagger> | opens in a browser; `404` in production |
+| Database | `pgsqldb` | `localhost:5436` from the host, `pgsqldb:5432` in Compose | `docker compose ps pgsqldb` → `healthy` |
+| Mail catcher (inbox) | `mailpit` | <http://localhost:8025> | `curl -s -o /dev/null -w '%{http_code}' http://localhost:8025` → `200` |
+| DB browser | `adminer` | <http://localhost:8086> | opens in a browser |
 
-All host ports overridable via `.env` (`APP_PORT`, `FRONTEND_PORT`, `PGSQL_HOST_PORT`, `ADMINER_PORT`, `MAILPIT_UI_PORT`, `MAILPIT_SMTP_PORT`).
+Host ports are overridable in `.env` (`APP_PORT`, `FRONTEND_PORT`,
+`PGSQL_HOST_PORT`, `ADMINER_PORT`, `MAILPIT_UI_PORT`, `MAILPIT_SMTP_PORT`);
+change `APP_PUBLIC_URL` too if you move the frontend, or mailed links break.
 
-Password reset and invite mail never leaves the machine in development:
-`MAIL_TRANSPORT=smtp` points at `mailpit`, and every message appears at
-<http://localhost:8025> with its links clickable. Set `MAIL_TRANSPORT=log` to
-get the links in the API log instead. See `docs/specs/email-reset-and-invite.md`.
+Reset and invite mail never leaves the machine: `MAIL_TRANSPORT=smtp` points at
+`mailpit` and every message is readable at <http://localhost:8025>. Set
+`MAIL_TRANSPORT=log` to get the link in `docker compose logs -f app` instead.
+
+## Prerequisites
+
+**You install these; the commands in this README do not.**
+
+- Git.
+- Docker with the Compose plugin (`docker compose version` → `v2.` or later).
+- Windows only: WSL2 Ubuntu and Docker Desktop with WSL integration for it. Keep
+  the clone under `/home/...`; bind mounts under `/mnt/c/...` are very slow.
+
+```bash
+docker compose version && git --version && docker info   # docker info must not error
+```
+
+Docker Desktop or the daemon must be running, or `up` fails with "cannot connect
+to the Docker daemon".
 
 ## Prerequisites
 
@@ -129,37 +185,49 @@ docker --version && docker compose version && git --version && docker info
 wsl --list --verbose   # run in PowerShell, Ubuntu must show VERSION 2
 ```
 
-## First-run setup
+## First-run reference
 
-### 1. Backend env
+### 1. Environment
+
+The quick start above is the whole thing. What each step means:
+
+- `.env.template` lists every variable the API reads on boot, commented with
+  what it is and which process reads it.
+- `scripts/init-env.mjs .env` replaces the empty `JWT_*_BASE64` and `DB_PASS`
+  with generated values. It keeps an existing `DB_PASS`, because a Postgres
+  volume keeps the password it was created with.
+- Nothing in `.env` is a secret worth protecting in development.
+
+Never commit `.env`. To change a host port, edit `.env`; to change the frontend
+port, update `APP_PUBLIC_URL` to match.
+
+### 2. Start
 
 ```bash
-cp .env.template .env
-./scripts/generate-jwt-keys   # paste both BASE64 values into .env
-nano .env
+docker compose up -d --wait
 ```
 
-Minimum to change: `DB_PASS`, `DEFAULT_ADMIN_USER_PASSWORD`, both `JWT_*_BASE64`. Defaults already point at `3006/5176/5436/8086` and `DB_HOST=pgsqldb`. Never commit `.env`.
+`--wait` blocks until every healthcheck passes and exits non-zero if one never
+does, so a broken boot is a failed command rather than a silent background
+container. Watch it with `docker compose logs -f app`; a validation failure
+names the variable to fix.
 
-### 2. Frontend env
-
-```bash
-cp arisekms-fe/.env.example arisekms-fe/.env
-```
-
-Contents: `VITE_API_URL=http://localhost:3006/api/v1`. Browser-only URL — never `http://app:3006`. Restart the frontend container after any change (`docker compose restart frontend`).
-
-### 3. Start + migrate + seed admin
+### 3. Migrate and seed
 
 ```bash
-docker compose up --build -d
 docker compose exec app npm run migration:run
-docker compose exec app npm run cli:dev   # creates it-admin if missing
+docker compose exec app npm run seed:dev        # dev.secretariat / DEFAULT_ADMIN_USER_PASSWORD
+docker compose exec app npm run cli:dev         # it-admin, the IT admin account (same password)
 ```
 
-`cli:dev` runs `src/cli.ts` and is idempotent. Default login: `it-admin` / value of `DEFAULT_ADMIN_USER_PASSWORD` (`Arise@2026` unless changed).
+Both seeders are safe to re-run: `seed:dev` skips an existing account,
+`cli:dev` creates `it-admin` only if it is missing. Neither resets a password
+you changed — remove the row to reset it.
 
-### 3b. Roles + POV check accounts (dev only)
+`dev.secretariat` signs in to `/approvals`. `it-admin` signs in to the
+dashboard and owns Governance (user directory, audit logs, invites).
+
+### 4. Roles and POV accounts (dev only)
 
 Single role per user (`CreateUserInput.roles` / `UpdateUserInput.roles` accept exactly one):
 
@@ -171,7 +239,7 @@ Single role per user (`CreateUserInput.roles` / `UpdateUserInput.roles` accept e
 | `ARISE_DATA_ANALYST` | List/Read on approved content (knowledge: approved-only) + reports/summary/performance/activities/certificates/tickets; no users/companies/membership-analytics, no writes |
 
 ```bash
-docker compose exec app npm run seed:roles   # idempotent, resets password +<|place_holder_mm_span_0442|>
+docker compose exec app npm run seed:roles   # idempotent; resets these passwords on every run
 ```
 
 | Username | Role | Password |
@@ -221,7 +289,8 @@ DELETE FROM knowledge_documents WHERE title LIKE 'Demo:%';
 - `PATCH /api/v1/users/me` — self-service `name`, `email`, `gender` + password change (`password` + `currentPassword`, 6–100 chars). A password change bumps `tokenVersion`, signing out **all** devices including this one — FE redirects to login.
 - `POST /api/v1/users/me/sessions/revoke` — sign out all devices now (bumps `tokenVersion`).
 - Avatar (jpg/png): `POST /api/v1/users/me/avatar` (multipart `file`), `GET /api/v1/users/me/avatar/file`, `DELETE /api/v1/users/me/avatar`. Migration `AddUserAvatar`.
-- `POST /api/v1/users/invite` — IT-admin only, creates an account with an explicit single role (Governance → User Directory → Invite user; share the temp password securely).
+- `POST /api/v1/auth/invite` — IT-admin only, creates an account with an explicit single role and mails an accept link (Governance → User Directory → Invite user). Omitting `password` requires the invitee to set one from the link; `POST /api/v1/auth/accept-invite` completes it.
+- `POST /api/v1/auth/forgot-password` — always `202`; mails a reset link (lands in Mailpit). `POST /api/v1/auth/reset-password` sets it. Both sign out existing sessions.
 - FE Profile page: avatar upload/remove, personal info, password change, sign-out-all-devices, activity overview.
 
 ### 5. Verify (what actually exists)
@@ -276,17 +345,6 @@ checklist, troubleshooting): [`docs/deployment.md`](docs/deployment.md).
 CI/CD: `.github/workflows/deploy.yml` builds and pushes both images to GHCR on
 every push to `main`, then pulls and restarts the stack over SSH.
 
-## Returning contributors
-
-```bash
-git pull --ff-only
-docker compose up -d
-docker compose exec app npm run migration:run
-docker compose exec app npm run cli:dev   # safe to re-run after pulls
-```
-
-After changing `arisekms-fe/.env`: `docker compose restart frontend`.
-
 ## Branch switching and resets
 
 ```bash
@@ -335,7 +393,8 @@ All calls go through `arisekms-fe/src/api/client.js` (baseURL from `VITE_API_URL
 - `PATCH /api/v1/users/me` — own name/email/gender + password change (bumps `tokenVersion`, signs out all devices)
 - `POST /api/v1/users/me/sessions/revoke` — sign out all devices
 - `POST /api/v1/users/me/avatar` / `GET /api/v1/users/me/avatar/file` / `DELETE /api/v1/users/me/avatar` — own avatar (jpg/png)
-- `POST /api/v1/users/invite` — IT-admin only, create account with explicit role
+- `POST /api/v1/auth/invite` — IT-admin only, create account with explicit role + mailed accept link
+- `POST /api/v1/auth/accept-invite` — set a password from an invite link
 - Knowledge: `POST /api/v1/knowledge` (member → `submitted`, staff → `approved`), `PATCH /api/v1/knowledge/:id` (author-pending, optional file), `POST /api/v1/knowledge/:id/review` (staff), `GET /api/v1/knowledge/:id/history` (author/reviewer), `DELETE /api/v1/knowledge/:id` (author-pending)
 
 Guards: `LocalAuthGuard` (login), `JwtAuthGuard` (routes), `JwtRefreshGuard` (refresh).
@@ -356,22 +415,20 @@ Guards: `LocalAuthGuard` (login), `JwtAuthGuard` (routes), `JwtRefreshGuard` (re
 
 ## Troubleshooting
 
-| Symptom | Fix |
-| --- | --- |
-| `GET /api/v1/health` 404 | Expected — no health controller yet; verify with `GET /api/v1` + `/api/v1/swagger` |
-| `Cannot GET /` | Expected — global prefix is `/api/v1`; `/` is outside the app |
-| React can't reach API | Check `VITE_API_URL`, CORS `5176`, port `3006`, `docker compose restart frontend` |
-| PG connect fail | Inside Compose use `DB_HOST=pgsqldb`; compare `DB_*` in `.env` vs compose |
-| `relation does not exist` | You switched branches — run `migration:run` |
-| Compose YAML error | `docker compose config`; spaces only, no tabs |
-| Files owned by root | Recreate with `-u "$(id -u):$(id -g)"`; fix only the affected path |
-| Port in use | `ss -ltnp \| grep -E '3006\|5176\|5436\|8086'`; override that var in `.env` |
-| Hot reload dead | Repo must be under `/home/...`, not `/mnt/c/...` |
+Only failures encountered while setting this up, with how each was produced.
 
-```bash
-docker compose logs --tail=200 app
-docker compose exec pgsqldb pg_isready -U "$DB_USER" -d "$DB_NAME"
-```
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `no configuration file provided` | Wrong working directory; the compose file is at the repo root | `cd` into the clone. `docker compose` reads from the current directory. |
+| Boot error `Config validation error: APP_PUBLIC_URL must be an absolute http(s) URL` | `APP_PUBLIC_URL` empty or not a URL; reset links would go relative and 404 | Set `APP_PUBLIC_URL=http://localhost:5176` in `.env`, then `docker compose up -d app`. |
+| Reset link in Mailpit reads `http:///reset-password?...` | The API container got no `APP_PUBLIC_URL`. An explicit `environment:` list used to drop it silently | Use the current `docker-compose.yml`; check `docker compose exec app sh -c 'echo $APP_PUBLIC_URL'`. |
+| `bind: address already in use` | Another stack holds `3006`, `5176`, `5436`, `8086`, `8025` or `1026` | Change that port in `.env`. If you move the frontend, update `APP_PUBLIC_URL` to match. |
+| `password authentication failed for user "root"` | `DB_PASS` changed while an existing volume kept the old one; a volume only keeps its creation password | Restore the old `DB_PASS`, or `docker compose down -v` (drops the dev database). |
+| Sign-in stores a session but the page stays blank until a manual refresh | Stale or missing `VITE_API_URL`; Vite inlines it at serve time | `docker compose up -d --force-recreate frontend`, hard-reload. Check `docker compose exec frontend sh -c 'echo $VITE_API_URL'`. |
+| Browser calls `http://app:3006/...` | The in-Compose host was used instead of the browser-facing one | `VITE_API_URL` must be `http://localhost:3006/api/v1`. |
+| `seed:dev` fails validation on `DEFAULT_ADMIN_USER_PASSWORD` | The default was replaced with a weak value (needs upper, lower, digit, symbol, 12+) | Use `Arise@2026` or another strong value. |
+| Everything is empty and endpoints return `[]` | Nothing seeded | `docker compose exec app npm run seed:dev` |
+| `Cannot connect to the Docker daemon` | Docker Desktop or `dockerd` is not running | Start it, then `docker info` inside WSL. |
 
 ## Security baseline
 

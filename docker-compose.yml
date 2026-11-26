@@ -11,19 +11,14 @@ services:
       - ./:/usr/src/app:cached
       - node_modules:/usr/src/app/node_modules
       - app_uploads:/usr/src/app/uploads
+    # env_file, not an explicit environment: list. A list silently drops every
+    # variable it does not name (APP_PUBLIC_URL, MAIL_*), so reset links came
+    # out empty with no error. One source; compose<|place_holder_mm_span_0442|> overrides stay below.
+    env_file:
+      - .env
     environment:
-      APP_ENV: ${APP_ENV}
-      APP_PORT: ${APP_PORT}
       DB_HOST: pgsqldb
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-      JWT_ACCESS_TOKEN_EXP_IN_SEC: ${JWT_ACCESS_TOKEN_EXP_IN_SEC}
-      JWT_REFRESH_TOKEN_EXP_IN_SEC: ${JWT_REFRESH_TOKEN_EXP_IN_SEC}
-      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64}
-      JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64}
-      DEFAULT_ADMIN_USER_PASSWORD: ${DEFAULT_ADMIN_USER_PASSWORD}
+      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-mailpit}
     depends_on:
       pgsqldb:
         condition: service_healthy
@@ -39,6 +34,9 @@ services:
     volumes:
       - ./arisekms-fe:/app
       - arisekms_fe_node_modules:/app/node_modules
+    # Vite inlines import.meta.env at build/serve time, so changing this needs
+    # the frontend re-created (`docker compose up -d --force-recreate frontend`).
+    # It must be the browser-facing URL, never the in-Compose host `app`.
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:${APP_PORT:-3006}/api/v1}
     depends_on:

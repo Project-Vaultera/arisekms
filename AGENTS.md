@@ -30,13 +30,17 @@ Never weaken auth, authz, validation, tenant scoping, or auditability to make a 
 
 ## 4. Environment
 
-- Docker Compose, WSL2. Services: `app`, `frontend`, `pgsqldb` (Postgres 16.3), `adminer`.
-- Ports (defaults): API `3006`, FE `5176`, PG host `5436`, Adminer `8086`. Chosen to avoid `3000/5173/5432/8080` sibling-stack clashes; all overridable via `.env`.
-- Browser-facing API base: `http://localhost:3006/api/v1` (`VITE_API_URL`).
-- DB creds / JWT keys / ports come from `.env` (see `.env.template`). Never commit `.env` or secrets.
+- Docker Compose, WSL2. Services: `app`, `frontend`, `pgsqldb` (Postgres 16.3), `mailpit` (dev mail catcher), `adminer`.
+- Ports (defaults): API `3006`, FE `5176`, PG host `5436`, Adminer `8086`, Mailpit inbox `8025`, Mailpit SMTP `1026`. Chosen to avoid `3000/5173/5432/8080` sibling-stack clashes; all overridable via `.env`.
+- Browser-facing API base: `http://localhost:3006/api/v1` (`VITE_API_URL`, baked by Vite at serve time — `--force-recreate frontend` after a change).
+- `APP_PUBLIC_URL` builds mailed reset/invite links and is required; an empty value fails at boot by name.
+- `.env` is the only env file any process loads; `docker-compose.yml` reads it via `env_file`. Never commit `.env` or secrets. `scripts/init-env.mjs` fills `JWT_*_BASE64` and an empty `DB_PASS`.
+- Reset and invite mail goes to Mailpit (`MAIL_TRANSPORT=smtp`), never to a real inbox.
 - FE API layer: all server calls go through `arisekms-fe/src/api/client.js`. Never scatter `fetch`/`axios` in pages.
 
 ## 5. Commands (use only scripts that exist)
+
+Bootstrap matches the README one-to-one (`cp .env.template .env` → `node scripts/init-env.mjs .env` → `docker compose up -d --wait` → `docker compose exec app npm run migration:run` → `docker compose exec app npm run seed:dev`).
 
 Backend (`package.json` at root):
 
@@ -46,8 +50,11 @@ docker compose exec app npm run lint
 docker compose exec app npm test
 docker compose exec app npm run test:e2e
 docker compose exec app npm run build
-npm run migration:generate --name=Foo   # then review generated file
-npm run migration:run / migration:revert
+docker compose exec app npm run migration:run
+docker compose exec app npm run migration:revert
+docker compose exec app npm run seed:dev      # one secretariat account, idempotent
+docker compose exec app npm run seed:all      # + 71 demo members and demo content
+npm run migration:generate --name=Foo         # host: needs ts-node; then review the file
 ```
 
 Frontend (`arisekms-fe/package.json`): `dev`, `build`, `preview` only.
@@ -57,6 +64,8 @@ docker compose exec frontend npm run build
 ```
 
 Narrowest relevant check first, then broader. If a check can't run, report exact command + reason. Never claim a pass you didn't execute.
+
+**A mismatch between these commands/ports/env names and the README is a doc bug: fix it in the docs, do not work around it in code or in new scripts.**
 
 ## 6. Required workflow (spec-driven, vertical slices)
 

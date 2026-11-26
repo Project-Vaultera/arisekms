@@ -43,13 +43,19 @@ export const configModuleOptions: ConfigModuleOptions = {
       then: Joi.string().required(),
       otherwise: Joi.optional(),
     }),
-    // Only needed when mail is on; `log` prints a link that also needs an origin.
+    // Required with no default: every transport mails a link (even `log` prints
+    // one), and an empty origin yields /reset-password -> /reset-password in the
+    // browser. `@needs` makes the boot error name the variable and what it is.
     APP_PUBLIC_URL: Joi.string()
       .uri({ scheme: ['http', 'https'] })
-      .when('MAIL_TRANSPORT', {
-        is: 'resend',
-        then: Joi.required(),
-        otherwise: Joi.optional(),
+      .required()
+      .messages({
+        // `@needs` = absent; `*` = empty or otherwise invalid. Both must say
+        // what the variable is, because the boot error is the only clue.
+        '@needs':
+          'needs APP_PUBLIC_URL: the browser origin for reset and invite links, e.g. http://localhost:5176',
+        '*':
+          'APP_PUBLIC_URL must be an absolute http(s) URL, e.g. http://localhost:5176',
       }),
     APP_THROTTLE_ENABLED: Joi.string().valid('0', '1').optional(),
   }),
