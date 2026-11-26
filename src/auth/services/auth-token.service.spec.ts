@@ -17,6 +17,7 @@ class FakeRepository {
     return row;
   }
 
+  // Mirrors TypeORM: query() for a RETURNING statement yields [rows, affected].
   async query(_sql: string, params: unknown[]): Promise<unknown[]> {
     const [tokenHash, kind, userId] = params as [string, string, number | null];
     const row = this.rows.find(
@@ -28,9 +29,9 @@ class FakeRepository {
         r.expiresAt.getTime() > Date.now() &&
         (userId == null || r.userId === userId),
     );
-    if (!row) return [];
+    if (!row) return [[], 0];
     row.usedAt = new Date();
-    return [{ ...row, user_id: row.userId }];
+    return [[{ ...row, user_id: row.userId }], 1];
   }
 
   async delete(criteria: Record<string, unknown>): Promise<void> {

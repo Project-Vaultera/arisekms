@@ -69,7 +69,9 @@ export class AuthTokenService {
         RETURNING *`,
       [tokenHash, kind],
     );
-    const row = Array.isArray(claimed) ? claimed[0] : undefined;
+    // TypeORM's query() returns [rows, affected] for a RETURNING statement.
+    const rows = Array.isArray(claimed?.[0]) ? claimed[0] : claimed;
+    const row = rows?.[0];
     if (!row || (userId !== undefined && row.user_id !== userId)) {
       return null;
     }

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { MailService } from './mail.service';
 import { LogMailTransport, MAIL_TRANSPORT, MailTransport } from './mail.transport';
@@ -9,6 +9,9 @@ import { SmtpMailTransport } from './smtp.transport';
 // `log` is the default on purpose: no provider is needed in dev, CI or demo,
 // and a deployment opts in explicitly with MAIL_TRANSPORT=resend.
 @Module({
+  // ConfigService is not global (SharedModule calls forRoot), so the injecting
+  // factory must have ConfigModule in scope or DI fails at boot.
+  imports: [ConfigModule],
   providers: [
     {
       provide: MAIL_TRANSPORT,
