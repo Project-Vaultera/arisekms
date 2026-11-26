@@ -122,9 +122,9 @@ Caddy edit. It is a redeploy either way; the schema enumerates every endpoint,
 payload and error shape.
 
 `login` and `register` are throttled per client. The real client IP is the
-**right-most** `X-Forwarded-For` hop, which is the peer Caddy appended — the
-left-most values are caller-supplied and trivially rotated. Three rules apply,
-narrowest first so one client cannot starve another:
+**right-most** `X-Forwarded-For` hop, which is the peer the last proxy appended —
+the left-most values are caller-supplied and trivially rotated. Three rules
+apply, narrowest first so one client cannot starve another:
 
 | Rule | Default | Purpose |
 | --- | --- | --- |
@@ -140,7 +140,15 @@ the limit instead of walking straight through the exhausted allowance.
 ```bash
 APP_THROTTLE_ENABLED=0        # off entirely
 APP_TRUST_PROXY_HEADERS=0     # direct connections only, ignore the header
+APP_TRUSTED_PROXY_HOPS=1      # proxies appending to X-Forwarded-For
 ```
+
+`APP_TRUSTED_PROXY_HOPS` counts the proxies in front of the app that append to
+`X-Forwarded-For`: `1` for Caddy or a bare ALB, `2` when a CDN in front of the
+load balancer appends too. Count too few and every caller collapses onto the
+CDN's address, sharing one budget; count too many and a caller-supplied value
+gets trusted. A header shorter than the configured depth is ignored, so a
+directly-connected client cannot spoof its way in.
 
 `POST /api/v1/auth/refresh-token` is deliberately **not** throttled: it carries
 no username and fires on every access-token expiry, so it would spend the login

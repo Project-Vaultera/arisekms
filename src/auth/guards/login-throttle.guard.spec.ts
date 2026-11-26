@@ -126,6 +126,26 @@ describe('LoginThrottleGuard', () => {
     ).toThrow(HttpException);
   });
 
+  it('keeps callers apart behind a two-proxy chain', () => {
+    // client -> Cloudflare -> ALB -> app. The ALB appended the CDN edge, so
+    // with hops=1 every caller would share 198.51.100.7 and one attacker would
+    // spend everyone's budget. hops=2 reads the real caller instead.
+    const g = guard({ 'throttle.trustedProxyHops': 2 });
+    for (let i = 0; i < 10; i++) {
+      attempt(g, {
+        forwarded: `203.0.113.${i}, 198.51.100.7`,
+        username: 'ann',
+      });
+    }
+    // Same CDN edge, different caller: unaffected by ann's spent pair budget.
+    expect(
+      attempt(g, {
+        forwarded: '203.0.113.200, 198.51.100.7',
+        username: 'bob',
+      }),
+    ).toBe(true);
+  });
+
   it('widens a flooding address to its /24', () => {
     const g = guard();
     for (let i = 0; i < 30; i++) {
