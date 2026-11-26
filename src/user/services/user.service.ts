@@ -109,6 +109,12 @@ export class UserService {
     });
   }
 
+  // Raw entity (not UserOutput): password reset needs id, name, email and the
+  // disabled flag. Case-insensitive via the repository.
+  async findByEmail(email: string): Promise<User | null> {
+    return this.repository.findByEmail(email);
+  }
+
   async getUserById(ctx: RequestContext, id: number): Promise<UserOutput> {
     this.logger.log(ctx, `${this.getUserById.name} was called`);
 
@@ -188,6 +194,35 @@ export class UserService {
 
     return plainToClass(UserOutput, updatedUser, {
       excludeExtraneousValues: true,
+    });
+  }
+
+  // Token-authorized reset: no current password, so this is the only path that
+  // sets a password without proving knowledge of the old one. tokenVersion is
+  // bumped, so every live session dies exactly as in the self-service path.
+  async setPasswordFromToken(
+    ctx: RequestContext,
+    userId: number,
+    plainPassword: string,
+    action: 'USER_PASSWORD_RESET' | 'USER_INVITE_ACCEPTED',
+  ): Promise<void> {
+    const user = await this.repository.getById(userId);
+    const updatedUser: User = {
+      ...user,
+      password: await hash(plainPassword, 10),
+      tokenVersion: (user.tokenVersion ?? 0) + 1,
+    };
+
+    this.logger.log(ctx, `calling ${UserRepository.name}.save`);
+    await this.repository.save(updatedUser);
+
+    this.auditService.record({
+      actorId: ctx.user?.id ?? null,
+      action,
+      entityType: 'users',
+      entityId: String(userId),
+      metadata: {},
+      outcome: 'success',
     });
   }
 

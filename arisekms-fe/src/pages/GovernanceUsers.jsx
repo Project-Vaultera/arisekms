@@ -107,21 +107,29 @@ export function GovernanceUsers() {
   }
 
   async function inviteUser() {
-    if (!invite.username.trim() || !invite.name.trim() || !invite.email.trim() || invite.password.length < 6) {
-      toast.error('Fill username, name, valid email and a 6+ character password');
+    // Password is optional now: omit it and the API mails an accept link.
+    if (!invite.username.trim() || !invite.name.trim() || !invite.email.trim()) {
+      toast.error('Fill username, name and email');
+      return;
+    }
+    if (invite.password && invite.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
     setInviting(true);
     try {
-      await api.post('/users/invite', {
+      await api.post('/auth/invite', {
         username: invite.username.trim(),
         name: invite.name.trim(),
         email: invite.email.trim(),
-        password: invite.password,
+        ...(invite.password ? { password: invite.password } : {}),
         roles: [invite.role],
         isAccountDisabled: false,
       });
-      toast.success('User invited');
+      toast.success(
+        invite.password ? 'User created' : 'Invite mailed',
+        { description: invite.password ? 'Password set by you.' : 'They set their own password from the link.' },
+      );
       closeInvite();
       await refresh();
     } catch (err) {
@@ -288,8 +296,8 @@ export function GovernanceUsers() {
               <Input placeholder="Email…" type="email" value={invite.email} onChange={(e) => setInvite((v) => ({ ...v, email: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">Temporary password</Label>
-              <Input placeholder="6+ characters…" type="password" value={invite.password} onChange={(e) => setInvite((v) => ({ ...v, password: e.target.value }))} />
+              <Label className="text-sm">Password (optional)</Label>
+              <Input placeholder="Blank = mail them a link" type="password" value={invite.password} onChange={(e) => setInvite((v) => ({ ...v, password: e.target.value }))} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <FilterSelect label="Role" value={invite.role} onValueChange={(v) => setInvite((iv) => ({ ...iv, role: v }))} options={ALL_ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))} />

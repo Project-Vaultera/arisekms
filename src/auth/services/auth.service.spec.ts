@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 
+import { AuditService } from '../../audit/services/audit.service';
+import { MailService } from '../../mail/mail.service';
 import { AppLogger } from '../../shared/logger/logger.service';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
 import { UserOutput } from '../../user/dtos/user-output.dto';
@@ -14,6 +16,7 @@ import {
   UserAccessTokenClaims,
 } from '../dtos/auth-token-output.dto';
 import { AuthService } from './auth.service';
+import { AuthTokenService } from './auth-token.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -53,6 +56,8 @@ describe('AuthService', () => {
     findById: jest.fn(),
     createUser: jest.fn(),
     validateUsernamePassword: jest.fn(),
+    findByEmail: jest.fn(),
+    setPasswordFromToken: jest.fn(),
   };
 
   const mockedJwtService = {
@@ -65,6 +70,17 @@ describe('AuthService', () => {
 
   const mockedLogger = { setContext: jest.fn(), log: jest.fn() };
 
+  const mockedAuthTokenService = {
+    issue: jest.fn(async () => 'raw-token'),
+    consume: jest.fn(),
+    consumeWithoutUser: jest.fn(),
+  };
+  const mockedMailService = {
+    sendPasswordReset: jest.fn(),
+    sendInvite: jest.fn(),
+  };
+  const mockedAuditService = { record: jest.fn() };
+
   beforeEach(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
@@ -74,6 +90,9 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: mockedConfigService },
         { provide: AppLogger, useValue: mockedLogger },
         { provide: DataSource, useValue: mockedDataSource },
+        { provide: AuthTokenService, useValue: mockedAuthTokenService },
+        { provide: MailService, useValue: mockedMailService },
+        { provide: AuditService, useValue: mockedAuditService },
       ],
     }).compile();
 
@@ -85,6 +104,61 @@ describe('AuthService', () => {
   });
 
   const ctx = new RequestContext();
+
+  describe('forgotPassword', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    it('issues a token and mails it for a known address', async () => {
+      mockedUserService.findByEmail = jest.fn(async () => userOutput);
+
+      await service.forgotPassword(ctx, 'randomUser@random.com');
+
+      expect(mockedAuthTokenService.issue).toBeCalledWith(
+        userOutput.id,
+        'password_reset',
+        60 * 60_000,
+      );
+      expect(mockedMailService.sendPasswordReset).toBeCalledWith(
+        userOutput.name,
+        userOutput.email,
+        'raw-token',
+      );
+    });
+
+    it('resolves without a token for an unknown address', async () => {
+      mockedUserService.findByEmail = jest.fn(async () => null);
+
+      await expect(service.forgotPassword(ctx, 'nobody@random.com')).resolves.toBeUndefined();
+      expect(mockedAuthTokenService.issue).not.toBeCalled();
+      expect(mockedMailService.sendPasswordReset).not.toBeCalled();
+    });
+  });
+
+  describe('resetPassword', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    it('sets the password for a valid token', async () => {
+      mockedAuthTokenService.consumeWithoutUser.mockResolvedValue({ userId: 9 });
+
+      await service.resetPassword(ctx, 'raw-token', 'new-password');
+
+      expect(mockedUserService.setPasswordFromToken).toBeCalledWith(
+        ctx,
+        9,
+        'new-password',
+        'USER_PASSWORD_RESET',
+      );
+    });
+
+    it('throws BadRequest for an invalid token', async () => {
+      mockedAuthTokenService.consumeWithoutUser.mockResolvedValue(null);
+
+      await expect(service.resetPassword(ctx, 'bad', 'new-password')).rejects.toThrow(
+        'This link is invalid or has expired. Request a new one.',
+      );
+      expect(mockedUserService.setPasswordFromToken).not.toBeCalled();
+    });
+  });
 
   describe('validateUser', () => {
     it('should success when username/password valid', async () => {

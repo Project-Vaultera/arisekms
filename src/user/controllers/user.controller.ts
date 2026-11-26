@@ -44,7 +44,6 @@ import {
 import { AppLogger } from '../../shared/logger/logger.service';
 import { ReqContext } from '../../shared/request-context/req-context.decorator';
 import { RequestContext } from '../../shared/request-context/request-context.dto';
-import { CreateUserInput } from '../dtos/user-create-input.dto';
 import { UserOutput } from '../dtos/user-output.dto';
 import { UpdateUserInput } from '../dtos/user-update-input.dto';
 import { UpdateMyProfileInput } from '../dtos/user-update-me-input.dto';
@@ -217,29 +216,8 @@ export class UserController {
     return { data: users, meta: { count } };
   }
 
-  // IT-admin invite: create an account with an explicit role. Declared before
-  // ':id' routes so 'invite' is never swallowed as a param.
-  @UseInterceptors(ClassSerializerInterceptor)
-  @Post('invite')
-  @ApiOperation({
-    summary: 'Invite user API (IT-admin only, creates account with role)',
-  })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    type: SwaggerBaseApiResponse(UserOutput),
-  })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(ROLE.ARISE_IT_ADMIN)
-  @ApiBearerAuth()
-  async inviteUser(
-    @ReqContext() ctx: RequestContext,
-    @Body() input: CreateUserInput,
-  ): Promise<BaseApiResponse<UserOutput>> {
-    this.logger.log(ctx, `${this.inviteUser.name} was called`);
-
-    const user = await this.userService.createUser(ctx, input);
-    return { data: user, meta: {} };
-  }
+  // Invite routes live on AuthController (it owns AuthService, which owns the
+  // mail + token plumbing); see src/auth/controllers/auth.controller.ts.
 
   // Admin-only: members use GET /me and PATCH /me.
   @UseInterceptors(ClassSerializerInterceptor)

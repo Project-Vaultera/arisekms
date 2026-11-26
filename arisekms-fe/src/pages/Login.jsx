@@ -151,14 +151,12 @@ export function Login() {
                   />
                   Remember Me
                 </label>
-                <button
-                  type="button"
-                  disabled
-                  title="Password reset is not available yet"
-                  className="cursor-not-allowed text-muted-foreground opacity-70"
+                <Link
+                  to="/forgot-password"
+                  className="text-muted-foreground underline-offset-2 hover:underline"
                 >
                   Forgot Password?
-                </button>
+                </Link>
               </div>
               <Button
                 className="h-10 w-full bg-neutral-900 text-white hover:bg-neutral-800 [@media(max-height:820px)]:h-9"

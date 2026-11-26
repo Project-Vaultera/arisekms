@@ -27,6 +27,14 @@ export default (): any => ({
     ),
   },
   defaultAdminUserPassword: process.env.DEFAULT_ADMIN_USER_PASSWORD,
+  // Public origin used to build mailed links. A wrong value means every link
+  // 404s while the send still reports success, so Joi validates it as a URI.
+  appPublicUrl: process.env.APP_PUBLIC_URL,
+  mail: {
+    transport: process.env.MAIL_TRANSPORT ?? 'log',
+    resendApiKey: process.env.RESEND_API_KEY,
+    from: process.env.MAIL_FROM,
+  },
   throttle: {
     // On: Caddy appends the real peer to X-Forwarded-For and we key on it.
     // Off: the header is ignored for limiting (direct connections only).
